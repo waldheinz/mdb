@@ -42,10 +42,11 @@ openDb dir = do
 findDbFolder :: IO (Maybe FilePath)
 findDbFolder = getCurrentDirectory >>= go where
   go d = do
-    here <- doesDirectoryExist ".mdb"
+    putStrLn d
+    here <- doesDirectoryExist $ dbDir d
     if here
-      then return $ Just $ d </> ".mdb"
+      then return $ (Just $ dbDir d)
       else let d' = takeDirectory d in if (d' == d)
                                        then return Nothing
-                                       else go $ takeDirectory d
+                                       else go d'
   

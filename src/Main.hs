@@ -17,17 +17,7 @@ main = do
     Left x     -> putStrLn $ x
     Right mode -> case mode of
       CMD.ModeInit oi -> doInit oi
---      x               -> error $ "unimplemented mode " ++ (show x)
-    
-  {-
-  mdbf <- DB.findDbFolder
-  case mdbf of
-    Nothing  -> putStrLn $ "no db directory found"
-    Just dbf -> do 
-      putStrLn $ show dbf
-      db <- DB.openDb dbf
-      return ()
-  -}
+      CMD.ModeScan os -> doScan os
 
 doInit :: CMD.OptInit -> IO ()
 doInit (CMD.OptInit mp) = do
@@ -37,3 +27,12 @@ doInit (CMD.OptInit mp) = do
 
   DB.initDb p
   
+doScan :: CMD.OptScan -> IO ()
+doScan CMD.OptScan = do
+  mdbf <- DB.findDbFolder
+  case mdbf of
+    Nothing  -> putStrLn $ "no db directory found, maybe try \"mdb init\"?"
+    Just dbf -> do 
+      putStrLn $ show dbf
+      db <- DB.openDb dbf
+      return ()

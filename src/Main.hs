@@ -5,6 +5,7 @@ module Main (
 
 import qualified CmdLine  as CMD
 import qualified Database as DB
+import qualified Scan     as SCAN
 
 import System.Directory ( getCurrentDirectory )
 import System.Environment ( getArgs )
@@ -17,7 +18,7 @@ main = do
     Left x     -> putStrLn $ x
     Right mode -> case mode of
       CMD.ModeInit oi -> doInit oi
-      CMD.ModeScan os -> doScan os
+      CMD.ModeScan os -> SCAN.doScan os
 
 doInit :: CMD.OptInit -> IO ()
 doInit (CMD.OptInit mp) = do
@@ -27,12 +28,3 @@ doInit (CMD.OptInit mp) = do
 
   DB.initDb p
   
-doScan :: CMD.OptScan -> IO ()
-doScan CMD.OptScan = do
-  mdbf <- DB.findDbFolder
-  case mdbf of
-    Nothing  -> putStrLn $ "no db directory found, maybe try \"mdb init\"?"
-    Just dbf -> do 
-      putStrLn $ show dbf
-      db <- DB.openDb dbf
-      return ()

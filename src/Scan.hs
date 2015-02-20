@@ -26,9 +26,9 @@ checkFile db fn = do
   putStrLn fn
 
   withFile fn ReadMode $ \h -> do
-    contents <- BSL.hGetContents h
+    -- contents <- BSL.hGetContents h
     size <- hFileSize h
-    DB.addFile db (fn, size, BSL.toStrict $ bytestringDigest $ sha1 contents)
+    DB.addFile db (fn, size, Nothing)
 
   return ()
 

@@ -3,10 +3,10 @@
 
 module Database (
   MediaDb, findDbFolder, withDbFolder, initDb, openDb,
-  
+
   -- * working with the DB
   addFile
-  
+
   ) where
 
 import Control.Exception ( finally )
@@ -29,7 +29,7 @@ data MediaDb = MDB
 initDb :: FilePath -> IO ()
 initDb p = do
   putStrLn $ "initializing mdb in " ++ (dbDir p)
-  
+
   ex <- doesDirectoryExist (dbDir p)
   if ex
     then error $ "directory does already exist"
@@ -59,7 +59,7 @@ findDbFolder = getCurrentDirectory >>= go where
       else let d' = takeDirectory d in if (d' == d)
                                        then return Nothing
                                        else go d'
-  
+
 withDbFolder :: FilePath -> (MediaDb -> IO ()) -> IO ()
 withDbFolder dbf act = do
   db <- openDb dbf
@@ -69,8 +69,8 @@ withDbFolder dbf act = do
 -- working with the DB
 -----------------------------------------------------------------
 
-type FileInfo = (FilePath, Integer, BS.ByteString)
-  
+type FileInfo = (FilePath, Integer, Maybe BS.ByteString)
+
 addFile :: MediaDb -> FileInfo -> IO ()
 addFile db (absPath, size, hash) = do
   let
@@ -79,4 +79,4 @@ addFile db (absPath, size, hash) = do
     q = "REPLACE INTO files (file_name, file_size, sha1) VALUES (?, ?, ?)"
 
   SQL.execute c q (relPath, size, hash)
-  
+

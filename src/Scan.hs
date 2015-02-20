@@ -3,7 +3,12 @@ module Scan (
   doScan
   ) where
 
+import qualified Codec.FFmpeg.Decode as FFM
 import Control.Monad ( forM )
+import Control.Monad.Trans.Class ( lift )
+import Control.Monad.Trans.Either
+import Control.Monad.Error.Class ( catchError )
+import Control.Monad.IO.Class ( liftIO )
 import qualified Data.ByteString.Lazy as BSL
 import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
 import Data.Maybe ( catMaybes )
@@ -23,14 +28,14 @@ doScan CMD.OptScan = DB.findDbFolder >>= \x -> case x of
 
 checkFile :: DB.MediaDb -> FilePath -> IO ()
 checkFile db fn = do
-  putStrLn fn
+    putStrLn fn
 
-  withFile fn ReadMode $ \h -> do
-    -- contents <- BSL.hGetContents h
-    size <- hFileSize h
-    DB.addFile db (fn, size, Nothing)
+    withFile fn ReadMode $ \h -> do
+        -- contents <- BSL.hGetContents h
+        size <- hFileSize h
+        DB.addFile db (fn, size, Nothing)
 
-  return ()
+    addStreamInfo db fn
 
 traverseFiles :: FilePath -> (FilePath -> IO ()) -> IO ()
 traverseFiles fp act = do
@@ -43,3 +48,8 @@ traverseFiles fp act = do
 
   mapM_ (\sub -> traverseFiles (fp </> sub) act) $
     filter (\d -> (d /= "." && d /= ".." && d /= ".mdb")) $ catMaybes subs
+
+addStreamInfo :: DB.MediaDb -> FilePath -> IO ()
+addStreamInfo _ fn = do
+    fmtctx <- runEitherT $ FFM.openInput fn
+    return ()

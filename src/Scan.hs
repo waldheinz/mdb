@@ -4,6 +4,7 @@ module Scan (
   ) where
 
 import qualified Codec.FFmpeg.Decode as FFM
+import qualified Codec.FFmpeg.Probe as FFM
 import Control.Monad ( forM )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
@@ -50,6 +51,7 @@ traverseFiles fp act = do
     filter (\d -> (d /= "." && d /= ".." && d /= ".mdb")) $ catMaybes subs
 
 addStreamInfo :: DB.MediaDb -> FilePath -> IO ()
-addStreamInfo _ fn = do
-    fmtctx <- runEitherT $ FFM.openInput fn
-    return ()
+addStreamInfo _ fn = FFM.withAvFile fn $ do
+    FFM.nbStreams >>= liftIO . putStrLn . show
+    FFM.formatName >>= liftIO . putStrLn
+    

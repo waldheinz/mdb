@@ -5,7 +5,9 @@ module Scan (
 
 import qualified Codec.FFmpeg.Decode as FFM
 import qualified Codec.FFmpeg.Probe as FFM
-import Control.Monad ( forM )
+import qualified Codec.FFmpeg.Types as FFM
+import Control.Exception.Base ( IOException, catch )
+import Control.Monad ( forM, forM_ )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
 import Control.Monad.Error.Class ( catchError )
@@ -30,13 +32,16 @@ doScan CMD.OptScan = DB.findDbFolder >>= \x -> case x of
 checkFile :: DB.MediaDb -> FilePath -> IO ()
 checkFile db fn = do
     putStrLn fn
+    (flip catch)
+        (\e -> (\x -> putStrLn $ "caught: " ++ show x) (e :: IOException))
+        $ addStreamInfo db fn
+{-
+        withFile fn ReadMode $ \h -> do
+                -- contents <- BSL.hGetContents h
+                size <- hFileSize h
+                DB.addFile db (fn, size, Nothing)
 
-    withFile fn ReadMode $ \h -> do
-        -- contents <- BSL.hGetContents h
-        size <- hFileSize h
-        DB.addFile db (fn, size, Nothing)
-
-    addStreamInfo db fn
+                -}
 
 traverseFiles :: FilePath -> (FilePath -> IO ()) -> IO ()
 traverseFiles fp act = do
@@ -52,6 +57,14 @@ traverseFiles fp act = do
 
 addStreamInfo :: DB.MediaDb -> FilePath -> IO ()
 addStreamInfo _ fn = FFM.withAvFile fn $ do
-    FFM.nbStreams >>= liftIO . putStrLn . show
     FFM.formatName >>= liftIO . putStrLn
-    
+    ns <- FFM.nbStreams
+    forM_ [0..(ns-1)] $ \sid -> FFM.withStream sid $ do
+        mcctx <- FFM.codecContext
+        case mcctx of
+             Nothing -> liftIO $ putStrLn "no codec context"
+             Just cctx -> do
+                tn <- FFM.codecMediaTypeName cctx
+                cn <- FFM.codecName cctx
+                br <- FFM.streamBitrate cctx
+                liftIO $ putStrLn $ show (tn, cn, br)

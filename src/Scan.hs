@@ -39,9 +39,8 @@ checkFile fn = do
                 -- contents <- BSL.hGetContents h
                 hFileSize h
 
-            _ <- addFile (fn, sz)
-            return ()
---            addStreamInfo fn
+            fid <- addFile (fn, sz)
+            addStreamInfo fn fid
 
 traverseFiles :: MonadIO m => FilePath -> (FilePath -> m ()) -> m ()
 traverseFiles fp act = do
@@ -55,8 +54,8 @@ traverseFiles fp act = do
   mapM_ (\sub -> traverseFiles (fp </> sub) act) $
     filter (\d -> (d /= "." && d /= ".." && d /= ".mdb")) $ catMaybes subs
 
-addStreamInfo :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
-addStreamInfo fn = FFM.withAvFile fn $ do
+addStreamInfo :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
+addStreamInfo fn fid = FFM.withAvFile fn $ do
     FFM.formatName >>= liftIO . putStrLn
     FFM.formatMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
     ns <- FFM.nbStreams
@@ -68,6 +67,7 @@ addStreamInfo fn = FFM.withAvFile fn $ do
                 tn <- FFM.codecMediaTypeName cctx
                 cn <- FFM.codecName cctx
                 br <- FFM.streamBitrate cctx
+                (lift . lift) $ addStream fid (fromIntegral sid) (tn, cn, br)
                 liftIO $ putStrLn $ show (tn, cn, br)
                 FFM.streamMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
                 

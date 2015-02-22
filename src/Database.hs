@@ -10,14 +10,16 @@ module Database (
     MDB, runMDB,
 
     -- * working with the DB
-    File(..), addFile, hasFile
+    File(..), FileId, addFile, hasFile, clearStreams, addStream
   ) where
 
 import Control.Applicative ( Applicative )
+import Control.Monad ( forM_ )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Reader ( MonadReader, ReaderT, asks, runReaderT )
 import qualified Data.ByteString as BS
+import Data.Monoid ( (<>) )
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
 import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory )
@@ -48,19 +50,27 @@ newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
 runMDB :: (MonadIO m, MonadMask m) => FilePath -> MDB m a -> m a
 runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT (unMDB act))
 
+dbTables :: [String]
+dbTables =
+    [ "files"
+    , "streams"
+    , "stream_metadata"
+    ]
+
 initDb :: FilePath -> IO ()
 initDb p = do
-  putStrLn $ "initializing mdb in " ++ (dbDir p)
+    putStrLn $ "initializing mdb in " ++ (dbDir p)
 
-  ex <- doesDirectoryExist (dbDir p)
-  if ex
-    then error $ "directory does already exist"
-    else do
-      createDirectory $ dbDir p
-      initQuery <- getDataFileName "data/create-tables.sql" >>= TIO.readFile
-      SQL.withConnection (dbDir p </> "index.db") $ \c -> do
-        SQL.execute_ c $ SQL.Query initQuery
-        return ()
+    doesDirectoryExist (dbDir p) >>= \ex -> if ex
+        then error $ "directory does already exist"
+        else do
+            createDirectory $ dbDir p
+            SQL.withConnection (dbDir p </> "index.db") $ \c ->
+                forM_ dbTables $ \table -> do
+                initFn <- getDataFileName $ "data/create-table-" ++ table ++ ".sql"
+                putStrLn $ "creating table " ++ table
+                q <- TIO.readFile initFn
+                SQL.execute_ c $ SQL.Query q
 
 openDb :: FilePath -> IO MediaDb
 openDb dir = do
@@ -92,7 +102,10 @@ data File = File
     , fileSha1 :: ! (Maybe BS.ByteString)
     }
 
-addFile :: MonadIO m => (FilePath, Integer) -> MDB m Integer
+type FileId = Integer
+type StreamId = Integer
+
+addFile :: MonadIO m => (FilePath, Integer) -> MDB m FileId
 addFile (absPath, fs) = do
     relPath <- asks mdbBasePath >>= \bp -> return $ makeRelative bp absPath
     asks mdbConn >>= \c -> liftIO $ do
@@ -109,3 +122,15 @@ hasFile p = do
         "SELECT EXISTS(SELECT 1 FROM files WHERE file_name=? LIMIT 1)"
         (SQL.Only relPath)
     return $ (SQL.fromOnly . head) r
+
+clearStreams :: MonadIO m => FileId -> MDB m ()
+clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
+    "DELETE FROM streams WHERE (file_id = ?)"
+    (SQL.Only fid)
+
+addStream :: MonadIO m => FileId -> StreamId -> (String, String, Int) -> MDB m ()
+addStream fid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
+    ("INSERT INTO streams"
+        <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate)"
+        <> " VALUES (?, ?, ?, ?, ?)")
+    (sid, fid, mt, cd, br)

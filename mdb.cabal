@@ -24,6 +24,7 @@ executable mdb
      bytestring    >= 0.10,
      directory     >= 1.2,
      either,
+     exceptions,
      filepath      >= 1.3,
      ffmpeg-light  >= 0.8,
      mtl,

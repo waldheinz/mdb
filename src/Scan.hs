@@ -6,35 +6,33 @@ module Scan (
 import qualified Codec.FFmpeg.Decode as FFM
 import qualified Codec.FFmpeg.Probe as FFM
 import qualified Codec.FFmpeg.Types as FFM
-import Control.Exception.Base ( IOException, catch )
+import Control.Exception.Base ( IOException )
 import Control.Monad ( forM, forM_ )
+import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
 import Control.Monad.Error.Class ( catchError )
-import Control.Monad.IO.Class ( liftIO )
+import Control.Monad.IO.Class ( MonadIO, liftIO )
 import qualified Data.ByteString.Lazy as BSL
 import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
 import Data.Maybe ( catMaybes )
 import System.Directory ( doesDirectoryExist, getCurrentDirectory, getDirectoryContents )
 import System.FilePath ( (</>) )
-import System.IO
 
 import qualified CmdLine  as CMD
-import qualified Database as DB
+import Database
 
-doScan :: CMD.OptScan -> IO ()
-doScan CMD.OptScan = DB.findDbFolder >>= \x -> case x of
-  Nothing  -> putStrLn $ "no db directory found, maybe try \"mdb init\"?"
-  Just dbf -> DB.withDbFolder dbf $ \db -> do
-    here <- getCurrentDirectory
-    traverseFiles here $ checkFile db
+doScan :: (MonadMask m, MonadIO m) => CMD.OptScan -> MDB m ()
+doScan CMD.OptScan = do
+    here <- liftIO getCurrentDirectory
+    traverseFiles here checkFile
 
-checkFile :: DB.MediaDb -> FilePath -> IO ()
-checkFile db fn = do
-    putStrLn fn
-    (flip catch)
-        (\e -> (\x -> putStrLn $ "caught: " ++ show x) (e :: IOException))
-        $ addStreamInfo db fn
+checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
+checkFile fn = do
+    liftIO $ putStrLn fn
+    (flip catchIOError)
+        (\e -> (\x -> liftIO $ putStrLn $ "caught: " ++ show x) (e :: IOException))
+        $ addStreamInfo fn
 {-
         withFile fn ReadMode $ \h -> do
                 -- contents <- BSL.hGetContents h
@@ -43,11 +41,11 @@ checkFile db fn = do
 
                 -}
 
-traverseFiles :: FilePath -> (FilePath -> IO ()) -> IO ()
+traverseFiles :: MonadIO m => FilePath -> (FilePath -> m ()) -> m ()
 traverseFiles fp act = do
-  cs <- getDirectoryContents fp
+  cs <- liftIO $ getDirectoryContents fp
   subs <- forM cs $ \c -> do
-    doesDirectoryExist (fp </> c) >>= \dir ->
+    (liftIO . doesDirectoryExist) (fp </> c) >>= \dir ->
       if dir
       then return $ Just c
       else act (fp </> c) >> return Nothing
@@ -55,8 +53,8 @@ traverseFiles fp act = do
   mapM_ (\sub -> traverseFiles (fp </> sub) act) $
     filter (\d -> (d /= "." && d /= ".." && d /= ".mdb")) $ catMaybes subs
 
-addStreamInfo :: DB.MediaDb -> FilePath -> IO ()
-addStreamInfo _ fn = FFM.withAvFile fn $ do
+addStreamInfo :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
+addStreamInfo fn = FFM.withAvFile fn $ do
     FFM.formatName >>= liftIO . putStrLn
     FFM.formatMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
     ns <- FFM.nbStreams

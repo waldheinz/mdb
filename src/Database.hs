@@ -1,15 +1,22 @@
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE
+    GeneralizedNewtypeDeriving,
+    OverloadedStrings
+    #-}
 
 module Database (
-  MediaDb, findDbFolder, withDbFolder, initDb, openDb,
+    findDbFolder, initDb,
 
-  -- * working with the DB
-  addFile
+    MDB, runMDB,
 
+    -- * working with the DB
+    addFile
   ) where
 
-import Control.Exception ( finally )
+import Control.Applicative ( Applicative )
+import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
+import Control.Monad.IO.Class ( MonadIO, liftIO )
+import Control.Monad.Reader ( MonadReader, ReaderT, asks, runReaderT )
 import qualified Data.ByteString as BS
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
@@ -21,10 +28,25 @@ import Paths_mdb
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
 
-data MediaDb = MDB
-               { mdbConn     :: SQL.Connection
-               , mdbBasePath :: FilePath
+data MediaDb = MediaDb
+               { mdbConn     :: ! SQL.Connection
+               , mdbBasePath :: ! FilePath
                }
+
+newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
+    deriving
+        ( Applicative
+        , Functor
+        , Monad
+        , MonadCatch
+        , MonadIO
+        , MonadMask
+        , MonadReader MediaDb
+        , MonadThrow
+        )
+
+runMDB :: (MonadIO m, MonadMask m) => FilePath -> MDB m a -> m a
+runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT (unMDB act))
 
 initDb :: FilePath -> IO ()
 initDb p = do
@@ -43,7 +65,7 @@ initDb p = do
 openDb :: FilePath -> IO MediaDb
 openDb dir = do
   c <- SQL.open (dir </> "index.db")
-  return $ MDB c $ takeDirectory dir
+  return $ MediaDb c $ takeDirectory dir
 
 closeDb :: MediaDb -> IO ()
 closeDb db = SQL.close $ mdbConn db
@@ -60,23 +82,15 @@ findDbFolder = getCurrentDirectory >>= go where
                                        then return Nothing
                                        else go d'
 
-withDbFolder :: FilePath -> (MediaDb -> IO ()) -> IO ()
-withDbFolder dbf act = do
-  db <- openDb dbf
-  finally (act db) (closeDb db)
-
 -----------------------------------------------------------------
 -- working with the DB
 -----------------------------------------------------------------
 
 type FileInfo = (FilePath, Integer, Maybe BS.ByteString)
 
-addFile :: MediaDb -> FileInfo -> IO ()
-addFile db (absPath, size, hash) = do
-  let
-    c = mdbConn db
-    relPath = makeRelative (mdbBasePath db) absPath
-    q = "REPLACE INTO files (file_name, file_size, sha1) VALUES (?, ?, ?)"
-
-  SQL.execute c q (relPath, size, hash)
-
+addFile :: MonadIO m => FileInfo -> MDB m ()
+addFile (absPath, size, hash) = do
+    relPath <- asks mdbBasePath >>= \bp -> return $ makeRelative bp absPath
+    asks mdbConn >>= \c -> liftIO $ SQL.execute c
+        "REPLACE INTO files (file_name, file_size, sha1) VALUES (?, ?, ?)"
+        (relPath, size, hash)

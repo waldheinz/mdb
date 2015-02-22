@@ -58,6 +58,7 @@ traverseFiles fp act = do
 addStreamInfo :: DB.MediaDb -> FilePath -> IO ()
 addStreamInfo _ fn = FFM.withAvFile fn $ do
     FFM.formatName >>= liftIO . putStrLn
+    FFM.formatMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
     ns <- FFM.nbStreams
     forM_ [0..(ns-1)] $ \sid -> FFM.withStream sid $ do
         mcctx <- FFM.codecContext
@@ -68,3 +69,5 @@ addStreamInfo _ fn = FFM.withAvFile fn $ do
                 cn <- FFM.codecName cctx
                 br <- FFM.streamBitrate cctx
                 liftIO $ putStrLn $ show (tn, cn, br)
+                FFM.streamMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
+                

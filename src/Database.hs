@@ -10,7 +10,7 @@ module Database (
     MDB, runMDB,
 
     -- * working with the DB
-    addFile
+    File(..), addFile, hasFile
   ) where
 
 import Control.Applicative ( Applicative )
@@ -86,11 +86,26 @@ findDbFolder = getCurrentDirectory >>= go where
 -- working with the DB
 -----------------------------------------------------------------
 
-type FileInfo = (FilePath, Integer, Maybe BS.ByteString)
+data File = File
+    { filePath :: ! FilePath
+    , fileSize :: ! Integer
+    , fileSha1 :: ! (Maybe BS.ByteString)
+    }
 
-addFile :: MonadIO m => FileInfo -> MDB m ()
-addFile (absPath, size, hash) = do
+addFile :: MonadIO m => (FilePath, Integer) -> MDB m Integer
+addFile (absPath, fs) = do
     relPath <- asks mdbBasePath >>= \bp -> return $ makeRelative bp absPath
-    asks mdbConn >>= \c -> liftIO $ SQL.execute c
-        "REPLACE INTO files (file_name, file_size, sha1) VALUES (?, ?, ?)"
-        (relPath, size, hash)
+    asks mdbConn >>= \c -> liftIO $ do
+        SQL.execute c
+            "INSERT INTO files (file_name, file_size) VALUES (?, ?)"
+            (relPath, fs)
+
+        SQL.query_ c "SELECT last_insert_rowid()" >>= return . SQL.fromOnly . head
+
+hasFile :: MonadIO m => FilePath -> MDB m Bool
+hasFile p = do
+    relPath <- asks mdbBasePath >>= \bp -> return $ makeRelative bp p
+    r <- asks mdbConn >>= \c -> liftIO $ SQL.query c
+        "SELECT EXISTS(SELECT 1 FROM files WHERE file_name=? LIMIT 1)"
+        (SQL.Only relPath)
+    return $ (SQL.fromOnly . head) r

@@ -1,6 +1,7 @@
 
 CREATE TABLE files
-       ( sha1		BINARY(20)
-       , file_name	TEXT PRIMARY KEY ASC
-       , file_size	INTEGER NOT NULL
-       );
+    ( file_id   INTEGER PRIMARY KEY AUTOINCREMENT
+    , file_sha1 BINARY(20)
+    , file_name TEXT UNIQUE
+    , file_size INTEGER NOT NULL
+    );

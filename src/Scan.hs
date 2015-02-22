@@ -7,7 +7,7 @@ import qualified Codec.FFmpeg.Decode as FFM
 import qualified Codec.FFmpeg.Probe as FFM
 import qualified Codec.FFmpeg.Types as FFM
 import Control.Exception.Base ( IOException )
-import Control.Monad ( forM, forM_ )
+import Control.Monad ( forM, forM_, unless )
 import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
@@ -18,6 +18,7 @@ import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
 import Data.Maybe ( catMaybes )
 import System.Directory ( doesDirectoryExist, getCurrentDirectory, getDirectoryContents )
 import System.FilePath ( (</>) )
+import System.IO ( IOMode(..), withFile, hFileSize )
 
 import qualified CmdLine  as CMD
 import Database
@@ -25,21 +26,22 @@ import Database
 doScan :: (MonadMask m, MonadIO m) => CMD.OptScan -> MDB m ()
 doScan CMD.OptScan = do
     here <- liftIO getCurrentDirectory
-    traverseFiles here checkFile
+    traverseFiles here $ \fn -> do
+        hasFile fn >>= \known -> unless known $ checkFile fn
 
 checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
 checkFile fn = do
     liftIO $ putStrLn fn
     (flip catchIOError)
         (\e -> (\x -> liftIO $ putStrLn $ "caught: " ++ show x) (e :: IOException))
-        $ addStreamInfo fn
-{-
-        withFile fn ReadMode $ \h -> do
+        $ do
+            sz <- liftIO $ withFile fn ReadMode $ \h -> do
                 -- contents <- BSL.hGetContents h
-                size <- hFileSize h
-                DB.addFile db (fn, size, Nothing)
+                hFileSize h
 
-                -}
+            _ <- addFile (fn, sz)
+            return ()
+--            addStreamInfo fn
 
 traverseFiles :: MonadIO m => FilePath -> (FilePath -> m ()) -> m ()
 traverseFiles fp act = do

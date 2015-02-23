@@ -22,6 +22,7 @@ import System.IO ( IOMode(..), withFile, hFileSize )
 
 import qualified CmdLine  as CMD
 import Database
+import Mdb.Database.File ( FileId )
 
 doScan :: (MonadMask m, MonadIO m) => CMD.OptScan -> MDB m ()
 doScan CMD.OptScan = do

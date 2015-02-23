@@ -23,8 +23,8 @@ main = do
         Left x     -> putStrLn $ x
         Right mode -> case mode of
             CMD.ModeInit oi -> doInit oi
-            CMD.ModeScan os -> findDbAndRun $ SCAN.doScan os
-            CMD.ModeServe   -> findDbAndRun $ SERVE.doServe
+            CMD.ModeScan os -> DB.findDbAndRun $ SCAN.doScan os
+            CMD.ModeServe   -> DB.findDbAndRun $ SERVE.doServe
 
 doInit :: CMD.OptInit -> IO ()
 doInit (CMD.OptInit mp) = do
@@ -34,7 +34,3 @@ doInit (CMD.OptInit mp) = do
 
   DB.initDb p
 
-findDbAndRun :: (MonadMask m, MonadIO m) => DB.MDB m () -> m ()
-findDbAndRun act = liftIO DB.findDbFolder >>= \x -> case x of
-  Nothing  -> liftIO $ putStrLn $ "no db directory found, maybe try \"mdb init\"?"
-  Just dbf -> DB.runMDB dbf act

@@ -5,15 +5,14 @@
     #-}
 
 module Database (
-    findDbFolder, initDb,
-
-    MDB, runMDB,
+    MediaDb, withMediaDb, findDbFolder, initDb,
+    MDB, runMDB, runMDB', findDbAndRun,
 
     -- * working with the DB
-    File(..), FileId, addFile, hasFile, clearStreams, addStream
+    addFile, hasFile, listFiles, clearStreams, addStream
   ) where
 
-import Control.Applicative ( Applicative )
+import Control.Applicative ( Applicative, (<$>) )
 import Control.Monad ( forM_ )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
@@ -26,6 +25,7 @@ import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirecto
 import System.FilePath ( (</>), makeRelative, takeDirectory )
 
 import Paths_mdb
+import Mdb.Database.File ( File, FileId )
 
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
@@ -34,6 +34,11 @@ data MediaDb = MediaDb
                { mdbConn     :: ! SQL.Connection
                , mdbBasePath :: ! FilePath
                }
+
+withMediaDb :: (Functor m, MonadIO m, MonadMask m) => (MediaDb -> m a) -> m (Either String a)
+withMediaDb a = liftIO findDbFolder >>= \x -> case x of
+  Nothing  -> return $ Left "no db directory found, maybe try \"mdb init\"?"
+  Just dbf -> Right <$> bracket (openDb dbf) closeDb a
 
 newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
     deriving
@@ -49,6 +54,14 @@ newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
 
 runMDB :: (MonadIO m, MonadMask m) => FilePath -> MDB m a -> m a
 runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT (unMDB act))
+
+runMDB' :: MediaDb -> MDB m a -> m a
+runMDB' db f = runReaderT (unMDB f) db
+
+findDbAndRun :: (MonadMask m, MonadIO m) => MDB m () -> m ()
+findDbAndRun act = liftIO findDbFolder >>= \x -> case x of
+  Nothing  -> liftIO $ putStrLn $ "no db directory found, maybe try \"mdb init\"?"
+  Just dbf -> runMDB dbf act
 
 dbTables :: [String]
 dbTables =
@@ -72,13 +85,13 @@ initDb p = do
                 q <- TIO.readFile initFn
                 SQL.execute_ c $ SQL.Query q
 
-openDb :: FilePath -> IO MediaDb
+openDb :: MonadIO m => FilePath -> m MediaDb
 openDb dir = do
-  c <- SQL.open (dir </> "index.db")
+  c <- liftIO $ SQL.open (dir </> "index.db")
   return $ MediaDb c $ takeDirectory dir
 
-closeDb :: MediaDb -> IO ()
-closeDb db = SQL.close $ mdbConn db
+closeDb :: MonadIO m => MediaDb -> m ()
+closeDb db = liftIO $ SQL.close $ mdbConn db
 
 -- | finds the DB folder relative to the current directory by walking
 --   upwards the tree until a ".mdb" directory is found
@@ -96,13 +109,6 @@ findDbFolder = getCurrentDirectory >>= go where
 -- working with the DB
 -----------------------------------------------------------------
 
-data File = File
-    { filePath :: ! FilePath
-    , fileSize :: ! Integer
-    , fileSha1 :: ! (Maybe BS.ByteString)
-    }
-
-type FileId = Integer
 type StreamId = Integer
 
 addFile :: MonadIO m => (FilePath, Integer) -> MDB m FileId
@@ -122,6 +128,16 @@ hasFile p = do
         "SELECT EXISTS(SELECT 1 FROM files WHERE file_name=? LIMIT 1)"
         (SQL.Only relPath)
     return $ (SQL.fromOnly . head) r
+
+listFiles
+    :: MonadIO m
+    => Int -- ^ offset
+    -> Int -- ^ count
+    -> MDB m [File]
+listFiles off cnt = do
+    asks mdbConn >>= \c -> liftIO $ SQL.query c
+        "SELECT file_id, file_name, file_size FROM files LIMIT ? OFFSET ?"
+        (cnt, off)
 
 clearStreams :: MonadIO m => FileId -> MDB m ()
 clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c

@@ -21,6 +21,7 @@ import qualified Rest.Resource as R
 
 import           Database
 import           Mdb.Database.File ( FileId )
+import           Mdb.Database.Person ( PersonId )
 
 apiApp :: FilePath -> WAI.Application
 apiApp mdb = apiToApplication (runMDB mdb) api
@@ -31,8 +32,10 @@ api = [(mkVersion 0 1 0, Some1 api010)]
 api010 :: (Applicative m, MonadIO m) => Router (MDB m) (MDB m)
 api010 = root
             -/ files
+            -/ persons
     where
         files = route fileResource
+        persons = route personResource
 
 -------------------------------------------------------------------------------
 -- Files
@@ -53,3 +56,23 @@ fileResource = R.Resource
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (MDB m)
 fileListHandler AllFiles = mkListing xmlJsonO handler where
     handler r = lift $ listFiles (offset r) (count r)
+
+-------------------------------------------------------------------------------
+-- Persons
+-------------------------------------------------------------------------------
+
+data PersonSelector = AllPersons
+
+type WithPerson m = ReaderT PersonId m
+
+personResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithPerson m) PersonId PersonSelector Void
+personResource = R.Resource
+    { R.name        = "person"
+    , R.description = "Access persons"
+    , R.schema      = withListing AllPersons $ named [] -- ("id", listing
+    , R.list        = personListHandler
+    }
+
+personListHandler :: MonadIO m => PersonSelector -> ListHandler (MDB m)
+personListHandler AllPersons = mkListing xmlJsonO handler where
+    handler r = lift $ listPersons (offset r) (count r)

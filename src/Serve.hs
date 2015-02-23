@@ -14,22 +14,26 @@ import Network.Wai.Application.Static ( defaultWebAppSettings, defaultFileServer
 import qualified Network.Wai.Handler.Warp as WARP
 import Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
 
+import Mdb.Templates
 import Database
 import Paths_mdb ( getDataDir )
 import RestApi ( apiApp )
 
 doServe :: (MonadMask m, Functor m, MonadIO m) => m ()
-doServe = do
-    mkApp >>= liftIO . WARP.run 8080
+doServe = mkApp >>= liftIO . WARP.run 8080
 
 mkApp :: (MonadMask m, Functor m, MonadIO m) => m Application
 mkApp = do
     static <- staticFiles
     (Just dbf) <- liftIO $ findDbFolder
+    eh <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
 
-    return $ mapUrls $
-            mount "api" (apiApp dbf)
-        <|> mountRoot static
+    case eh of
+         Left err       -> fail $ unlines err
+         Right heist    -> return $ mapUrls $
+                mount "api"     (apiApp dbf)
+            <|> mount "static"  static
+            <|> mountRoot       (indexPage dbf heist)
 
 staticFiles :: MonadIO m => m Application
 staticFiles = liftIO $ do

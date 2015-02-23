@@ -1,4 +1,4 @@
-CREATE TABLE streams
+CREATE TABLE stream
     ( stream_id         INTEGER NOT NULL
     , file_id           INTEGER NOT NULL
     , stream_media_type TEXT

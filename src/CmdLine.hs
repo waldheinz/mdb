@@ -1,15 +1,19 @@
 
 module CmdLine (
-  Mode(..), OptInit(..), OptScan(..), parseMode
+  Mode(..), OptInit(..), OptScan(..), OptPerson(..), parseMode
   ) where
+
+import Mdb.Database.Person ( PersonId )
 
 data Mode
      = ModeInit OptInit
      | ModeScan OptScan
+     | ModePerson OptPerson
      | ModeServe
      deriving ( Show )
 
 parseMode :: [String] -> Either String Mode
+parseMode ("person" : args) = parseModePerson args >>= return . ModePerson
 parseMode ("init" : args) = case parseModeInit args of
   Right oi -> Right $ ModeInit oi
   Left e   -> Left e
@@ -43,3 +47,17 @@ data OptScan = OptScan
 
 parseModeScan :: [String] -> Either String OptScan
 parseModeScan _ = Right OptScan
+
+----------------------------------
+-- person
+----------------------------------
+
+data OptPerson
+    = AddPerson String
+    | SetPersonImage PersonId FilePath
+    deriving ( Show )
+
+parseModePerson :: [String] -> Either String OptPerson
+parseModePerson ("add" : name : _) = Right $ AddPerson name
+parseModePerson (pids : "image" : fname: _) = Right $ SetPersonImage (read pids) fname
+parseModePerson _ = Left "you want to do something with a person, but I fail to understand what"

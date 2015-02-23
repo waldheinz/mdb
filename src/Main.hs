@@ -9,8 +9,7 @@ import qualified Scan     as SCAN
 import qualified Serve    as SERVE
 
 import Codec.FFmpeg ( initFFmpeg )
-import Control.Monad.Catch ( MonadMask )
-import Control.Monad.IO.Class ( MonadIO, liftIO )
+import Control.Monad.IO.Class ( liftIO )
 import System.Directory ( getCurrentDirectory )
 import System.Environment ( getArgs )
 
@@ -22,9 +21,16 @@ main = do
     case CMD.parseMode argv of
         Left x     -> putStrLn $ x
         Right mode -> case mode of
-            CMD.ModeInit oi -> doInit oi
-            CMD.ModeScan os -> DB.findDbAndRun $ SCAN.doScan os
-            CMD.ModeServe   -> DB.findDbAndRun $ SERVE.doServe
+            CMD.ModePerson op   -> DB.findDbAndRun $ doPerson op
+            CMD.ModeInit oi     -> doInit oi
+            CMD.ModeScan os     -> DB.findDbAndRun $ SCAN.doScan os
+            CMD.ModeServe       -> DB.findDbAndRun $ SERVE.doServe
+
+doPerson :: CMD.OptPerson -> DB.MDB IO ()
+doPerson (CMD.AddPerson n) = (DB.addPerson n) >>= \pid ->
+    liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
+doPerson (CMD.SetPersonImage pid file) =
+    return ()
 
 doInit :: CMD.OptInit -> IO ()
 doInit (CMD.OptInit mp) = do

@@ -6,6 +6,7 @@ module Main (
 import qualified CmdLine  as CMD
 import qualified Database as DB
 import qualified Scan     as SCAN
+import qualified Serve    as SERVE
 
 import Codec.FFmpeg ( initFFmpeg )
 import Control.Monad.Catch ( MonadMask )
@@ -23,6 +24,7 @@ main = do
         Right mode -> case mode of
             CMD.ModeInit oi -> doInit oi
             CMD.ModeScan os -> findDbAndRun $ SCAN.doScan os
+            CMD.ModeServe   -> findDbAndRun $ SERVE.doServe
 
 doInit :: CMD.OptInit -> IO ()
 doInit (CMD.OptInit mp) = do

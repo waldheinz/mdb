@@ -6,6 +6,7 @@ module CmdLine (
 data Mode
      = ModeInit OptInit
      | ModeScan OptScan
+     | ModeServe
      deriving ( Show )
 
 parseMode :: [String] -> Either String Mode
@@ -15,7 +16,7 @@ parseMode ("init" : args) = case parseModeInit args of
 parseMode ("scan" : args) = case parseModeScan args of
   Right os -> Right $ ModeScan os
   Left e   -> Left e
-
+parseMode ("serve" : _) = Right ModeServe
 parseMode (x:_) = Left $ "unknown mode " ++ x
 parseMode [] = Left "no mode given"
 

@@ -1,6 +1,6 @@
 
 module CmdLine (
-  Mode(..), OptInit(..), OptScan(..), OptPerson(..), OptFile(..), parseMode
+  Mode(..), OptInit(..), OptPerson(..), OptFile(..), parseMode
   ) where
 
 import Mdb.Database.Person ( PersonId )
@@ -8,23 +8,17 @@ import Mdb.Database.Person ( PersonId )
 data Mode
      = ModeInit OptInit
      | ModeFile OptFile
-     | ModeScan OptScan
      | ModePerson OptPerson
      | ModeServe
      deriving ( Show )
 
 parseMode :: [String] -> Either String Mode
-parseMode ("file"   : args) = parseModeFile args >>= return . ModeFile
-parseMode ("person" : args) = parseModePerson args >>= return . ModePerson
-parseMode ("init" : args) = case parseModeInit args of
-  Right oi -> Right $ ModeInit oi
-  Left e   -> Left e
-parseMode ("scan" : args) = case parseModeScan args of
-  Right os -> Right $ ModeScan os
-  Left e   -> Left e
-parseMode ("serve" : _) = Right ModeServe
-parseMode (x:_) = Left $ "unknown mode " ++ x
-parseMode [] = Left "no mode given"
+parseMode ("file"   : args  ) = parseModeFile args >>= return . ModeFile
+parseMode ("person" : args  ) = parseModePerson args >>= return . ModePerson
+parseMode ("init"   : args  ) = parseModeInit args >>= return . ModeInit
+parseMode ("serve"  : _     ) = Right ModeServe
+parseMode (x        : _     ) = Left $ "unknown mode " ++ x
+parseMode []                  = Left "no mode given"
 
 -----------------------------------------------------
 -- init
@@ -45,22 +39,14 @@ parseModeInit args = case args of
 ----------------------------------------------------
 
 data OptFile
-    = FileAssignPerson PersonId [FilePath]
+    = FileAdd [FilePath]
+    | FileAssignPerson PersonId [FilePath]
     deriving ( Show )
 
 parseModeFile :: [String] -> Either String OptFile
-parseModeFile ( "assign" : "person" : pids : fs ) = Right $ FileAssignPerson (read pids) fs
+parseModeFile ( "add"       : fs ) = Right $ FileAdd fs
+parseModeFile ( "assign"    : "person" : pids : fs ) = Right $ FileAssignPerson (read pids) fs
 parseModeFile _ = Left "don't know what you want to do with files"
-
-----------------------------------------------------
--- scan
-----------------------------------------------------
-
-data OptScan = OptScan
-               deriving ( Show )
-
-parseModeScan :: [String] -> Either String OptScan
-parseModeScan _ = Right OptScan
 
 ----------------------------------
 -- person

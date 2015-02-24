@@ -35,6 +35,7 @@ executable mdb
      http-types,
      hxt,
      json-schema,
+     mime-types,
      mtl,
      regular,
      regular-xmlpickler,

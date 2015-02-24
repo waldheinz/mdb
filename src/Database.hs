@@ -25,6 +25,7 @@ import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Reader ( MonadReader, ReaderT, asks, runReaderT )
 import Data.Monoid ( (<>) )
+import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
 import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory, canonicalizePath )
@@ -98,6 +99,7 @@ initDb p = do
 openDb :: MonadIO m => FilePath -> m MediaDb
 openDb dir = do
   c <- liftIO $ SQL.open (dir </> "index.db")
+  liftIO $ SQL.execute_ c "PRAGMA foreign_keys = ON"
   return $ MediaDb c (takeDirectory dir) dir
 
 closeDb :: MonadIO m => MediaDb -> m ()
@@ -129,13 +131,13 @@ relFile absPath = do
 fileAbs :: Monad m => FilePath -> MDB m FilePath
 fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath
 
-addFile :: MonadIO m => (FilePath, Integer) -> MDB m FileId
-addFile (absPath, fs) = do
+addFile :: MonadIO m => (FilePath, Integer, T.Text) -> MDB m FileId
+addFile (absPath, fs, mime) = do
     relPath <- relFile absPath
     asks mdbConn >>= \c -> liftIO $ do
         SQL.execute c
-            "INSERT INTO file (file_name, file_size) VALUES (?, ?)"
-            (relPath, fs)
+            "INSERT INTO file (file_name, file_size, file_mime) VALUES (?, ?, ?)"
+            (relPath, fs, mime)
 
         SQL.query_ c "SELECT last_insert_rowid()" >>= return . SQL.fromOnly . head
 
@@ -159,7 +161,7 @@ listFiles off cnt = do
 
 fileById :: MonadIO m => FileId -> MDB m File
 fileById fid = asks mdbConn >>= \c -> liftIO $ SQL.query c
-        "SELECT file_id, file_name, file_size FROM file WHERE file_id=?"
+        "SELECT file_id, file_name, file_size, file_mime FROM file WHERE file_id=?"
         (SQL.Only fid) >>= return . head
 
 clearStreams :: MonadIO m => FileId -> MDB m ()

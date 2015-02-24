@@ -1,6 +1,6 @@
 
-module Scan (
-  doScan
+module Mdb.File (
+  doFile
   ) where
 
 import qualified Codec.FFmpeg.Decode as FFM
@@ -13,9 +13,12 @@ import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
 import Control.Monad.Error.Class ( catchError )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
+import qualified Data.Text as T
+import Data.Text.Encoding ( decodeUtf8 )
 import qualified Data.ByteString.Lazy as BSL
 import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
 import Data.Maybe ( catMaybes )
+import Network.Mime ( defaultMimeLookup )
 import System.Directory ( doesDirectoryExist, getCurrentDirectory, getDirectoryContents )
 import System.FilePath ( (</>) )
 import System.IO ( IOMode(..), withFile, hFileSize )
@@ -24,11 +27,24 @@ import qualified CmdLine  as CMD
 import Database
 import Mdb.Database.File ( FileId )
 
+doFile :: CMD.OptFile -> MDB IO ()
+doFile (CMD.FileAssignPerson pid files) = mapM_ go files where
+    go file = do
+        mfid <- fileIdFromName file
+        case mfid of
+             Just fid   -> assignFilePerson fid pid
+             Nothing    -> fail $ file ++ " not registered yet"
+
+doFile (CMD.FileAdd files) = mapM_ go files where
+    go fn = hasFile fn >>= \known -> unless known $ checkFile fn
+
+{-
 doScan :: (MonadMask m, MonadIO m) => CMD.OptScan -> MDB m ()
 doScan CMD.OptScan = do
     here <- liftIO getCurrentDirectory
     traverseFiles here $ \fn -> do
         hasFile fn >>= \known -> unless known $ checkFile fn
+        -}
 
 checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
 checkFile fn = do
@@ -40,8 +56,8 @@ checkFile fn = do
                 -- contents <- BSL.hGetContents h
                 hFileSize h
 
-            fid <- addFile (fn, sz)
-            addStreamInfo fn fid
+            _ <- addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
+            return ()
 
 traverseFiles :: MonadIO m => FilePath -> (FilePath -> m ()) -> m ()
 traverseFiles fp act = do

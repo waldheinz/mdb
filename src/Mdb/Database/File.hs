@@ -13,9 +13,9 @@ module Mdb.Database.File (
 
 import           Control.Applicative ( (<*>), (<$>) )
 import           Database.SQLite.Simple ( FromRow(..), field )
-import qualified Data.ByteString as BS
 import           Data.Aeson
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
+import qualified Data.Text as T
 import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
 import           Generics.Regular ( deriveAll, PF )
@@ -29,11 +29,11 @@ data File = File
     { fileId    :: ! FileId
     , filePath  :: ! FilePath
     , fileSize  :: ! Integer
---    , fileSha1  :: ! (Maybe BS.ByteString)
+    , fileMime  :: ! T.Text
     } deriving ( Eq, Generic, Show, Typeable )
 
 instance FromRow File where
-    fromRow = File <$> field <*> field <*> field
+    fromRow = File <$> field <*> field <*> field <*> field
 
 instance ToJSON File where
   toJSON = gtoJson

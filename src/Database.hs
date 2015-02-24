@@ -15,10 +15,10 @@ module Database (
     clearStreams, addStream,
 
     -- * persons
-    addPerson, listPersons
+    addPerson, listPersons, getPerson
   ) where
 
-import Control.Applicative ( Applicative, (<$>) )
+import Control.Applicative ( Applicative )
 import Control.Monad ( forM_ )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
@@ -171,8 +171,12 @@ addPerson name = asks mdbConn >>= \c -> liftIO $ do
         (SQL.Only name)
     SQL.query_ c "SELECT last_insert_rowid()" >>= return . SQL.fromOnly . head
 
+getPerson :: MonadIO m => Integer -> MDB m Person
+getPerson pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
+        "SELECT person_id, person_name FROM person WHERE (person_id = ?)"
+        (SQL.Only pid) >>= return . head
+
 listPersons :: MonadIO m => Int -> Int -> MDB m [Person]
-listPersons off cnt = do
-    asks mdbConn >>= \c -> liftIO $ SQL.query c
+listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c
         "SELECT person_id, person_name FROM person LIMIT ? OFFSET ?"
         (cnt, off)

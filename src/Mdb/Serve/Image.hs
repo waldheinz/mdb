@@ -16,8 +16,8 @@ import Network.Wai.Routing
 import Database
 
 imageApp :: MediaDb -> Application
-imageApp mdb req respond = runMDB' mdb $ do
-    route start req (liftIO . respond)
+imageApp mdb req respond = runMDB' mdb
+    $ route start req (liftIO . respond)
 
 start :: MonadIO m => Tree (App (MDB m))
 start = prepare $ do

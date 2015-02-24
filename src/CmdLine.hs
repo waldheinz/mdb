@@ -1,18 +1,20 @@
 
 module CmdLine (
-  Mode(..), OptInit(..), OptScan(..), OptPerson(..), parseMode
+  Mode(..), OptInit(..), OptScan(..), OptPerson(..), OptFile(..), parseMode
   ) where
 
 import Mdb.Database.Person ( PersonId )
 
 data Mode
      = ModeInit OptInit
+     | ModeFile OptFile
      | ModeScan OptScan
      | ModePerson OptPerson
      | ModeServe
      deriving ( Show )
 
 parseMode :: [String] -> Either String Mode
+parseMode ("file"   : args) = parseModeFile args >>= return . ModeFile
 parseMode ("person" : args) = parseModePerson args >>= return . ModePerson
 parseMode ("init" : args) = case parseModeInit args of
   Right oi -> Right $ ModeInit oi
@@ -38,6 +40,18 @@ parseModeInit args = case args of
   (x:[]) -> Right $ OptInit $ Just x
   xx     -> Left  $ "don't know how to init " ++ (show xx)
   
+----------------------------------------------------
+-- file
+----------------------------------------------------
+
+data OptFile
+    = FileAssignPerson PersonId [FilePath]
+    deriving ( Show )
+
+parseModeFile :: [String] -> Either String OptFile
+parseModeFile ( "assign" : "person" : pids : fs ) = Right $ FileAssignPerson (read pids) fs
+parseModeFile _ = Left "don't know what you want to do with files"
+
 ----------------------------------------------------
 -- scan
 ----------------------------------------------------

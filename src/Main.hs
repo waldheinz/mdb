@@ -21,10 +21,19 @@ main = do
     case CMD.parseMode argv of
         Left x     -> putStrLn $ x
         Right mode -> case mode of
+            CMD.ModeFile o      -> DB.findDbAndRun $ doFile o
             CMD.ModePerson op   -> DB.findDbAndRun $ doPerson op
             CMD.ModeInit oi     -> doInit oi
             CMD.ModeScan os     -> DB.findDbAndRun $ SCAN.doScan os
             CMD.ModeServe       -> DB.findDbAndRun $ SERVE.doServe
+
+doFile :: CMD.OptFile -> DB.MDB IO ()
+doFile (CMD.FileAssignPerson pid files) = mapM_ go files where
+    go file = do
+        mfid <- DB.fileIdFromName file
+        case mfid of
+             Just fid   -> DB.assignFilePerson fid pid
+             Nothing    -> fail $ file ++ " not registered yet"
 
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
 doPerson (CMD.AddPerson n) = (DB.addPerson n) >>= \pid ->
@@ -38,4 +47,3 @@ doInit (CMD.OptInit mp) = do
     Nothing -> getCurrentDirectory
 
   DB.initDb p
-

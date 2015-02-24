@@ -9,13 +9,14 @@ module Database (
     MDB, runMDB, runMDB', findDbAndRun,
 
     -- * files
-    addFile, hasFile, listFiles,
+    addFile, fileById, hasFile, listFiles, fileIdFromName, assignFilePerson,
+    fileAbs,
 
     -- * streams
     clearStreams, addStream,
 
     -- * persons
-    addPerson, listPersons, getPerson, personImageFile
+    addPerson, listPersons, getPerson, personImageFile, getPersonFiles
   ) where
 
 import Control.Applicative ( Applicative )
@@ -26,7 +27,7 @@ import Control.Monad.Reader ( MonadReader, ReaderT, asks, runReaderT )
 import Data.Monoid ( (<>) )
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
-import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory )
+import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory, canonicalizePath )
 import System.FilePath ( (</>), makeRelative, takeDirectory )
 
 import Paths_mdb
@@ -120,9 +121,17 @@ findDbFolder = getCurrentDirectory >>= go where
 
 type StreamId = Integer
 
+relFile :: MonadIO m => FilePath -> MDB m FilePath
+relFile absPath = do
+    rp <- liftIO $ canonicalizePath absPath
+    asks mdbBasePath >>= \bp -> return $ makeRelative bp rp
+
+fileAbs :: Monad m => FilePath -> MDB m FilePath
+fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath
+
 addFile :: MonadIO m => (FilePath, Integer) -> MDB m FileId
 addFile (absPath, fs) = do
-    relPath <- asks mdbBasePath >>= \bp -> return $ makeRelative bp absPath
+    relPath <- relFile absPath
     asks mdbConn >>= \c -> liftIO $ do
         SQL.execute c
             "INSERT INTO file (file_name, file_size) VALUES (?, ?)"
@@ -132,7 +141,7 @@ addFile (absPath, fs) = do
 
 hasFile :: MonadIO m => FilePath -> MDB m Bool
 hasFile p = do
-    relPath <- asks mdbBasePath >>= \bp -> return $ makeRelative bp p
+    relPath <- relFile p
     r <- asks mdbConn >>= \c -> liftIO $ SQL.query c
         "SELECT EXISTS(SELECT 1 FROM file WHERE file_name=? LIMIT 1)"
         (SQL.Only relPath)
@@ -148,6 +157,11 @@ listFiles off cnt = do
         "SELECT file_id, file_name, file_size FROM file LIMIT ? OFFSET ?"
         (cnt, off)
 
+fileById :: MonadIO m => FileId -> MDB m File
+fileById fid = asks mdbConn >>= \c -> liftIO $ SQL.query c
+        "SELECT file_id, file_name, file_size FROM file WHERE file_id=?"
+        (SQL.Only fid) >>= return . head
+
 clearStreams :: MonadIO m => FileId -> MDB m ()
 clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     "DELETE FROM stream WHERE (file_id = ?)"
@@ -159,6 +173,20 @@ addStream fid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
         <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate)"
         <> " VALUES (?, ?, ?, ?, ?)")
     (sid, fid, mt, cd, br)
+
+fileIdFromName :: MonadIO m => FilePath -> MDB m (Maybe FileId)
+fileIdFromName fn = do
+    relPath <- relFile fn
+    asks mdbConn >>= \c -> liftIO $ SQL.query c
+        "SELECT file_id FROM file WHERE file_name=? LIMIT 1"
+        (SQL.Only relPath) >>= \ids -> case ids of
+                                            [fid]   -> return $ Just $ SQL.fromOnly fid
+                                            _       -> return $ Nothing
+
+assignFilePerson :: MonadIO m => FileId -> PersonId -> MDB m ()
+assignFilePerson fid pid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
+    ("INSERT OR IGNORE INTO person_file (person_id, file_id) VALUES (?, ?)")
+    (pid, fid)
 
 -----------------------------------------------------------------
 -- Persons
@@ -183,3 +211,8 @@ listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c
 
 personImageFile :: Monad m => PersonId -> MDB m FilePath
 personImageFile pid = asks $ \x -> mdbDbDir x ++ "/persons/images/" ++ show pid ++ ".jpg"
+
+getPersonFiles :: MonadIO m => PersonId -> MDB m [FileId]
+getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
+        "SELECT file_id FROM person_file WHERE person_id = ?"
+        (SQL.Only pid) >>= return . (map SQL.fromOnly)

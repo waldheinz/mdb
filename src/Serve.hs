@@ -25,17 +25,13 @@ doServe = withMediaDb $ \db -> mkApp db >>= liftIO . WARP.run 8080
 
 mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
 mkApp mdb = do
-    static <- staticFiles
-    -- (Just dbf) <- liftIO $ findDbFolder
-    eh <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
-
-    case eh of
-         Left err       -> fail $ unlines err
-         Right heist    -> return $ mapUrls $
+    static  <- staticFiles
+    heist   <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
+    return $ mapUrls $
                 mount "api"     (apiApp mdb)
             <|> mount "image"   (imageApp mdb)
             <|> mount "static"  static
-            <|> mountRoot       (indexPage mdb heist)
+            <|> mountRoot       (templateApp mdb heist indexPage)
 
 staticFiles :: MonadIO m => m Application
 staticFiles = liftIO $ do

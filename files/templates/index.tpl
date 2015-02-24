@@ -3,12 +3,12 @@
     <div class="row">
         <persons>
             <div class="col-xs-3">
-                <div class="thumbnail">
+                <a href="/person/${id}" class="thumbnail">
                     <img src="/image/person/${id}">
                     <div class="caption">
                         <h3><name /></h3>
                     </div>
-                </div>
+                </a>
             </div>
         </persons>
     </div>

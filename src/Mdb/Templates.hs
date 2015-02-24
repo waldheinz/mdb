@@ -36,9 +36,9 @@ mkHeist tmplDir = runEitherT $ do
 
     HEIST.initHeist hc
 
-indexPage :: FilePath -> HEIST.HeistState (MDB IO) -> Application
+indexPage :: MediaDb -> HEIST.HeistState (MDB IO) -> Application
 indexPage mdb hs req respond = do
-    mr <- runMDB mdb $ HEIST.renderTemplate
+    mr <- runMDB' mdb $ HEIST.renderTemplate
         (bindSplice ("persons") personsSplice hs)
         $ encodeUtf8 "index"
 

@@ -21,21 +21,21 @@ import Paths_mdb ( getDataDir )
 import RestApi ( apiApp )
 
 doServe :: (MonadMask m, Functor m, MonadIO m) => m ()
-doServe = mkApp >>= liftIO . WARP.run 8080
+doServe = withMediaDb $ \db -> mkApp db >>= liftIO . WARP.run 8080
 
-mkApp :: (MonadMask m, Functor m, MonadIO m) => m Application
-mkApp = do
+mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
+mkApp mdb = do
     static <- staticFiles
-    (Just dbf) <- liftIO $ findDbFolder
+    -- (Just dbf) <- liftIO $ findDbFolder
     eh <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
 
     case eh of
          Left err       -> fail $ unlines err
-         Right heist    -> withMediaDb $ \db -> return $ mapUrls $
-                mount "api"     (apiApp dbf)
-            <|> mount "image"   (imageApp db)
+         Right heist    -> return $ mapUrls $
+                mount "api"     (apiApp mdb)
+            <|> mount "image"   (imageApp mdb)
             <|> mount "static"  static
-            <|> mountRoot       (indexPage dbf heist)
+            <|> mountRoot       (indexPage mdb heist)
 
 staticFiles :: MonadIO m => m Application
 staticFiles = liftIO $ do

@@ -23,8 +23,8 @@ import           Database
 import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId )
 
-apiApp :: FilePath -> WAI.Application
-apiApp mdb = apiToApplication (runMDB mdb) api
+apiApp :: MediaDb -> WAI.Application
+apiApp mdb = apiToApplication (runMDB' mdb) api
 
 api :: (Applicative m, MonadIO m) => Api (MDB m)
 api = [(mkVersion 0 1 0, Some1 api010)]

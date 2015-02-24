@@ -5,12 +5,9 @@ module Mdb.Serve.Image (
     imageApp
     ) where
 
-import Control.Monad.Reader.Class ( asks )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Network.HTTP.Types ( status200 )
-import Network.Wai ( Application )
 import Network.Wai
-import Network.Wai.Predicate
 import Network.Wai.Routing
 
 import Database
@@ -25,6 +22,4 @@ start = prepare $ do
         $ capture "id"
 
 pImage :: MonadIO m => Integer -> MDB m Response
-pImage pid = do
-    p <- asks mdbDbDir
-    return $ responseFile status200 [] (p ++ "/persons/images/" ++ show pid ++ ".jpg") Nothing
+pImage pid = personImageFile pid >>= \p -> return $ responseFile status200 [] p Nothing

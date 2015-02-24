@@ -15,7 +15,7 @@ module Database (
     clearStreams, addStream,
 
     -- * persons
-    addPerson, listPersons, getPerson
+    addPerson, listPersons, getPerson, personImageFile
   ) where
 
 import Control.Applicative ( Applicative )
@@ -180,3 +180,6 @@ listPersons :: MonadIO m => Int -> Int -> MDB m [Person]
 listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c
         "SELECT person_id, person_name FROM person LIMIT ? OFFSET ?"
         (cnt, off)
+
+personImageFile :: Monad m => PersonId -> MDB m FilePath
+personImageFile pid = asks $ \x -> mdbDbDir x ++ "/persons/images/" ++ show pid ++ ".jpg"

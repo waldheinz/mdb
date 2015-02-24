@@ -10,7 +10,7 @@ import qualified Serve    as SERVE
 
 import Codec.FFmpeg ( initFFmpeg )
 import Control.Monad.IO.Class ( liftIO )
-import System.Directory ( getCurrentDirectory )
+import System.Directory ( getCurrentDirectory, copyFile )
 import System.Environment ( getArgs )
 
 main :: IO ()
@@ -29,8 +29,7 @@ main = do
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
 doPerson (CMD.AddPerson n) = (DB.addPerson n) >>= \pid ->
     liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
-doPerson (CMD.SetPersonImage pid file) =
-    return ()
+doPerson (CMD.SetPersonImage pid file) = DB.personImageFile pid >>= (liftIO . copyFile file)
 
 doInit :: CMD.OptInit -> IO ()
 doInit (CMD.OptInit mp) = do

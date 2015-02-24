@@ -60,5 +60,6 @@ start heist = prepare $ do
                 Just (builder, mimeType) ->
                     responseBuilder status200 [("Content-Type", mimeType)] builder
 
-    get "/"             ((continue . serveTemplate) indexPage) $ true
+    get "/"             ((continue . serveTemplate) indexPage)  $ true
     get "/person/:id"   ((continue . serveTemplate) personPage) $ capture "id"
+    get "/show/:fid"    ((continue . serveTemplate) showPage)   $ capture "fid"

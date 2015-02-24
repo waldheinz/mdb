@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Templates (
-    mkHeist, indexPage, personPage
+    mkHeist, indexPage, personPage, showPage
     ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
@@ -58,3 +58,8 @@ personPage hs pid = do
             $ hs
 
     return (spls, "person")
+
+showPage :: TemplatePage DBF.FileId
+showPage hs fid = do
+    f <- fileById fid
+    return ((bindSplice "file" $ file f) hs, "show-image")

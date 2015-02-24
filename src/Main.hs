@@ -3,20 +3,19 @@ module Main (
   main
   ) where
 
-import Codec.FFmpeg ( initFFmpeg )
-import Control.Monad.IO.Class ( liftIO )
-import System.Directory ( getCurrentDirectory, copyFile )
-import System.Environment ( getArgs )
-
+import           Codec.FFmpeg ( initFFmpeg )
+import           Control.Monad.IO.Class ( liftIO )
+import           System.Directory ( getCurrentDirectory, copyFile )
+import           System.Environment ( getArgs )
+import           Graphics.ImageMagick.MagickWand ( withMagickWandGenesis )
 
 import qualified CmdLine  as CMD
 import qualified Database as DB
 import qualified Serve    as SERVE
-import Mdb.File
-
+import           Mdb.File
 
 main :: IO ()
-main = do
+main = withMagickWandGenesis $ liftIO $ do
     initFFmpeg
     argv <- getArgs
 

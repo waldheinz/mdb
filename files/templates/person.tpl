@@ -13,7 +13,7 @@
     <div class="row">
         <files>
             <div class="col-xs-2">
-                <a href="#" class="thumbnail">
+                <a href="/show/${id}" class="thumbnail">
                     <img src="/image/thumbnail/${id}">
                 </a>
             </div>

@@ -216,5 +216,5 @@ personImageFile pid = asks $ \x -> mdbDbDir x ++ "/persons/images/" ++ show pid 
 
 getPersonFiles :: MonadIO m => PersonId -> MDB m [File]
 getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
-        "SELECT file.file_id, file_name, file_size, file_mime FROM file LEFT OUTER JOIN person_file ON file.file_id = person_file.file_id AND person_file.person_id = ?"
+        "SELECT file.file_id, file_name, file_size, file_mime FROM file NATURAL JOIN person_file WHERE person_file.person_id = ?"
         (SQL.Only pid)

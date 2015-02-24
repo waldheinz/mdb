@@ -47,6 +47,8 @@ executable mdb
      wai,
      wai-app-static,
      wai-extra,
+     wai-predicates,
+     wai-routing,
      warp
 
   hs-source-dirs:      src

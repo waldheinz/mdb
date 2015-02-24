@@ -5,7 +5,7 @@
     #-}
 
 module Database (
-    MediaDb, withMediaDb, findDbFolder, initDb,
+    MediaDb, withMediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
     MDB, runMDB, runMDB', findDbAndRun,
 
     -- * files
@@ -37,14 +37,15 @@ dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
 
 data MediaDb = MediaDb
-               { mdbConn     :: ! SQL.Connection
-               , mdbBasePath :: ! FilePath
-               }
+    { mdbConn       :: ! SQL.Connection
+    , mdbBasePath   :: ! FilePath
+    , mdbDbDir      :: ! FilePath
+    }
 
-withMediaDb :: (Functor m, MonadIO m, MonadMask m) => (MediaDb -> m a) -> m (Either String a)
+withMediaDb :: (Functor m, MonadIO m, MonadMask m) => (MediaDb -> m a) -> m a
 withMediaDb a = liftIO findDbFolder >>= \x -> case x of
-  Nothing  -> return $ Left "no db directory found, maybe try \"mdb init\"?"
-  Just dbf -> Right <$> bracket (openDb dbf) closeDb a
+  Nothing  -> liftIO $ fail "no db directory found, maybe try \"mdb init\"?"
+  Just dbf -> bracket (openDb dbf) closeDb a
 
 newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
     deriving
@@ -96,7 +97,7 @@ initDb p = do
 openDb :: MonadIO m => FilePath -> m MediaDb
 openDb dir = do
   c <- liftIO $ SQL.open (dir </> "index.db")
-  return $ MediaDb c $ takeDirectory dir
+  return $ MediaDb c (takeDirectory dir) dir
 
 closeDb :: MonadIO m => MediaDb -> m ()
 closeDb db = liftIO $ SQL.close $ mdbConn db

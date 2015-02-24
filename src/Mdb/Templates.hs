@@ -19,7 +19,10 @@ import Mdb.Database.Person as P
 
 personsSplice :: MonadIO m => HeistT (MDB m) (MDB m) Template
 personsSplice = lift (listPersons 0 100) >>=
-    mapSplices ( \p -> runChildrenWithText ("name" HEIST.## (T.pack $ P.personName p)))
+    mapSplices ( \p -> runChildrenWithText
+        (  ("name" HEIST.## (T.pack $ P.personName p))
+        <> ("id"   HEIST.## (T.pack $ show $ P.personId p))
+        ))
 
 mkHeist :: FilePath -> IO (Either [String] (HEIST.HeistState (MDB IO)))
 mkHeist tmplDir = runEitherT $ do

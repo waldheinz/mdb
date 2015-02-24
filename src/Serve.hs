@@ -12,7 +12,7 @@ import qualified Data.ByteString.Lazy as BSL
 import Data.String ( fromString )
 import           Data.Text.Encoding ( encodeUtf8 )
 import Network.HTTP.Types ( status200, status404 )
-import Network.Wai ( Application, Response, responseLBS, responseBuilder )
+import Network.Wai ( Application, responseLBS, responseBuilder )
 import Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
 import Network.Wai.UrlMap ( mapUrls, mount, mountRoot )

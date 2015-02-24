@@ -214,7 +214,7 @@ listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c
 personImageFile :: Monad m => PersonId -> MDB m FilePath
 personImageFile pid = asks $ \x -> mdbDbDir x ++ "/persons/images/" ++ show pid ++ ".jpg"
 
-getPersonFiles :: MonadIO m => PersonId -> MDB m [FileId]
+getPersonFiles :: MonadIO m => PersonId -> MDB m [File]
 getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
-        "SELECT file_id FROM person_file WHERE person_id = ?"
-        (SQL.Only pid) >>= return . (map SQL.fromOnly)
+        "SELECT file.file_id, file_name, file_size, file_mime FROM file LEFT OUTER JOIN person_file ON file.file_id = person_file.file_id AND person_file.person_id = ?"
+        (SQL.Only pid)

@@ -14,6 +14,7 @@ import           Heist as HEIST
 import           Heist.Interpreted as HEIST
 
 import Database
+import qualified Mdb.Database.File as DBF
 import Mdb.Database.Person as P
 
 person :: Monad n => Person -> Splice n
@@ -21,6 +22,10 @@ person p = runChildrenWithText
     (  ("name" HEIST.## (T.pack $ P.personName p))
     <> ("id"   HEIST.## (T.pack $ show $ P.personId p))
     )
+
+file :: Monad m => DBF.File -> Splice m
+file f = runChildrenWithText $
+    ("id"   HEIST.## (T.pack $ show $ DBF.fileId f))
 
 personsSplice :: MonadIO m => HeistT (MDB m) (MDB m) Template
 personsSplice = lift (listPersons 0 100) >>= mapSplices ( \p -> (person p))
@@ -49,8 +54,7 @@ personPage hs pid = do
 
     let spls =
             (bindSplice "person" $ person p)
-            $ (bindSplice "files"  $ mapSplices (\fid -> runChildrenWithText
-                ("fid" HEIST.## (T.pack $ show fid))) fids)
+            $ (bindSplice "files"  $ mapSplices file fids)
             $ hs
 
     return (spls, "person")

@@ -14,7 +14,7 @@
         <files>
             <div class="col-xs-2">
                 <a href="#" class="thumbnail">
-                    <img src="/image/thumbnail/${fid}">
+                    <img src="/image/thumbnail/${id}">
                 </a>
             </div>
         </files>

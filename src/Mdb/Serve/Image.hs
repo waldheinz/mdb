@@ -71,9 +71,11 @@ imageThumb file = do
             w <- IM.getImageWidth wand
             h <- IM.getImageHeight wand
 
-            let (w', h') = if w > h
-                           then ( 128, floor $ 128 * (fromIntegral h / (fromIntegral w :: Float)) )
-                           else ( floor $ 128 * (fromIntegral w / (fromIntegral h :: Float)), 128 )
+            let
+                sz = 256
+                (w', h') = if w > h
+                           then ( sz, floor $ (fromIntegral sz) * (fromIntegral h / (fromIntegral w :: Float)) )
+                           else ( floor $ (fromIntegral sz) * (fromIntegral w / (fromIntegral h :: Float)), sz )
 
             IM.resizeImage wand w' h' IM.lanczosFilter 1
             IM.writeImages wand (fromString thumbFile) True

@@ -260,7 +260,7 @@ getRandomPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
     <>  "NATURAL JOIN person_file "
     <>  "WHERE person_file.person_id = ? AND NOT EXISTS ("
     <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ? AND album_file.file_id = f.file_id "
-    <>  ")"
+    <>  ") LIMIT 100"
     )
     (pid, pid)
 

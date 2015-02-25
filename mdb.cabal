@@ -13,8 +13,7 @@ build-type:          Simple
 cabal-version:       >=1.10
 
 data-files:
-    files/sql/*.sql,
-    files/htdocs/*.html
+    files/sql/*.sql
 
 executable mdb
   main-is:             Main.hs

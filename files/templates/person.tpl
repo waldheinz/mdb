@@ -13,9 +13,11 @@
     <div class="row">
         <albums>
             <div class="col-xs-2">
-                <a href="/album/${id}" class="thumbnail">
-                    <img src="/image/thumbnail/${poster}">
-                </a>
+                <apply template="thumbnail">
+                    <bind tag="target">/album/${id}</bind>
+                    <bind tag="imgId">${poster}</bind>
+                </apply>
+                <name/>
             </div>
         </albums>
     </div>
@@ -25,9 +27,10 @@
     <div class="row">
         <files>
             <div class="col-xs-2">
-                <a href="/show/${id}" class="thumbnail">
-                    <img src="/image/thumbnail/${id}">
-                </a>
+                <apply template="thumbnail">
+                    <bind tag="target">/show/${id}</bind>
+                    <bind tag="imgId">${id}</bind>
+                </apply>
             </div>
         </files>
     </div>

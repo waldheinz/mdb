@@ -3,10 +3,11 @@
 
     <div class="row">
         <files>
-            <div class="col-xs-2">
-                <a href="/show/${id}" class="thumbnail">
-                    <img src="/image/thumbnail/${id}">
-                </a>
+            <div class="col-xs-2" >
+                <apply template="thumbnail">
+                    <bind tag="target">/show/${id}</bind>
+                    <bind tag="imgId">${id}</bind>
+                </apply>
             </div>
         </files>
     </div>

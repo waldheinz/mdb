@@ -36,6 +36,12 @@ doFile opt rec = mapM_ (withFiles go rec) where
                 Just fid   -> assignFilePerson fid pid
                 Nothing    -> fail $ fn ++ " not registered yet"
 
+        CMD.FileAssignAlbum aid -> do
+            mfid <- fileIdFromName fn
+            case mfid of
+                Just fid   -> assignFileAlbum fid aid
+                Nothing    -> fail $ fn ++ " not registered yet"
+
         CMD.FileAdd -> hasFile fn >>= \known -> unless known $ checkFile fn
 
 ignoreFile :: FilePath -> Bool

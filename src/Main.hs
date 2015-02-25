@@ -12,6 +12,7 @@ import qualified CmdLine  as CMD
 import qualified Database as DB
 import qualified Serve    as SERVE
 import           Mdb.File
+import           Mdb.Album ( doAlbum )
 
 main :: IO ()
 main = withMagickWandGenesis $ liftIO $ do
@@ -19,10 +20,11 @@ main = withMagickWandGenesis $ liftIO $ do
     mode <- CMD.parseCommandLine
 
     case mode of
+        CMD.ModeAlbum opt           -> DB.findDbAndRun $ doAlbum opt
         (CMD.ModeFile op rec fs)    -> DB.findDbAndRun $ doFile op rec fs
-        CMD.ModePerson op   -> DB.findDbAndRun $ doPerson op
-        CMD.ModeInit oi     -> doInit oi
-        CMD.ModeServe       -> DB.findDbAndRun $ SERVE.doServe
+        CMD.ModePerson op           -> DB.findDbAndRun $ doPerson op
+        CMD.ModeInit oi             -> doInit oi
+        CMD.ModeServe               -> DB.findDbAndRun $ SERVE.doServe
 
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
 doPerson (CMD.AddPerson n) = (DB.addPerson n) >>= \pid ->

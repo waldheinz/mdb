@@ -10,13 +10,17 @@ module Database (
 
     -- * files
     addFile, fileById, hasFile, listFiles, fileIdFromName, assignFilePerson,
-    fileAbs,
+    fileAbs, assignFileAlbum, albumFiles,
 
     -- * streams
     clearStreams, addStream,
 
     -- * persons
-    addPerson, listPersons, getPerson, personImageFile, getPersonFiles
+    addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
+    getPersonAlbums, getRandomPersonFiles,
+
+    -- * raw queries
+    dbExecute, dbQuery, dbLastRowId
   ) where
 
 import Control.Applicative ( Applicative )
@@ -24,7 +28,8 @@ import Control.Monad ( forM_ )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Reader ( MonadReader, ReaderT, asks, runReaderT )
-import Data.Monoid ( (<>) )
+import           Data.Int ( Int64 )
+import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
@@ -32,6 +37,7 @@ import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirecto
 import System.FilePath ( (</>), makeRelative, takeDirectory )
 
 import Paths_mdb
+import Mdb.Database.Album ( Album, AlbumId )
 import Mdb.Database.File ( File, FileId )
 import Mdb.Database.Person ( Person, PersonId )
 
@@ -119,6 +125,16 @@ findDbFolder = getCurrentDirectory >>= go where
                                        then return Nothing
                                        else go d'
 
+
+dbExecute :: (MonadIO m, SQL.ToRow r) => SQL.Query -> r -> MDB m ()
+dbExecute q r = asks mdbConn >>= \c -> liftIO $ SQL.execute c q r
+
+dbQuery :: (MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m [r]
+dbQuery q r = asks mdbConn >>= \c -> liftIO $ SQL.query c q r
+
+dbLastRowId :: (MonadIO m) => MDB m Int64
+dbLastRowId = asks mdbConn >>= liftIO . SQL.lastInsertRowId
+
 -----------------------------------------------------------------
 -- Files
 -----------------------------------------------------------------
@@ -192,6 +208,18 @@ assignFilePerson fid pid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     ("INSERT OR IGNORE INTO person_file (person_id, file_id) VALUES (?, ?)")
     (pid, fid)
 
+assignFileAlbum :: MonadIO m => FileId -> AlbumId -> MDB m ()
+assignFileAlbum fid aid = dbExecute
+    ("INSERT OR IGNORE INTO album_file (album_id, file_id) VALUES (?, ?)")
+    (aid, fid)
+
+albumFiles :: MonadIO m => AlbumId -> MDB m [File]
+albumFiles aid = dbQuery
+    (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
+    <>  "NATURAL JOIN album_file "
+    <>  "WHERE album_file.album_id = ?" )
+    (SQL.Only aid)
+
 -----------------------------------------------------------------
 -- Persons
 -----------------------------------------------------------------
@@ -216,7 +244,30 @@ listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c
 personImageFile :: Monad m => PersonId -> MDB m FilePath
 personImageFile pid = asks $ \x -> mdbDbDir x ++ "/persons/images/" ++ show pid ++ ".jpg"
 
+-- | Get all files assigned to a person.
 getPersonFiles :: MonadIO m => PersonId -> MDB m [File]
 getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
-        "SELECT file.file_id, file_name, file_size, file_mime FROM file NATURAL JOIN person_file WHERE person_file.person_id = ?"
-        (SQL.Only pid)
+    (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
+    <>  "NATURAL JOIN person_file "
+    <>  "WHERE person_file.person_id = ?" )
+    (SQL.Only pid)
+
+-- | Get files assigned to a person but not part of an album.
+getRandomPersonFiles :: MonadIO m => PersonId -> MDB m [File]
+getRandomPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
+    (   "SELECT DISTINCT f.file_id, f.file_name, f.file_size, f.file_mime FROM file f "
+    <>  "NATURAL JOIN person_file "
+    <>  "WHERE person_file.person_id = ? AND NOT EXISTS ("
+    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ?"
+    <>  ")"
+    )
+    (pid, pid)
+
+-- | Get all albums containing files assigned to the given person.
+getPersonAlbums :: MonadIO m => PersonId -> MDB m [Album]
+getPersonAlbums pid = dbQuery
+    (   "SELECT DISTINCT a.album_id, a.album_name, a.album_poster FROM album a "
+    <>  "NATURAL JOIN person_file "
+    <>  "NATURAL JOIN album_file "
+    <>  "WHERE person_file.person_id = ?" )
+    (SQL.Only pid)

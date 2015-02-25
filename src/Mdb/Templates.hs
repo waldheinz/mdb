@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Templates (
-    mkHeist, indexPage, personPage, showPage
+    mkHeist, indexPage, personPage, showPage, albumPage
     ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
@@ -15,6 +15,7 @@ import           Heist.Interpreted as HEIST
 
 import Database
 import qualified Mdb.Database.File as DBF
+import Mdb.Database.Album as A
 import Mdb.Database.Person as P
 
 person :: Monad n => Person -> Splice n
@@ -22,6 +23,21 @@ person p = runChildrenWithText
     (  ("name" HEIST.## (T.pack $ P.personName p))
     <> ("id"   HEIST.## (T.pack $ show $ P.personId p))
     )
+
+album :: MonadIO m => Album -> Splice (MDB m)
+album a = do
+
+    poster <- lift $ case A.albumPoster a of
+        Just p   -> return p
+        Nothing  -> albumFiles (A.albumId a) >>= \fs -> case fs of
+            (f:_)   -> return $ DBF.fileId f
+            _       -> return 0
+
+    runChildrenWithText
+        (  ("name"      HEIST.## A.albumName a)
+        <> ("id"        HEIST.## (T.pack $ show $ A.albumId a))
+        <> ("poster"    HEIST.## (T.pack $ show poster))
+        )
 
 file :: Monad m => DBF.File -> Splice m
 file f = runChildrenWithText $
@@ -48,14 +64,22 @@ type TemplatePage a = HEIST.HeistState (MDB IO) -> a -> MDB IO ((HEIST.HeistStat
 indexPage :: TemplatePage a
 indexPage hs _ = return (bindSplice "persons" personsSplice hs, "index")
 
+albumPage :: TemplatePage A.AlbumId
+albumPage hs aid = do
+    files   <- albumFiles aid
+    let spls = (bindSplice "files"  $ mapSplices file files) $ hs
+    return (spls, "album")
+
 personPage :: TemplatePage Integer
 personPage hs pid = do
     p       <- getPerson pid
-    fids    <- getPersonFiles pid
+    albums  <- getPersonAlbums pid
+    fids    <- getRandomPersonFiles pid
 
     let spls =
             (bindSplice "person" $ person p)
             $ (bindSplice "files"  $ mapSplices file fids)
+            $ (bindSplice "albums" $ mapSplices album albums)
             $ hs
 
     return (spls, "person")

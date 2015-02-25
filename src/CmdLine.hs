@@ -1,32 +1,42 @@
 
 module CmdLine (
-    Mode(..), OptInit(..), OptPerson(..), OptFile(..), parseCommandLine,
+    Mode(..), OptAlbum(..), OptInit(..), OptPerson(..), OptFile(..), parseCommandLine,
     cmdLineParser
     ) where
 
-import Mdb.Database.Person ( PersonId )
-
 import Options.Applicative
 
+import Mdb.Database.Album ( AlbumId )
+import Mdb.Database.Person ( PersonId )
+
 data Mode
-     = ModeInit OptInit
-     | ModeFile OptFile Bool [FilePath]
-     | ModePerson OptPerson
-     | ModeServe
-     deriving ( Show )
+    = ModeInit OptInit
+    | ModeAlbum OptAlbum
+    | ModeFile OptFile Bool [FilePath]
+    | ModePerson OptPerson
+    | ModeServe
+    deriving ( Show )
+
+data OptInit = OptInit
+    { initDir :: Maybe FilePath }
+    deriving ( Show )
+
+data OptAlbum
+    = AlbumCreate String
+    deriving ( Show )
+
+albumOptions :: Parser Mode
+albumOptions = ModeAlbum
+    <$> subparser
+        (   command "create"    ( info
+            (AlbumCreate <$> strArgument ( metavar "NAME" ) )
+            (progDesc "create album") )
+        )
 
 data OptFile
     = FileAdd
     | FileAssignPerson PersonId
-    deriving ( Show )
-
-data OptInit = OptInit
-               { initDir :: Maybe FilePath }
-               deriving ( Show )
-
-data OptPerson
-    = AddPerson String
-    | SetPersonImage PersonId FilePath
+    | FileAssignAlbum  AlbumId
     deriving ( Show )
 
 fileOptions :: Parser Mode
@@ -36,7 +46,7 @@ fileOptions = ModeFile
             (pure FileAdd)
             (progDesc "add files") )
         <>  command "assign"    (info
-            (FileAssignPerson <$> argument auto ( metavar "PID") )
+            (helper <*> fileAssign)
             (progDesc "assign person")
             )
         )
@@ -47,6 +57,21 @@ fileOptions = ModeFile
         )
     <*> (some . strArgument)
         ( metavar "FILES..." )
+
+fileAssign :: Parser OptFile
+fileAssign = subparser
+    (   command "person"    (info
+        (FileAssignPerson <$> argument auto ( metavar "PID") )
+        (progDesc "assign files to a person") )
+    <>  command "album"     (info
+        (FileAssignAlbum <$> argument auto ( metavar "AID") )
+        (progDesc "assign files to an album") )
+    )
+
+data OptPerson
+    = AddPerson String
+    | SetPersonImage PersonId FilePath
+    deriving ( Show )
 
 personOptions :: Parser Mode
 personOptions = ModePerson
@@ -76,6 +101,8 @@ cmdLineParser = subparser
             ( progDesc "Manage persons in the database" ))
     <>  command "serve" (info (helper <*> serveOptions)
             ( progDesc "Start HTTP server" ))
+    <>  command "album" (info (helper <*> albumOptions)
+            ( progDesc "Manage albums" ) )
     )
 
 parseCommandLine :: IO Mode

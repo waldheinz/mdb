@@ -8,6 +8,18 @@
         </div>
     </person>
 
+    <h2>Albums</h2>
+
+    <div class="row">
+        <albums>
+            <div class="col-xs-2">
+                <a href="/album/${id}" class="thumbnail">
+                    <img src="/image/thumbnail/${poster}">
+                </a>
+            </div>
+        </albums>
+    </div>
+
     <h2>Random Files</h2>
 
     <div class="row">

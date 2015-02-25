@@ -79,6 +79,8 @@ dbTables =
     , "stream_metadata"
     , "person"
     , "person_file"
+    , "movie"
+    , "movie_person"
     ]
 
 initDb :: FilePath -> IO ()

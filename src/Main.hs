@@ -6,7 +6,6 @@ module Main (
 import           Codec.FFmpeg ( initFFmpeg )
 import           Control.Monad.IO.Class ( liftIO )
 import           System.Directory ( getCurrentDirectory, copyFile )
-import           System.Environment ( getArgs )
 import           Graphics.ImageMagick.MagickWand ( withMagickWandGenesis )
 
 import qualified CmdLine  as CMD
@@ -17,15 +16,13 @@ import           Mdb.File
 main :: IO ()
 main = withMagickWandGenesis $ liftIO $ do
     initFFmpeg
-    argv <- getArgs
+    mode <- CMD.parseCommandLine
 
-    case CMD.parseMode argv of
-        Left x     -> putStrLn $ x
-        Right mode -> case mode of
-            CMD.ModeFile o      -> DB.findDbAndRun $ doFile o
-            CMD.ModePerson op   -> DB.findDbAndRun $ doPerson op
-            CMD.ModeInit oi     -> doInit oi
-            CMD.ModeServe       -> DB.findDbAndRun $ SERVE.doServe
+    case mode of
+        (CMD.ModeFile op rec fs)    -> DB.findDbAndRun $ doFile op rec fs
+        CMD.ModePerson op   -> DB.findDbAndRun $ doPerson op
+        CMD.ModeInit oi     -> doInit oi
+        CMD.ModeServe       -> DB.findDbAndRun $ SERVE.doServe
 
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
 doPerson (CMD.AddPerson n) = (DB.addPerson n) >>= \pid ->

@@ -25,7 +25,8 @@ person p = runChildrenWithText
 
 file :: Monad m => DBF.File -> Splice m
 file f = runChildrenWithText $
-    ("id"   HEIST.## (T.pack $ show $ DBF.fileId f))
+        ("id"   HEIST.## (T.pack $ show $ DBF.fileId f))
+    <>  ("path"   HEIST.## (T.pack $ DBF.filePath f))
 
 personsSplice :: MonadIO m => HeistT (MDB m) (MDB m) Template
 personsSplice = lift (listPersons 0 100) >>= mapSplices ( \p -> (person p))

@@ -14,9 +14,7 @@ cabal-version:       >=1.10
 
 data-files:
     files/sql/*.sql,
-    files/htdocs/js/*.min.js
-    files/htdocs/css/*.min.css
-    files/templates/*.tpl
+    files/htdocs/*.html
 
 executable mdb
   main-is:             Main.hs
@@ -40,6 +38,7 @@ executable mdb
      json-schema,
      mime-types,
      mtl,
+     optparse-applicative,
      pureMD5,
      regular,
      regular-xmlpickler,

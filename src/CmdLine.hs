@@ -1,63 +1,87 @@
 
 module CmdLine (
-  Mode(..), OptInit(..), OptPerson(..), OptFile(..), parseMode
-  ) where
+    Mode(..), OptInit(..), OptPerson(..), OptFile(..), parseCommandLine,
+    cmdLineParser
+    ) where
 
 import Mdb.Database.Person ( PersonId )
 
+import Options.Applicative
+
 data Mode
      = ModeInit OptInit
-     | ModeFile OptFile
+     | ModeFile OptFile Bool [FilePath]
      | ModePerson OptPerson
      | ModeServe
      deriving ( Show )
 
-parseMode :: [String] -> Either String Mode
-parseMode ("file"   : args  ) = parseModeFile args >>= return . ModeFile
-parseMode ("person" : args  ) = parseModePerson args >>= return . ModePerson
-parseMode ("init"   : args  ) = parseModeInit args >>= return . ModeInit
-parseMode ("serve"  : _     ) = Right ModeServe
-parseMode (x        : _     ) = Left $ "unknown mode " ++ x
-parseMode []                  = Left "no mode given"
-
------------------------------------------------------
--- init
------------------------------------------------------
+data OptFile
+    = FileAdd
+    | FileAssignPerson PersonId
+    deriving ( Show )
 
 data OptInit = OptInit
                { initDir :: Maybe FilePath }
                deriving ( Show )
-
-parseModeInit :: [String] -> Either String OptInit
-parseModeInit args = case args of
-  []     -> Right $ OptInit Nothing
-  (x:[]) -> Right $ OptInit $ Just x
-  xx     -> Left  $ "don't know how to init " ++ (show xx)
-  
-----------------------------------------------------
--- file
-----------------------------------------------------
-
-data OptFile
-    = FileAdd [FilePath]
-    | FileAssignPerson PersonId [FilePath]
-    deriving ( Show )
-
-parseModeFile :: [String] -> Either String OptFile
-parseModeFile ( "add"       : fs ) = Right $ FileAdd fs
-parseModeFile ( "assign"    : "person" : pids : fs ) = Right $ FileAssignPerson (read pids) fs
-parseModeFile _ = Left "don't know what you want to do with files"
-
-----------------------------------
--- person
-----------------------------------
 
 data OptPerson
     = AddPerson String
     | SetPersonImage PersonId FilePath
     deriving ( Show )
 
-parseModePerson :: [String] -> Either String OptPerson
-parseModePerson ("add" : name : _) = Right $ AddPerson name
-parseModePerson (pids : "image" : fname: _) = Right $ SetPersonImage (read pids) fname
-parseModePerson _ = Left "you want to do something with a person, but I fail to understand what"
+fileOptions :: Parser Mode
+fileOptions = ModeFile
+    <$> subparser
+        (   command "add"       (info
+            (pure FileAdd)
+            (progDesc "add files") )
+        <>  command "assign"    (info
+            (FileAssignPerson <$> argument auto ( metavar "PID") )
+            (progDesc "assign person")
+            )
+        )
+    <*> switch
+        (   long "recursive"
+        <>  short 'r'
+        <>  help "apply to files in subdirectories"
+        )
+    <*> (some . strArgument)
+        ( metavar "FILES..." )
+
+personOptions :: Parser Mode
+personOptions = ModePerson
+    <$> subparser
+        (   command "add"   ( info
+                ( AddPerson <$> strArgument ( metavar "NAME" ) )
+                ( progDesc "add person" )
+            )
+
+        <>  command "setimage"   ( info
+                ( SetPersonImage
+                    <$> argument auto ( metavar "PID" )
+                    <*> strArgument ( metavar "FILE" )
+                )
+                ( progDesc "set image" )
+            )
+        )
+
+serveOptions :: Parser Mode
+serveOptions = pure ModeServe
+
+cmdLineParser :: Parser Mode
+cmdLineParser = subparser
+    (   command "file" (info (helper <*> fileOptions)
+            ( progDesc "Manage files in the database" ))
+    <>  command "person" (info (helper <*> personOptions)
+            ( progDesc "Manage persons in the database" ))
+    <>  command "serve" (info (helper <*> serveOptions)
+            ( progDesc "Start HTTP server" ))
+    )
+
+parseCommandLine :: IO Mode
+parseCommandLine = execParser opts
+  where
+    opts = info (helper <*> cmdLineParser)
+      ( fullDesc
+     <> progDesc "Print a greeting for TARGET"
+     <> header "hello - a test for optparse-applicative" )

@@ -217,7 +217,8 @@ albumFiles :: MonadIO m => AlbumId -> MDB m [File]
 albumFiles aid = dbQuery
     (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
     <>  "NATURAL JOIN album_file "
-    <>  "WHERE album_file.album_id = ?" )
+    <>  "WHERE album_file.album_id = ? "
+    <>  "ORDER BY f.file_name ASC" )
     (SQL.Only aid)
 
 -----------------------------------------------------------------
@@ -258,7 +259,7 @@ getRandomPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
     (   "SELECT DISTINCT f.file_id, f.file_name, f.file_size, f.file_mime FROM file f "
     <>  "NATURAL JOIN person_file "
     <>  "WHERE person_file.person_id = ? AND NOT EXISTS ("
-    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ?"
+    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ? AND album_file.file_id = f.file_id "
     <>  ")"
     )
     (pid, pid)

@@ -7,7 +7,7 @@ import qualified Codec.FFmpeg.Decode as FFM
 import qualified Codec.FFmpeg.Probe as FFM
 import qualified Codec.FFmpeg.Types as FFM
 import Control.Exception.Base ( IOException )
-import Control.Monad ( forM, forM_, unless )
+import Control.Monad ( forM, forM_, unless, foldM )
 import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
@@ -28,21 +28,27 @@ import Database
 import Mdb.Database.File ( FileId )
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
-doFile opt rec = mapM_ (withFiles go rec) where
-    go fn = case opt of
-        CMD.FileAssignPerson pid -> do
+doFile (CMD.FileAssign tgts) rec fs = do
+    let
+        prepare (ps, as) tgt = case tgt of
+            CMD.AssignPerson pid    -> return (pid : ps, as)
+            CMD.AssignNewPerson n   -> addPerson n >>= \pid -> return (pid:ps, as)
+            CMD.AssignAlbum aid     -> return (ps, aid:as)
+            CMD.AssignNewAlbum n    -> addAlbum n >>= \aid -> return (ps, aid:as)
+
+        go pids aids fn = do
             mfid <- fileIdFromName fn
             case mfid of
-                Just fid   -> assignFilePerson fid pid
                 Nothing    -> fail $ fn ++ " not registered yet"
+                Just fid   -> do
+                    mapM_ (assignFilePerson fid) pids
+                    mapM_ (assignFileAlbum fid) aids
 
-        CMD.FileAssignAlbum aid -> do
-            mfid <- fileIdFromName fn
-            case mfid of
-                Just fid   -> assignFileAlbum fid aid
-                Nothing    -> fail $ fn ++ " not registered yet"
+    (pids, aids) <- foldM prepare ([], []) tgts
+    mapM_ (withFiles (go pids aids) rec) fs
 
-        CMD.FileAdd -> hasFile fn >>= \known -> unless known $ checkFile fn
+doFile (CMD.FileAdd) rec fs = mapM_ (withFiles go rec) fs where
+    go fn = hasFile fn >>= \known -> unless known $ checkFile fn
 
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"

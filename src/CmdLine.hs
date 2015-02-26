@@ -1,6 +1,7 @@
 
 module CmdLine (
-    Mode(..), OptAlbum(..), OptInit(..), OptPerson(..), OptFile(..), parseCommandLine,
+    Mode(..), OptAlbum(..), OptInit(..), OptPerson(..),
+    OptFile(..), AssignTarget(..), parseCommandLine,
     cmdLineParser
     ) where
 
@@ -33,10 +34,16 @@ albumOptions = ModeAlbum
             (progDesc "create album") )
         )
 
+data AssignTarget
+    = AssignPerson PersonId
+    | AssignNewPerson String
+    | AssignAlbum AlbumId
+    | AssignNewAlbum String
+    deriving ( Show )
+
 data OptFile
     = FileAdd
-    | FileAssignPerson PersonId
-    | FileAssignAlbum  AlbumId
+    | FileAssign [AssignTarget]
     deriving ( Show )
 
 fileOptions :: Parser Mode
@@ -47,7 +54,7 @@ fileOptions = ModeFile
             (progDesc "add files") )
         <>  command "assign"    (info
             (helper <*> fileAssign)
-            (progDesc "assign person")
+            (progDesc "assign files to persons, albums, ...")
             )
         )
     <*> switch
@@ -59,14 +66,29 @@ fileOptions = ModeFile
         ( metavar "FILES..." )
 
 fileAssign :: Parser OptFile
-fileAssign = subparser
-    (   command "person"    (info
-        (FileAssignPerson <$> argument auto ( metavar "PID") )
-        (progDesc "assign files to a person") )
-    <>  command "album"     (info
-        (FileAssignAlbum <$> argument auto ( metavar "AID") )
-        (progDesc "assign files to an album") )
-    )
+fileAssign = FileAssign <$> some (p <|> np <|> a <|> na) where
+    p = AssignPerson <$> option auto
+        (   long "person"
+        <>  short 'p'
+        <>  help "assign to existing person by id"
+        <>  metavar "PID"
+        )
+    np = AssignNewPerson <$> strOption
+        (   long "new-person"
+        <>  help "assign new person"
+        <>  metavar "NAME"
+        )
+    a = AssignAlbum <$> option auto
+        (   long "album"
+        <>  short 'a'
+        <>  help "assign to existing album by id"
+        <>  metavar "AID"
+        )
+    na = AssignNewAlbum <$> strOption
+        (   long "new-album"
+        <>  help "assign new album"
+        <>  metavar "NAME"
+        )
 
 data OptPerson
     = AddPerson String

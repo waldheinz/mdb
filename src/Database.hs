@@ -19,6 +19,9 @@ module Database (
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
     getPersonAlbums, getRandomPersonFiles,
 
+    -- * albums
+    addAlbum,
+
     -- * raw queries
     dbExecute, dbQuery, dbLastRowId
   ) where
@@ -272,3 +275,11 @@ getPersonAlbums pid = dbQuery
     <>  "NATURAL JOIN album_file "
     <>  "WHERE person_file.person_id = ?" )
     (SQL.Only pid)
+
+----------------------------------------------------------
+-- albums
+----------------------------------------------------------
+
+addAlbum :: MonadIO m => String -> MDB m AlbumId
+addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
+    >> dbLastRowId >>= return . fromIntegral

@@ -28,14 +28,9 @@ imageApp mdb req respond = runMDB' mdb
 
 start :: MonadIO m => Tree (App (MDB m))
 start = prepare $ do
-    get "/image/:id" (continue getImage)
-        $ capture "id"
-
-    get "/person/:id" (continue pImage)
-        $ capture "id"
-
-    get "/thumbnail/:fid" (continue fileThumb)
-        $ capture "fid"
+    get "/image/:id" (continue getImage)        $ capture "id"
+    get "/person/:id" (continue pImage)         $ capture "id"
+    get "/thumbnail/:fid" (continue fileThumb)  $ capture "fid"
 
 getImage :: MonadIO m => DBF.FileId -> MDB m Response
 getImage fid = do
@@ -44,7 +39,8 @@ getImage fid = do
     return $ responseFile status200 [] p Nothing
 
 pImage :: MonadIO m => Integer -> MDB m Response
-pImage pid = personImageFile pid >>= \p -> return $ responseFile status200 [] p Nothing
+pImage pid = personImageFile pid >>= ensureThumb >>=
+    \p -> return $ responseFile status200 [] p Nothing
 
 fileThumb :: MonadIO m => DBF.FileId -> MDB m Response
 fileThumb fid = fileById fid >>= \file -> case T.takeWhile ( /= '/') (DBF.fileMime file) of
@@ -53,17 +49,21 @@ fileThumb fid = fileById fid >>= \file -> case T.takeWhile ( /= '/') (DBF.fileMi
 
 imageThumb :: MonadIO m => DBF.File -> MDB m Response
 imageThumb file = do
+    thumbFile <- ensureThumb $ DBF.filePath file
+    return $ responseFile status200 [] thumbFile Nothing
+
+ensureThumb :: MonadIO m => FilePath -> MDB m FilePath
+ensureThumb relPath = do
     dbDir <- asks mdbDbDir
 
     let
-        relPath     = DBF.filePath file
         thumbDir    = dbDir ++ "/thumbs/normal/"
         thumbFile   = thumbDir ++ (show $ md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack relPath) ++ ".png"
 
     exists <- liftIO $ doesFileExist thumbFile
 
     unless exists $ do
-        src <- fileAbs $ DBF.filePath file
+        src <- fileAbs relPath
         liftIO $ createDirectoryIfMissing True thumbDir
         liftIO $ IM.localGenesis $ do
             (_,wand) <- IM.magickWand
@@ -80,4 +80,4 @@ imageThumb file = do
             IM.resizeImage wand w' h' IM.lanczosFilter 1
             IM.writeImages wand (fromString thumbFile) True
 
-    return $ responseFile status200 [] thumbFile Nothing
+    return thumbFile

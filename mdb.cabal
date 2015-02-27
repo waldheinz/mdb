@@ -21,7 +21,7 @@ data-files:
 
 executable mdb
   main-is:             Main.hs
-  ghc-options:         -Wall
+  ghc-options:         -Wall -O2 -threaded -with-rtsopts=-N
   -- other-modules:
   -- other-extensions:
   build-depends:

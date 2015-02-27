@@ -6,7 +6,7 @@
 
 module Database (
     MediaDb, withMediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
-    MDB, runMDB, runMDB', findDbAndRun,
+    MDB, runMDB, runMDB', findDbAndRun, withTransaction,
 
     -- * files
     addFile, fileById, hasFile, listFiles, fileIdFromName, assignFilePerson,
@@ -30,7 +30,7 @@ import Control.Applicative ( Applicative )
 import Control.Monad ( forM_ )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
-import Control.Monad.Reader ( MonadReader, ReaderT, asks, runReaderT )
+import Control.Monad.Reader ( MonadReader, ReaderT, ask, asks, runReaderT )
 import           Data.Int ( Int64 )
 import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
@@ -137,6 +137,9 @@ dbQuery q r = asks mdbConn >>= \c -> liftIO $ SQL.query c q r
 
 dbLastRowId :: (MonadIO m) => MDB m Int64
 dbLastRowId = asks mdbConn >>= liftIO . SQL.lastInsertRowId
+
+withTransaction :: MonadIO m => MDB IO a -> MDB m a
+withTransaction f = ask >>= \mdb -> liftIO (SQL.withTransaction (mdbConn mdb) (runMDB' mdb f))
 
 -----------------------------------------------------------------
 -- Files

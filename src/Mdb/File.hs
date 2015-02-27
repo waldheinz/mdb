@@ -28,7 +28,7 @@ import Database
 import Mdb.Database.File ( FileId )
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
-doFile (CMD.FileAssign tgts) rec fs = do
+doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
     let
         prepare (ps, as) tgt = case tgt of
             CMD.AssignPerson pid    -> return (pid : ps, as)

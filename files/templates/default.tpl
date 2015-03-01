@@ -11,7 +11,7 @@
     <div class="container">
         <apply-content />
     </div>
-    <script src="/static/js/jquery-2.1.3.min.js"></script>
+    <script src="/static/js/jquery.min.js"></script>
     <script src="/static/js/bootstrap.min.js"></script>
   </body>
 </html>

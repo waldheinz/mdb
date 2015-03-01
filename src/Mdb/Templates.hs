@@ -85,6 +85,7 @@ personPage hs pid = do
     return (spls, "person")
 
 showPage :: TemplatePage DBF.FileId
-showPage hs fid = do
-    f <- fileById fid
-    return ((bindSplice "file" $ file f) hs, "show-image")
+showPage hs fid = fileById fid >>= \f -> case T.takeWhile ( /= '/') (DBF.fileMime f) of
+    "image" -> return ((bindSplice "file" $ file f) hs, "show-image")
+    "video" -> return ((bindSplice "file" $ file f) hs, "show-video")
+    _       -> fail $ "unsupported MIME type " ++ (T.unpack $ DBF.fileMime f)

@@ -1,5 +1,5 @@
 
-module CmdLine (
+module Mdb.CmdLine (
     Mode(..), OptAlbum(..), OptInit(..), OptPerson(..),
     OptFile(..), AssignTarget(..), parseCommandLine,
     cmdLineParser
@@ -22,6 +22,9 @@ data OptInit = OptInit
     { initDir :: Maybe FilePath }
     deriving ( Show )
 
+initOptions :: Parser Mode
+initOptions = ModeInit . OptInit <$> optional (strArgument ( metavar "DIR" ))
+    
 data OptAlbum
     = AlbumCreate String
     deriving ( Show )
@@ -119,6 +122,8 @@ cmdLineParser :: Parser Mode
 cmdLineParser = subparser
     (   command "file" (info (helper <*> fileOptions)
             ( progDesc "Manage files in the database" ))
+    <>  command "init" (info (helper <*> initOptions)
+            ( progDesc "Initialize database" ))
     <>  command "person" (info (helper <*> personOptions)
             ( progDesc "Manage persons in the database" ))
     <>  command "serve" (info (helper <*> serveOptions)

@@ -8,7 +8,7 @@ import           Control.Monad.IO.Class ( liftIO )
 import           System.Directory ( getCurrentDirectory, copyFile )
 import           Graphics.ImageMagick.MagickWand ( withMagickWandGenesis )
 
-import qualified CmdLine  as CMD
+import qualified Mdb.CmdLine  as CMD
 import qualified Database as DB
 import qualified Serve    as SERVE
 import           Mdb.File

@@ -23,7 +23,7 @@ import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContent
 import System.FilePath ( (</>) )
 import System.IO ( IOMode(..), withFile, hFileSize )
 
-import qualified CmdLine  as CMD
+import qualified Mdb.CmdLine  as CMD
 import Database
 import Mdb.Database.File ( FileId )
 

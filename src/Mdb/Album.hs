@@ -8,7 +8,7 @@ module Mdb.Album (
 import Control.Monad.IO.Class ( liftIO )
 import qualified Database.SQLite.Simple as SQL
 
-import CmdLine ( OptAlbum(..) )
+import Mdb.CmdLine ( OptAlbum(..) )
 import Database
 
 doAlbum :: OptAlbum -> MDB IO ()

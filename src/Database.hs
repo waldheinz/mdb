@@ -83,7 +83,9 @@ findDbAndRun act = liftIO findDbFolder >>= \x -> case x of
 
 dbTables :: [String]
 dbTables =
-    [ "file"
+    [ "album"
+    , "album_file"
+    , "file"
     , "stream"
     , "stream_metadata"
     , "person"

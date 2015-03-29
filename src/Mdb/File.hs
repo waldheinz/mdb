@@ -47,7 +47,7 @@ doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
     (pids, aids) <- foldM prepare ([], []) tgts
     mapM_ (withFiles (go pids aids) rec) fs
 
-doFile (CMD.FileAdd) rec fs = mapM_ (withFiles go rec) fs where
+doFile (CMD.FileAdd) rec fs = withTransaction $ mapM_ (withFiles go rec) fs where
     go fn = hasFile fn >>= \known -> unless known $ checkFile fn
 
 ignoreFile :: FilePath -> Bool

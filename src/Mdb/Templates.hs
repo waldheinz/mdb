@@ -66,8 +66,27 @@ indexPage hs _ = return (bindSplice "persons" personsSplice hs, "index")
 
 albumPage :: TemplatePage A.AlbumId
 albumPage hs aid = do
-    files   <- albumFiles aid
-    let spls = (bindSplice "files"  $ mapSplices file files) $ hs
+    
+    (files, title, persons) <- withTransaction $ do
+        fs <- albumFiles aid
+        [(Only at)] <- dbQuery "SELECT album_name FROM album WHERE album_id = ?" (Only aid)
+        ps <- dbQuery 
+            ( "SELECT DISTINCT p.person_id, p.person_name FROM person p "
+            <>  "NATURAL JOIN person_file "
+            <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
+            <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = p.person_id AND album_file.album_id = ? "
+            <>  ")"
+            ) (Only aid)
+            
+        return (fs, at, ps)
+            
+    let spls
+            = (bindSplice "files"   $ mapSplices file files)
+            $ (bindSplice "file-count"  $ textSplice (T.pack . show . length $ files))
+            $ (bindSplice "name"    $ textSplice title)
+            $ (bindSplice "persons" $ mapSplices person persons)
+            $ hs
+    
     return (spls, "album")
 
 pager :: Monad n => Int -> Int -> Splice n

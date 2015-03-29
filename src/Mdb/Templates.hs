@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Templates (
-    mkHeist, indexPage, personPage, showPage, albumPage
+    mkHeist, indexPage, personPage, showPage, albumPage, albumsPage
     ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
@@ -38,11 +38,11 @@ album a = do
         <> ("id"        HEIST.## (T.pack $ show $ A.albumId a))
         <> ("poster"    HEIST.## (T.pack $ show poster))
         )
-
+        
 file :: Monad m => DBF.File -> Splice m
 file f = runChildrenWithText $
         ("id"   HEIST.## (T.pack $ show $ DBF.fileId f))
-    <>  ("path"   HEIST.## (T.pack $ DBF.filePath f))
+    <>  ("path" HEIST.## (T.pack $ DBF.filePath f))
 
 personsSplice :: MonadIO m => HeistT (MDB m) (MDB m) Template
 personsSplice = lift (listPersons 0 100) >>= mapSplices ( \p -> (person p))
@@ -70,6 +70,36 @@ albumPage hs aid = do
     let spls = (bindSplice "files"  $ mapSplices file files) $ hs
     return (spls, "album")
 
+pager :: Monad n => Int -> Int -> Splice n
+pager pg pgcnt = runChildrenWith ("pages" HEIST.## (mapSplices page [1..pgcnt]))
+    where
+        page p = runChildrenWithText
+            (  ("page"  HEIST.## (T.pack $ show $ p))
+            <> ("class" HEIST.## (if p == pg then "active" else ""))
+            )
+
+albumsPage :: TemplatePage Int
+albumsPage hs pg = do
+        
+    (albums, pg', pgcnt) <- withTransaction $ do
+        [(Only acnt)] <- dbQuery_ "SELECT COUNT(1) from album"
+        
+        let
+            perPage = 6 * 4
+            pages   = (acnt + perPage - 1) `div` perPage
+            pg'     = max 1 $ min pages pg
+            off     = perPage * (pg' - 1)
+        
+        as <- getAlbums off perPage
+        return $ (as, pg', pages)
+    
+    let spls
+            = bindSplice "albums" (mapSplices album albums)
+            $ bindSplice "pagination" (pager pg' pgcnt)
+            $ hs
+    
+    return  (spls, "page-albums")
+    
 personPage :: TemplatePage Integer
 personPage hs pid = do
     p       <- getPerson pid

@@ -61,6 +61,8 @@ start heist = prepare $ do
                     responseBuilder status200 [("Content-Type", mimeType)] builder
 
     get "/"             ((continue . serveTemplate) indexPage)  $ true
+    get "/albums"       ((continue . serveTemplate) albumsPage) $ constant 1
+    get "/albums/:pg"   ((continue . serveTemplate) albumsPage) $ capture "pg"
     get "/album/:aid"   ((continue . serveTemplate) albumPage)  $ capture "aid"
     get "/person/:id"   ((continue . serveTemplate) personPage) $ capture "id"
     get "/show/:fid"    ((continue . serveTemplate) showPage)   $ capture "fid"

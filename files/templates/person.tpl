@@ -14,7 +14,7 @@
         <albums>
             <div class="col-xs-2">
                 <apply template="thumbnail">
-                    <bind tag="target">/album/${id}</bind>
+                    <bind tag="target">/album/${id}/</bind>
                     <bind tag="imgId">${poster}</bind>
                 </apply>
                 <name/>
@@ -24,9 +24,9 @@
 
     <h2>Random Files</h2>
 
-    <div class="row">
+    <div class="row file-thumb-list">
         <files>
-            <div class="col-xs-2">
+            <div class="col-xs-2 file-thumb">
                 <apply template="thumbnail">
                     <bind tag="target">/show/${id}</bind>
                     <bind tag="imgId">${id}</bind>

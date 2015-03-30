@@ -52,6 +52,7 @@ templates mdb heist req respond = do
 start :: HEIST.HeistState (MDB IO) -> Tree (App (MDB IO))
 start heist = prepare $ do
     let
+        tpl = continue . serveTemplate
         serveTemplate page a = do
             (hs, t) <- page heist a
             mr <- HEIST.renderTemplate hs (encodeUtf8 t)
@@ -60,9 +61,10 @@ start heist = prepare $ do
                 Just (builder, mimeType) ->
                     responseBuilder status200 [("Content-Type", mimeType)] builder
 
-    get "/"             ((continue . serveTemplate) indexPage)  $ true
-    get "/albums"       ((continue . serveTemplate) albumsPage) $ constant 1
-    get "/albums/:pg"   ((continue . serveTemplate) albumsPage) $ capture "pg"
-    get "/album/:aid"   ((continue . serveTemplate) albumPage)  $ capture "aid"
-    get "/person/:id"   ((continue . serveTemplate) personPage) $ capture "id"
-    get "/show/:fid"    ((continue . serveTemplate) showPage)   $ capture "fid"
+    get "/"                     (tpl indexPage)     $ true
+    get "/albums"               (tpl albumsPage)    $ constant 1
+    get "/albums/:pg"           (tpl albumsPage)    $ capture "pg"
+    get "/album/:aid"           (tpl albumPage)     $ capture "aid"
+    get "/album/:aid/show/:fid" (tpl albumShowPage) $ capture "aid" .&. capture "fid"
+    get "/person/:id"           (tpl personPage)    $ capture "id"
+    get "/show/:fid"            (tpl showPage)      $ capture "fid"

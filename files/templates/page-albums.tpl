@@ -18,7 +18,7 @@
         <albums>
             <div class="col-xs-2">
                 <apply template="thumbnail">
-                    <bind tag="target">/album/${id}</bind>
+                    <bind tag="target">/album/${id}/</bind>
                     <bind tag="imgId">${poster}</bind>
                 </apply>
                 <name/>

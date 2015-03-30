@@ -1,8 +1,11 @@
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TypeOperators #-}
 
 module Mdb.Templates (
-    mkHeist, indexPage, personPage, showPage, albumPage, albumsPage
+    mkHeist, indexPage, personPage, showPage,
+    
+    -- * Album related    
+    albumsPage, albumPage, albumShowPage
     ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
@@ -12,6 +15,7 @@ import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import           Heist as HEIST
 import           Heist.Interpreted as HEIST
+import           Network.Wai.Predicate
 
 import Database
 import qualified Mdb.Database.File as DBF
@@ -118,6 +122,12 @@ albumsPage hs pg = do
             $ hs
     
     return  (spls, "page-albums")
+
+-- | show a file in the context of an album
+albumShowPage :: TemplatePage (Integer ::: Integer)
+albumShowPage hs (aid ::: fid) = do
+    
+    showPage hs fid
     
 personPage :: TemplatePage Integer
 personPage hs pid = do
@@ -125,8 +135,8 @@ personPage hs pid = do
     albums  <- getPersonAlbums pid
     fids    <- getRandomPersonFiles pid
 
-    let spls =
-            (bindSplice "person" $ person p)
+    let spls
+            = (bindSplice "person" $ person p)
             $ (bindSplice "files"  $ mapSplices file fids)
             $ (bindSplice "albums" $ mapSplices album albums)
             $ hs

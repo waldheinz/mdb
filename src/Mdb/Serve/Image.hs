@@ -50,7 +50,7 @@ fileThumb fid = fileById fid >>= \file -> case T.takeWhile ( /= '/') (DBF.fileMi
 imageThumb :: MonadIO m => DBF.File -> MDB m Response
 imageThumb file = do
     thumbFile <- ensureThumb $ DBF.filePath file
-    return $ responseFile status200 [] thumbFile Nothing
+    return $ responseFile status200 [("Cache-Control", "max-age=3600")] thumbFile Nothing
 
 ensureThumb :: MonadIO m => FilePath -> MDB m FilePath
 ensureThumb relPath = do

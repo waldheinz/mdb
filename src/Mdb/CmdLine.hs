@@ -47,17 +47,22 @@ data AssignTarget
 data OptFile
     = FileAdd
     | FileAssign [AssignTarget]
+    | FileScan { scanSha1 :: Bool }
     deriving ( Show )
 
 fileOptions :: Parser Mode
 fileOptions = ModeFile
     <$> subparser
         (   command "add"       (info
-            (pure FileAdd)
+            (helper <*> pure FileAdd)
             (progDesc "add files") )
         <>  command "assign"    (info
             (helper <*> fileAssign)
             (progDesc "assign files to persons, albums, ...")
+            )
+        <>  command "scan" ( info
+            (helper <*> fileScan)
+            (progDesc "scan files for hashes, resolution, ...")
             )
         )
     <*> switch
@@ -68,6 +73,13 @@ fileOptions = ModeFile
     <*> (some . strArgument)
         ( metavar "FILES..." )
 
+fileScan :: Parser OptFile
+fileScan = FileScan
+        <$> switch
+            (   long "sha1"
+            <>  help "calculate SHA1 for files"
+            )
+        
 fileAssign :: Parser OptFile
 fileAssign = FileAssign <$> some (p <|> np <|> a <|> na) where
     p = AssignPerson <$> option auto

@@ -1,4 +1,6 @@
 
+{-# LANGUAGE OverloadedStrings #-}
+
 module Mdb.File (
   doFile
   ) where
@@ -6,8 +8,9 @@ module Mdb.File (
 import qualified Codec.FFmpeg.Decode as FFM
 import qualified Codec.FFmpeg.Probe as FFM
 import qualified Codec.FFmpeg.Types as FFM
+import Control.Applicative ( (<$>) )
 import Control.Exception.Base ( IOException )
-import Control.Monad ( forM, forM_, unless, foldM )
+import Control.Monad ( forM, forM_, unless, foldM, when )
 import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.Trans.Either
@@ -16,12 +19,14 @@ import Control.Monad.IO.Class ( MonadIO, liftIO )
 import qualified Data.Text as T
 import Data.Text.Encoding ( decodeUtf8 )
 import qualified Data.ByteString.Lazy as BSL
+import qualified Data.ByteString.Base16.Lazy as HEX
 import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
 import Data.Maybe ( catMaybes )
 import Network.Mime ( defaultMimeLookup )
 import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContents )
 import System.FilePath ( (</>) )
 import System.IO ( IOMode(..), withFile, hFileSize )
+import System.Posix.Files ( fileSize, getFileStatus )
 
 import qualified Mdb.CmdLine  as CMD
 import Database
@@ -50,6 +55,17 @@ doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
 doFile (CMD.FileAdd) rec fs = withTransaction $ mapM_ (withFiles go rec) fs where
     go fn = hasFile fn >>= \known -> unless known $ checkFile fn
 
+doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles go rec) fs where
+    go fn = withTransaction $ do
+        mfid <- fileIdFromName fn
+        case mfid of
+             Nothing    -> liftIO $ putStrLn $ "unregistered file: " ++ fn
+             Just fid   -> do
+                 when sha $ do
+                    hash <- liftIO $ BSL.readFile fn >>= return . bytestringDigest . sha1
+                    dbExecute "UPDATE file SET file_sha1=? WHERE file_id=?" (hash, fid)
+                    liftIO $ putStrLn $ fn ++ ":" ++ show (HEX.encode hash)
+    
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"
 
@@ -77,10 +93,7 @@ checkFile fn = do
     (flip catchIOError)
         (\e -> (\x -> liftIO $ putStrLn $ "caught: " ++ show x) (e :: IOException))
         $ do
-            sz <- liftIO $ withFile fn ReadMode $ \h -> do
-                -- contents <- BSL.hGetContents h
-                hFileSize h
-
+            sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
             _ <- addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
             return ()
 

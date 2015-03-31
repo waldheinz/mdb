@@ -50,7 +50,10 @@ fileThumb fid = fileById fid >>= \file -> case T.takeWhile ( /= '/') (DBF.fileMi
 imageThumb :: MonadIO m => DBF.File -> MDB m Response
 imageThumb file = do
     thumbFile <- ensureThumb $ DBF.filePath file
-    return $ responseFile status200 [("Cache-Control", "max-age=3600")] thumbFile Nothing
+    return $ responseFile status200
+        [ ("Cache-Control", "max-age=3600")
+        , ("Content-Type", "image/jpeg")
+        ] thumbFile Nothing
 
 ensureThumb :: MonadIO m => FilePath -> MDB m FilePath
 ensureThumb relPath = do
@@ -58,7 +61,7 @@ ensureThumb relPath = do
 
     let
         thumbDir    = dbDir ++ "/thumbs/normal/"
-        thumbFile   = thumbDir ++ (show $ md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack relPath) ++ ".png"
+        thumbFile   = thumbDir ++ (show $ md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack relPath) ++ ".jpg"
 
     exists <- liftIO $ doesFileExist thumbFile
 

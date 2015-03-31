@@ -27,6 +27,7 @@ executable mdb
   build-depends:
      base >=4.6 && <4.8,
      aeson,
+     base16-bytestring,
      bytestring    >= 0.10,
      directory     >= 1.2,
      either,
@@ -51,6 +52,7 @@ executable mdb
      sqlite-simple >= 0.4,
      text          >= 0.11,
      transformers,
+     unix,
      wai,
      wai-app-static,
      wai-extra,

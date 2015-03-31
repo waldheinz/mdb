@@ -211,8 +211,8 @@ fileIdFromName fn = do
     asks mdbConn >>= \c -> liftIO $ SQL.query c
         "SELECT file_id FROM file WHERE file_name=? LIMIT 1"
         (SQL.Only relPath) >>= \ids -> case ids of
-                                            [fid]   -> return $ Just $ SQL.fromOnly fid
-                                            _       -> return $ Nothing
+                                            [SQL.Only fid]  -> return $ Just fid
+                                            _               -> return $ Nothing
 
 assignFilePerson :: MonadIO m => FileId -> PersonId -> MDB m ()
 assignFilePerson fid pid = asks mdbConn >>= \c -> liftIO $ SQL.execute c

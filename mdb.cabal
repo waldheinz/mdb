@@ -25,7 +25,7 @@ executable mdb
   -- other-modules:
   -- other-extensions:
   build-depends:
-     base >=4.6 && <4.8,
+     base >=4.6,
      aeson,
      base16-bytestring,
      bytestring    >= 0.10,

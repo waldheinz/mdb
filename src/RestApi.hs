@@ -14,6 +14,7 @@ import           Data.Aeson ( ToJSON(..), (.=) )
 import qualified Data.Aeson as JSON
 import           Network.HTTP.Types ( status200 )
 import qualified Network.Wai as WAI
+import           Network.Wai.Middleware.AddHeaders ( addHeaders )
 import           Rest.Driver.Wai ( apiToApplication )
 import           Rest
 import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/) )
@@ -24,7 +25,8 @@ import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId )
 
 apiApp :: MediaDb -> WAI.Application
-apiApp mdb = apiToApplication (runMDB' mdb) api
+apiApp mdb = addHeaders [ ("Access-Control-Allow-Origin", "*") ] $
+    apiToApplication (runMDB' mdb) api
 
 api :: (Applicative m, MonadIO m) => Api (MDB m)
 api = [(mkVersion 0 1 0, Some1 api010)]

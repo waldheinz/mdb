@@ -4,21 +4,24 @@ module Main ( main ) where
 import Dict exposing ( Dict )
 import Effects exposing ( Effects, Never )
 import Html exposing ( Html )
+import Html.Attributes as HA
 import Http
 import Task
 import Signal
 import StartApp
-import TransitRouter exposing ( WithRoute )
+import TransitRouter exposing ( WithRoute, getTransition )
+import TransitStyle
 
-import Person exposing ( Person, PersonId )
+import Page.Home
 import Route exposing ( Route(..) )
 import Server exposing ( ApiList, fetchPersons )
+import Types exposing ( Person, PersonId, WithPersons )
 
 port initialPath : String
 
-type alias Model = WithRoute Route
-    { persons   : Dict PersonId Person
-    }
+type alias Model = WithPersons (WithRoute Route
+    {
+    })
 
 initialModel : Model
 initialModel =
@@ -29,6 +32,7 @@ initialModel =
 type Action
     = RouterAction (TransitRouter.Action Route)
     | UpdatePersons (Result Http.Error (ApiList (PersonId, Person)))
+    | PageHomeAction Page.Home.Action
 
 actions : Signal Action
 actions =
@@ -55,9 +59,16 @@ update a m = case a of
     RouterAction ra         -> TransitRouter.update routerConfig ra m
     UpdatePersons (Ok pl)   -> ({m | persons = Dict.fromList pl.items}, Effects.none)
     UpdatePersons (Err e)   -> Debug.log "fetching persons failed" e |> \_ -> ( m, Effects.none )
+    PageHomeAction ha       -> (Page.Home.update ha m, Effects.none)
 
 view : Signal.Address Action -> Model -> Html
-view aa m = Html.div [] [ Html.text "mainView" ]
+view aa m =
+    let
+        mainContent = case TransitRouter.getRoute m of
+            Home    -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m
+    in
+        Html.div [ HA.class "container", HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ]
+            [ mainContent ]
 
 app = StartApp.start
     { init = init initialPath

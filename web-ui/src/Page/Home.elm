@@ -1,9 +1,23 @@
 
 module Page.Home (
-    view
+    Action, view, update
     ) where
 
-import Html
+import Html exposing ( Html )
+import Html.Attributes as HA
 
-view : Html
-view = Html.div [] [ Html.text "Home" ]
+import Person
+import Types exposing ( WithPersons )
+
+type alias Model a = WithPersons a
+
+type Action = NoOp
+
+view : Signal.Address Action -> Model a -> Html
+view aa m =
+    Html.div []
+        [ Html.h1 [ HA.class "page-lead" ] [ Html.text "Persons" ]
+        , Person.viewList m ]
+
+update : Action -> Model a -> Model a
+update a m = m

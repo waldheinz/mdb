@@ -7,7 +7,8 @@ import Http
 import Json.Decode as JD exposing ( (:=) )
 import Task exposing ( Task )
 
-import Person exposing ( Person, PersonId, personListDecoder )
+import Person exposing ( personListDecoder )
+import Types exposing ( Person, PersonId )
 
 apiBaseUrl : String
 apiBaseUrl = "http://localhost:8080/api/0.1.0"

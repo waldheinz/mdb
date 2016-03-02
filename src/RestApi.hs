@@ -21,6 +21,7 @@ import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/)
 import qualified Rest.Resource as R
 
 import           Database
+import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId )
 
@@ -33,10 +34,12 @@ api = [(mkVersion 0 1 0, Some1 api010)]
 
 api010 :: (Applicative m, MonadIO m) => Router (MDB m) (MDB m)
 api010 = root
+            -/ albums
             -/ files
             -/ persons
     where
-        files = route fileResource
+        albums  = route albumResource
+        files   = route fileResource
         persons = route personResource
 
 -------------------------------------------------------------------------------
@@ -71,10 +74,35 @@ personResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithPerson m) 
 personResource = R.Resource
     { R.name        = "person"
     , R.description = "Access persons"
-    , R.schema      = withListing AllPersons $ named [] -- ("id", listing
+    , R.schema      = withListing AllPersons $ named [("id", singleBy read)] -- ("id", listing
     , R.list        = personListHandler
+    , R.get         = Nothing
     }
 
 personListHandler :: MonadIO m => PersonSelector -> ListHandler (MDB m)
 personListHandler AllPersons = mkListing xmlJsonO handler where
     handler r = lift $ listPersons (offset r) (count r)
+
+-------------------------------------------------------------------------------
+-- Albums
+-------------------------------------------------------------------------------
+
+data AlbumSelector
+    = AllAlbums
+    | AlbumWithPerson PersonId
+
+type WithAlbum m = ReaderT AlbumId (MDB m)
+
+albumResource :: (MonadIO m) => Resource (MDB m) (WithAlbum m) AlbumId AlbumSelector Void
+albumResource = R.Resource
+    { R.name        = "album"
+    , R.description = "Access Albums"
+    , R.schema      = withListing AllAlbums $ named [("withPerson", listingBy (AlbumWithPerson . read)) ]
+    , R.list        = albumListHandler
+    }
+
+--albumListHandler :: MonadIO m =>
+albumListHandler s = mkListing xmlJsonO handler where
+    handler r = lift $ case s of
+        AllAlbums           -> getAlbums (offset r) (count r)
+        AlbumWithPerson pid -> getPersonAlbums pid -- (offset r) (count r)

@@ -1,6 +1,10 @@
 
 module Person (
-    personDecoder, personListDecoder, viewList
+    -- * I/O
+    personDecoder, personListDecoder,
+
+    -- * Views
+    viewList
     ) where
 
 import Dict
@@ -21,7 +25,8 @@ viewList m =
     let
         onePerson (pid, p) =
             Html.div [ HA.class "col-xs-2" ]
-                [ Html.text p.name
+                [ Html.a [ HA.class "thumbnail" ]
+                    [ Html.text p.name ]
                 ]
     in
         Dict.toList m.persons |> List.map onePerson |> Html.div [ HA.class "row" ]

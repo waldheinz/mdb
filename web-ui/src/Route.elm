@@ -5,12 +5,16 @@ module Route (
 
 import RouteParser exposing (..)
 
+import Types exposing ( PersonId )
+
 type Route
     = Home
+    | Person PersonId
 
 routeParsers : List (Matcher Route)
 routeParsers =
-    [ static Home "/"
+    [ static    Home    "/"
+    , dyn1      Person  "/person/" int ""
     ]
 
 decode : String -> Route
@@ -18,4 +22,5 @@ decode path = RouteParser.match routeParsers path |> Maybe.withDefault Home
 
 encode : Route -> String
 encode route = case route of
-    Home -> "/"
+    Home        -> "/"
+    Person pid  -> "/person/" ++ toString pid

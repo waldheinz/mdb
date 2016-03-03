@@ -6,6 +6,7 @@ module Route (
     clickRoute
     ) where
 
+import Effects exposing ( Effects )
 import RouteParser exposing (..)
 import TransitRouter
 
@@ -49,3 +50,8 @@ clickRoute r =
             (JD.succeed ())
             (\() -> Signal.message TransitRouter.pushPathAddress path)
         ]
+
+goRoute : Route -> Effects ()
+goRoute r = encode r
+    |> Signal.send TransitRouter.pushPathAddress
+    |> Effects.task

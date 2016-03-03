@@ -6,8 +6,12 @@ module Page.Person (
 import Dict exposing ( Dict )
 import Effects exposing ( Effects )
 import Html exposing ( Html )
+import Http
 import Signal
+import Task
 
+import Album exposing (ListAction(..))
+import Server exposing ( ApiList, WhichAlbums(..) )
 import Types exposing ( Album, AlbumId, PersonId )
 
 type alias Model =
@@ -21,13 +25,24 @@ initialModel =
     , albums    = Dict.empty
     }
 
-onMount : Effects Action
-onMount = Effects.none
+type Action
+    = NoOp
+    | AlbumsLoaded (Result Http.Error (ApiList (AlbumId, Album)))
+    | AlbumListAction Album.ListAction
 
-type Action = NoOp
+onMount : PersonId -> Effects Action
+onMount pid = Server.fetchAlbums (PersonAlbums pid) |> Task.toResult |> Task.map AlbumsLoaded |> Effects.task
 
 view : Signal.Address Action -> Model -> Html
-view aa m = Html.div [] [ Html.text "Person hier" ]
+view aa m =
+    Html.div []
+        [ Html.text "Person hier"
+        , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
+        ]
 
 update : Action -> Model -> Model
-update a m = m
+update a m = case a of
+    NoOp                                -> m
+    AlbumsLoaded (Err err)              -> Debug.log "loading albums failed" err |> \_ -> m
+    AlbumsLoaded (Ok al)                -> { m | albums = Dict.fromList al.items }
+    AlbumListAction (AlbumSelected aid) -> m

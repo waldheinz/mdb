@@ -45,7 +45,7 @@ actions =
 mountRoute : Route -> Route -> Model -> (Model, Effects Action)
 mountRoute prevRoute route m = case route of
     Route.Home          -> (m, Server.fetchPersons |> Task.toResult |> Task.map UpdatePersons |> Effects.task)
-    Route.Person pid    -> (m, Page.Person.onMount |> Effects.map PagePersonAction )
+    Route.Person pid    -> (m, Page.Person.onMount pid |> Effects.map PagePersonAction )
 
 routerConfig : TransitRouter.Config Route Action Model
 routerConfig =
@@ -61,7 +61,7 @@ update a m = case a of
     UpdatePersons (Ok pl)   -> ({m | persons = Dict.fromList pl.items}, Effects.none)
     UpdatePersons (Err e)   -> Debug.log "fetching persons failed" e |> \_ -> ( m, Effects.none )
     PageHomeAction ha       -> (Page.Home.update ha m, Effects.none)
-    PagePersonAction pa     -> (m, Effects.none )
+    PagePersonAction pa     -> ({ m | personPageModel = Page.Person.update pa m.personPageModel }, Effects.none )
 
 view : Signal.Address Action -> Model -> Html
 view aa m =

@@ -37,20 +37,23 @@ type ListAction
 
 setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
 setListFilter which m =
-    ( { m | fileFilter = which }
-    , Server.fetchFiles which |> Task.toResult |> Task.map FilesLoaded |> Effects.task
-    )
+    let
+        fs' = if which == m.fileFilter then m.files else []
+    in
+        ( { m | fileFilter = which, files = fs' }
+        , Server.fetchFiles which |> Task.toResult |> Task.map FilesLoaded |> Effects.task
+        )
 
 viewList : Address ListAction -> ListModel -> Html
 viewList aa m =
     let
         oneFile (fid, f) =
-            Html.div [ HA.class "col-xs-2" ]
+            Html.div [ HA.class "file-thumb" ]
                 [ Html.a [ HA.class "thumbnail", HE.onClick aa (FileSelected fid), HA.href "#" ]
                     [ Html.img [ HA.src <| Server.fileThumbUrl fid ] [] ]
                 ]
     in
-        List.map oneFile m.files |> Html.div [ HA.class "row" ]
+        List.map oneFile m.files |> Html.div [ HA.class "thumb-container" ]
 
 updateListModel : ListAction -> ListModel -> ListModel
 updateListModel a m = case a of

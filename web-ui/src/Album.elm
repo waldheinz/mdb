@@ -12,6 +12,7 @@ import Json.Decode as JD exposing ( (:=) )
 import Signal exposing ( Address )
 
 import Types exposing ( AlbumId, Album )
+import Utils exposing ( onClick' )
 
 albumDecoder : JD.Decoder Album
 albumDecoder = JD.object1 Album
@@ -28,7 +29,7 @@ viewList aa d =
     let
         oneAlbum (aid, a) =
             Html.div [ HA.class "col-xs-2" ]
-                [ Html.a [ HA.class "thumbnail", HE.onClick aa (AlbumSelected aid), HA.href "#" ]
+                [ Html.a [ HA.class "thumbnail", onClick' aa (AlbumSelected aid), HA.href "#" ]
                     [ Html.text a.name ]
                 ]
     in

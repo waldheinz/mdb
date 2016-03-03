@@ -1,7 +1,10 @@
 
 module Types (
     -- * Persons
-    PersonId, Person, WithPersons
+    PersonId, Person, WithPersons,
+
+    -- * Albums
+    AlbumId, Album
     ) where
 
 import Dict exposing ( Dict )
@@ -16,3 +19,8 @@ type alias WithPersons a =
     { a
     | persons   : Dict PersonId Person
     }
+
+type alias AlbumId = Int
+
+type alias Album =
+    { name : String }

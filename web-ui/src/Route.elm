@@ -1,10 +1,18 @@
 
 module Route (
-    Route(..), encode, decode
+    Route(..), encode, decode,
+
+    -- * Helpers
+    clickRoute
     ) where
 
 import RouteParser exposing (..)
+import TransitRouter
 
+import Html
+import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode as JD
 import Types exposing ( PersonId )
 
 type Route
@@ -24,3 +32,20 @@ encode : Route -> String
 encode route = case route of
     Home        -> "/"
     Person pid  -> "/person/" ++ toString pid
+
+------------------------------------------------------------------------------------------------------------------------
+-- Helpers
+------------------------------------------------------------------------------------------------------------------------
+
+clickRoute : Route -> List Html.Attribute
+clickRoute r =
+    let
+        path = encode r
+    in
+        [ HA.href path
+        , HE.onWithOptions
+            "click"
+            { stopPropagation = True, preventDefault = True }
+            (JD.succeed ())
+            (\() -> Signal.message TransitRouter.pushPathAddress path)
+        ]

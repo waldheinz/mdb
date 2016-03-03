@@ -11,13 +11,16 @@ import Types exposing ( WithPersons )
 
 type alias Model a = WithPersons a
 
-type Action = NoOp
+type Action
+    = NoOp
+    | PersonListAction Person.ListAction
 
 view : Signal.Address Action -> Model a -> Html
 view aa m =
     Html.div []
         [ Html.h1 [ HA.class "page-lead" ] [ Html.text "Persons" ]
-        , Person.viewList m ]
+        , Person.viewList (Signal.forwardTo aa PersonListAction) m
+        ]
 
 update : Action -> Model a -> Model a
 update a m = m

@@ -21,13 +21,14 @@ import Types exposing ( Person, PersonId, WithPersons )
 port initialPath : String
 
 type alias Model = WithPersons (WithRoute Route
-    {
+    { personPageModel : Page.Person.Model
     })
 
 initialModel : Model
 initialModel =
   { transitRouter   = TransitRouter.empty Home
   , persons         = Dict.empty
+  , personPageModel = Page.Person.initialModel
   }
 
 type Action
@@ -41,13 +42,10 @@ actions =
   -- use mergeMany if you have other mailboxes or signals to feed into StartApp
   Signal.map RouterAction TransitRouter.actions
 
-init : String -> (Model, Effects Action)
-init path = TransitRouter.init routerConfig path initialModel
-
 mountRoute : Route -> Route -> Model -> (Model, Effects Action)
 mountRoute prevRoute route m = case route of
     Route.Home          -> (m, Server.fetchPersons |> Task.toResult |> Task.map UpdatePersons |> Effects.task)
-    Route.Person pid    -> (m, Server.fetchPerson |> Task.toResult |> Task.map PagePersonAction |> Effects.task)
+    Route.Person pid    -> (m, Page.Person.onMount |> Effects.map PagePersonAction )
 
 routerConfig : TransitRouter.Config Route Action Model
 routerConfig =
@@ -70,16 +68,16 @@ view aa m =
     let
         mainContent = case TransitRouter.getRoute m of
             Home        -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m
-            Person pid  -> Page.Person.view (Signal.forwardTo aa PagePersonAction) { personId = pid }
+            Person pid  -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
     in
         Html.div [ HA.class "container", HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ]
             [ mainContent ]
 
 app = StartApp.start
-    { init = init initialPath
-    , update = update
-    , view = view
-    , inputs = [ actions ]
+    { init      = TransitRouter.init routerConfig initialPath initialModel
+    , update    = update
+    , view      = view
+    , inputs    = [ actions ]
     }
 
 main : Signal Html

@@ -7,10 +7,12 @@ module Types (
     AlbumId, Album,
 
     -- * Files
-    FileId, File
+    FileId, File, fileDecoder, fileListDecoder,
+    WhichFiles(..)
     ) where
 
 import Dict exposing ( Dict )
+import Json.Decode as JD exposing ( (:=) )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
@@ -47,3 +49,16 @@ type alias File =
     , size      : Int
     , mimeType  : String
     }
+
+fileDecoder : JD.Decoder File
+fileDecoder = JD.object3 File
+    ( "filePath"    := JD.string )
+    ( "fileSize"    := JD.int )
+    ( "fileMime"    := JD.string )
+
+fileListDecoder : JD.Decoder (FileId, File)
+fileListDecoder = JD.object2 (,) ( "fileId" := JD.int ) fileDecoder
+
+type WhichFiles
+    = AllFiles
+    | AlbumFiles AlbumId

@@ -3,7 +3,7 @@ module Route (
     Route(..), encode, decode,
 
     -- * Helpers
-    clickRoute
+    clickRoute, goRoute
     ) where
 
 import Effects exposing ( Effects )
@@ -14,16 +14,18 @@ import Html
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
-import Types exposing ( PersonId )
+import Types exposing ( .. )
 
 type Route
     = Home
     | Person PersonId
+    | PersonAlbum PersonId AlbumId
 
 routeParsers : List (Matcher Route)
 routeParsers =
-    [ static    Home    "/"
-    , dyn1      Person  "/person/" int ""
+    [ static    Home        "/"
+    , dyn1      Person      "/person/" int ""
+    , dyn2      PersonAlbum "/person/" int "/album/" int ""
     ]
 
 decode : String -> Route
@@ -31,8 +33,9 @@ decode path = RouteParser.match routeParsers path |> Maybe.withDefault Home
 
 encode : Route -> String
 encode route = case route of
-    Home        -> "/"
-    Person pid  -> "/person/" ++ toString pid
+    Home                -> "/"
+    Person pid          -> "/person/" ++ toString pid
+    PersonAlbum pid aid -> "/person/" ++ toString pid ++ "/album/" ++ toString aid
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Helpers

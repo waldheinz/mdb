@@ -9,7 +9,7 @@ module Server (
     WhichAlbums(..), fetchAlbums,
 
     -- * Files
-    WhichFiles(..), fetchFiles
+    fetchFiles, fileThumbUrl
     ) where
 
 import Http
@@ -17,12 +17,14 @@ import Json.Decode as JD exposing ( (:=) )
 import Task exposing ( Task )
 
 import Album exposing ( albumListDecoder )
-import File exposing ( fileListDecoder )
 import Person exposing ( personListDecoder )
 import Types exposing (..)
 
+serverBaseUrl : String
+serverBaseUrl = "http://localhost:8080"
+
 apiBaseUrl : String
-apiBaseUrl = "http://localhost:8080/api/0.1.0"
+apiBaseUrl = serverBaseUrl ++ "/api/0.1.0"
 
 type alias ApiList a =
     { offset    : Int
@@ -63,10 +65,6 @@ fetchAlbums which =
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder albumListDecoder)
 
-type WhichFiles
-    = AllFiles
-    | AlbumFiles AlbumId
-
 fetchFiles : WhichFiles -> Task Http.Error (ApiList (FileId, File))
 fetchFiles which =
     let
@@ -77,3 +75,6 @@ fetchFiles which =
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder fileListDecoder)
+
+fileThumbUrl : FileId -> String
+fileThumbUrl fid = serverBaseUrl ++ "/image/thumbnail/" ++ toString fid

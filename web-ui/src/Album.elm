@@ -28,7 +28,7 @@ viewList aa d =
     let
         oneAlbum (aid, a) =
             Html.div [ HA.class "col-xs-2" ]
-                [ Html.a [ HA.class "thumbnail", HE.onClick aa (AlbumSelected aid) ]
+                [ Html.a [ HA.class "thumbnail", HE.onClick aa (AlbumSelected aid), HA.href "#" ]
                     [ Html.text a.name ]
                 ]
     in

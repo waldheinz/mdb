@@ -12,6 +12,7 @@ import StartApp
 import TransitRouter exposing ( WithRoute, getTransition )
 import TransitStyle
 
+import Page.Album
 import Page.Home
 import Page.Person
 import Route exposing ( Route(..) )
@@ -44,8 +45,15 @@ actions =
 
 mountRoute : Route -> Route -> Model -> (Model, Effects Action)
 mountRoute prevRoute route m = case route of
-    Route.Home          -> (m, Server.fetchPersons |> Task.toResult |> Task.map UpdatePersons |> Effects.task)
-    Route.Person pid    -> (m, Page.Person.onMount pid |> Effects.map PagePersonAction )
+    Route.Home                  -> (m, Server.fetchPersons |> Task.toResult |> Task.map UpdatePersons |> Effects.task)
+    Route.Person pid            -> (m, Page.Person.onMount pid |> Effects.map PagePersonAction )
+    Route.PersonAlbum pid aid   ->
+        let
+            ppm         = m.personPageModel
+            (ap', apfx) = Page.Album.onMount aid ppm.albumPage
+            ppm'        = { ppm | albumPage = ap' }
+        in
+            ( { m | personPageModel = ppm' }, Effects.map (Page.Person.AlbumAction >> PagePersonAction) apfx)
 
 routerConfig : TransitRouter.Config Route Action Model
 routerConfig =
@@ -61,14 +69,20 @@ update a m = case a of
     UpdatePersons (Ok pl)   -> ({m | persons = Dict.fromList pl.items}, Effects.none)
     UpdatePersons (Err e)   -> Debug.log "fetching persons failed" e |> \_ -> ( m, Effects.none )
     PageHomeAction ha       -> (Page.Home.update ha m, Effects.none)
-    PagePersonAction pa     -> ({ m | personPageModel = Page.Person.update pa m.personPageModel }, Effects.none )
+    PagePersonAction pa     ->
+        let
+            (pp', ppfx) = Page.Person.update pa m.personPageModel
+        in
+            ({ m | personPageModel = pp' }, Effects.map PagePersonAction ppfx )
 
 view : Signal.Address Action -> Model -> Html
 view aa m =
     let
         mainContent = case TransitRouter.getRoute m of
-            Home        -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m
-            Person pid  -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
+            Home                -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m
+            Person pid          -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
+            PersonAlbum pid aid -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
+
     in
         Html.div [ HA.class "container", HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ]
             [ mainContent ]

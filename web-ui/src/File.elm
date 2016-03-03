@@ -1,17 +1,59 @@
 
 module File (
-    fileDecoder, fileListDecoder
+    -- * File Listings
+    ListModel, mkListModel, ListAction, viewList, updateListModel, setListFilter
     ) where
 
+import Effects exposing ( Effects )
+import Html exposing ( Html )
+import Html.Attributes as HA
+import Html.Events as HE
+import Http
 import Json.Decode as JD exposing ( (:=) )
+import Signal exposing ( Address )
+import Task
 
-import Types exposing ( FileId, File )
+import Server
+import Types exposing (..)
 
-fileDecoder : JD.Decoder File
-fileDecoder = JD.object3 File
-    ( "filePath"    := JD.string )
-    ( "fileSize"    := JD.int )
-    ( "fileMime"    := JD.string )
+------------------------------------------------------------------------------------------------------------------------
+-- Listings
+------------------------------------------------------------------------------------------------------------------------
 
-fileListDecoder : JD.Decoder (FileId, File)
-fileListDecoder = JD.object2 (,) ( "fileId" := JD.int ) fileDecoder
+type alias ListModel =
+    { files         : List (FileId, File)
+    , fileFilter    : WhichFiles
+    }
+
+mkListModel : WhichFiles -> ListModel
+mkListModel which =
+    { files         = []
+    , fileFilter    = which
+    }
+
+type ListAction
+    = FileSelected FileId
+    | FilesLoaded (Result Http.Error (Server.ApiList (FileId, File)))
+
+setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
+setListFilter which m =
+    ( { m | fileFilter = which }
+    , Server.fetchFiles which |> Task.toResult |> Task.map FilesLoaded |> Effects.task
+    )
+
+viewList : Address ListAction -> ListModel -> Html
+viewList aa m =
+    let
+        oneFile (fid, f) =
+            Html.div [ HA.class "col-xs-2" ]
+                [ Html.a [ HA.class "thumbnail", HE.onClick aa (FileSelected fid), HA.href "#" ]
+                    [ Html.img [ HA.src <| Server.fileThumbUrl fid ] [] ]
+                ]
+    in
+        List.map oneFile m.files |> Html.div [ HA.class "row" ]
+
+updateListModel : ListAction -> ListModel -> ListModel
+updateListModel a m = case a of
+    FileSelected _      -> m
+    FilesLoaded (Err x) -> Debug.log "failed loading files" x |> \_ -> m
+    FilesLoaded (Ok l)  -> { m | files = l.items }

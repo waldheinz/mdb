@@ -46,7 +46,9 @@ api010 = root
 -- Files
 -------------------------------------------------------------------------------
 
-data FileListSelector = AllFiles
+data FileListSelector
+    = AllFiles
+    | FilesInAlbum AlbumId
 
 type WithFile m = ReaderT FileId m
 
@@ -54,13 +56,15 @@ fileResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithFile m) File
 fileResource = R.Resource
     { R.name        = "file"
     , R.description = "Access file info"
-    , R.schema      = withListing AllFiles $ named [] -- ("id", listing
+    , R.schema      = withListing AllFiles $ named [("inAlbum", listingBy (FilesInAlbum . read))]
     , R.list        = fileListHandler
     }
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (MDB m)
 fileListHandler AllFiles = mkListing xmlJsonO handler where
     handler r = lift $ listFiles (offset r) (count r)
+fileListHandler (FilesInAlbum aid) = mkListing xmlJsonO handler where
+    handler _ = lift $ albumFiles aid
 
 -------------------------------------------------------------------------------
 -- Persons
@@ -97,11 +101,11 @@ albumResource :: (MonadIO m) => Resource (MDB m) (WithAlbum m) AlbumId AlbumSele
 albumResource = R.Resource
     { R.name        = "album"
     , R.description = "Access Albums"
-    , R.schema      = withListing AllAlbums $ named [("withPerson", listingBy (AlbumWithPerson . read)) ]
+    , R.schema      = withListing AllAlbums $ named [("withPerson", listingBy (AlbumWithPerson . read))]
     , R.list        = albumListHandler
     }
 
---albumListHandler :: MonadIO m =>
+albumListHandler :: MonadIO m => AlbumSelector -> ListHandler (MDB m)
 albumListHandler s = mkListing xmlJsonO handler where
     handler r = lift $ case s of
         AllAlbums           -> getAlbums (offset r) (count r)

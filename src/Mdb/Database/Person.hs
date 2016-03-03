@@ -11,7 +11,6 @@ module Mdb.Database.Person (
     PersonId, Person(..)
     ) where
 
-import           Control.Applicative ( (<*>), (<$>) )
 import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )

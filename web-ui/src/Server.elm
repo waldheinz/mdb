@@ -6,7 +6,10 @@ module Server (
     fetchPersons,
 
     -- * Albums
-    WhichAlbums(..), fetchAlbums
+    WhichAlbums(..), fetchAlbums,
+
+    -- * Files
+    WhichFiles(..), fetchFiles
     ) where
 
 import Http
@@ -14,8 +17,9 @@ import Json.Decode as JD exposing ( (:=) )
 import Task exposing ( Task )
 
 import Album exposing ( albumListDecoder )
+import File exposing ( fileListDecoder )
 import Person exposing ( personListDecoder )
-import Types exposing ( Album, AlbumId, Person, PersonId )
+import Types exposing (..)
 
 apiBaseUrl : String
 apiBaseUrl = "http://localhost:8080/api/0.1.0"
@@ -58,3 +62,18 @@ fetchAlbums which =
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder albumListDecoder)
+
+type WhichFiles
+    = AllFiles
+    | AlbumFiles AlbumId
+
+fetchFiles : WhichFiles -> Task Http.Error (ApiList (FileId, File))
+fetchFiles which =
+    let
+        endpoint = case which of
+            AllFiles        -> "/file"
+            AlbumFiles aid  -> "/file/inAlbum/" ++ toString aid
+    in
+        defaultGetRequest endpoint
+            |> Http.send Http.defaultSettings
+            |> Http.fromJson (listDecoder fileListDecoder)

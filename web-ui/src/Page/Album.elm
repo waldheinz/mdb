@@ -13,12 +13,14 @@ import Types exposing (..)
 
 type alias Model =
     { albumId   : AlbumId
+    , album     : Maybe Album
     , files     : File.ListModel
     }
 
 initialModel : Model
 initialModel =
     { albumId   = 0
+    , album     = Nothing
     , files     = File.mkListModel AllFiles
     }
 

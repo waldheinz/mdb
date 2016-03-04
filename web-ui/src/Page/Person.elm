@@ -38,8 +38,11 @@ type Action
 noOp : Effects () -> Effects Action
 noOp = Effects.map (\() -> NoOp)
 
-onMount : PersonId -> Effects Action
-onMount pid = Server.fetchAlbums (PersonAlbums pid) |> Task.toResult |> Task.map AlbumsLoaded |> Effects.task
+onMount : PersonId -> Model -> (Model, Effects Action)
+onMount pid m =
+    ( { m | personId = pid }
+    , Server.fetchAlbums (PersonAlbums pid) |> Task.toResult |> Task.map AlbumsLoaded |> Effects.task
+    )
 
 view : Signal.Address Action -> Model -> Html
 view aa m =

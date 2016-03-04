@@ -46,7 +46,12 @@ actions =
 mountRoute : Route -> Route -> Model -> (Model, Effects Action)
 mountRoute prevRoute route m = case route of
     Route.Home                  -> (m, Server.fetchPersons |> Task.toResult |> Task.map UpdatePersons |> Effects.task)
-    Route.Person pid            -> (m, Page.Person.onMount pid |> Effects.map PagePersonAction )
+    Route.Person pid            ->
+        let
+            (pp', ppfx) = Page.Person.onMount pid m.personPageModel
+        in
+            ( { m | personPageModel = pp' }, ppfx |> Effects.map PagePersonAction )
+
     Route.PersonAlbum pid aid   ->
         let
             ppm         = m.personPageModel

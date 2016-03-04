@@ -4,7 +4,7 @@ module Types (
     PersonId, Person, WithPersons,
 
     -- * Albums
-    AlbumId, Album,
+    AlbumId, Album, nonExistingAlbum,
 
     -- * Files
     FileId, File, fileDecoder, fileListDecoder,

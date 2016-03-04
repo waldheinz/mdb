@@ -101,9 +101,18 @@ albumResource :: (MonadIO m) => Resource (MDB m) (WithAlbum m) AlbumId AlbumSele
 albumResource = R.Resource
     { R.name        = "album"
     , R.description = "Access Albums"
-    , R.schema      = withListing AllAlbums $ named [("withPerson", listingBy (AlbumWithPerson . read))]
+    , R.schema      = withListing AllAlbums $ named schemas
+    , R.get         = Just albumHandler
     , R.list        = albumListHandler
     }
+    where
+        schemas =
+            [ ("withPerson" , listingBy (AlbumWithPerson . read))
+            , ( "byId"      , singleBy read)
+            ]
+
+albumHandler :: MonadIO m => Handler (WithAlbum m)
+albumHandler = mkIdHandler xmlJsonO $ \_ aid -> lift $ getAlbum aid
 
 albumListHandler :: MonadIO m => AlbumSelector -> ListHandler (MDB m)
 albumListHandler s = mkListing xmlJsonO handler where

@@ -20,13 +20,12 @@ module Database (
     getPersonAlbums, getRandomPersonFiles,
 
     -- * albums
-    addAlbum, getAlbums,
-    
+    addAlbum, getAlbum, getAlbums,
+
     -- * raw queries
     dbExecute, dbQuery, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
 
-import Control.Applicative ( Applicative )
 import Control.Monad ( forM_ )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
@@ -292,9 +291,14 @@ addAlbum :: MonadIO m => String -> MDB m AlbumId
 addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
     >> dbLastRowId >>= return . fromIntegral
 
+getAlbum :: MonadIO m => AlbumId -> MDB m Album
+getAlbum aid = dbQuery
+    (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
+    <>  "WHERE a.album_id = ?" )
+    (SQL.Only aid)  >>= return . head
+
 getAlbums :: MonadIO m => Int -> Int -> MDB m [Album]
 getAlbums off cnt = dbQuery
     (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
     <>  "ORDER BY a.album_name LIMIT ?,?")
     (off, cnt)
-    

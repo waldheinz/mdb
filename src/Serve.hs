@@ -22,6 +22,7 @@ import           Heist as HEIST
 import           Heist.Interpreted as HEIST
 
 import Mdb.Serve.Image
+import Mdb.Serve.Video
 import Mdb.Templates
 import Database
 import Paths_mdb ( getDataDir )
@@ -38,6 +39,7 @@ mkApp mdb = do
                 mount "api"     (apiApp mdb)
             <|> mount "image"   (imageApp mdb)
             <|> mount "static"  static
+            <|> mount "video"   (videoApp mdb)
             <|> mountRoot       (templates mdb heist)
 
 staticFiles :: MonadIO m => m Application

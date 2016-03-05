@@ -57,4 +57,8 @@ update a m = case a of
     AlbumsLoaded (Err err)              -> Debug.log "loading albums failed" err |> \_ -> (m, Effects.none)
     AlbumsLoaded (Ok al)                -> ( { m | albums = Dict.fromList al.items }, Effects.none )
     AlbumListAction (AlbumSelected aid) -> ( m, Route.goRoute (Route.PersonAlbum m.personId aid) |> noOp )
-    AlbumAction aa                      -> ( { m | albumPage = Page.Album.update aa m.albumPage }, Effects.none )
+    AlbumAction aa                      ->
+        let
+            (ap', apfx) = Page.Album.update aa m.albumPage
+        in
+            ( { m | albumPage = ap' }, Effects.map AlbumAction apfx )

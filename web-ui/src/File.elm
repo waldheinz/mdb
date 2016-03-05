@@ -1,7 +1,7 @@
 
 module File (
     -- * File Listings
-    ListModel, mkListModel, ListAction, viewList, updateListModel, setListFilter
+    ListModel, mkListModel, ListAction(ImageSelected, VideoSelected), viewList, updateListModel, setListFilter
     ) where
 
 import Effects exposing ( Effects )
@@ -11,10 +11,12 @@ import Html.Events as HE
 import Http
 import Json.Decode as JD exposing ( (:=) )
 import Signal exposing ( Address )
+import String
 import Task
 
 import Server
 import Types exposing (..)
+import Utils
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Listings
@@ -32,7 +34,8 @@ mkListModel which =
     }
 
 type ListAction
-    = FileSelected FileId
+    = ImageSelected FileId
+    | VideoSelected FileId
     | FilesLoaded (Result Http.Error (Server.ApiList (FileId, File)))
 
 setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
@@ -48,15 +51,21 @@ viewList : Address ListAction -> ListModel -> Html
 viewList aa m =
     let
         oneFile (fid, f) =
-            Html.div [ HA.class "file-thumb" ]
-                [ Html.a [ HA.class "", HE.onClick aa (FileSelected fid), HA.href <| Server.imageUrl fid ]
-                    [ Html.img [ HA.src <| Server.fileThumbUrl fid ] [] ]
-                ]
+            let
+                clickWhat = if String.startsWith "image/" f.mimeType
+                    then ImageSelected fid
+                    else VideoSelected fid
+            in
+                Html.div [ HA.class "file-thumb" ]
+                    [ Html.a [ HA.class "", Utils.onClick' aa clickWhat, HA.href <| Server.imageUrl fid ]
+                        [ Html.img [ HA.src <| Server.fileThumbUrl fid ] [] ]
+                    ]
     in
         List.map oneFile m.files |> Html.div [ HA.class "thumb-container" ]
 
 updateListModel : ListAction -> ListModel -> ListModel
 updateListModel a m = case a of
-    FileSelected _      -> m
+    ImageSelected _      -> m
+    VideoSelected _      -> m
     FilesLoaded (Err x) -> Debug.log "failed loading files" x |> \_ -> m
     FilesLoaded (Ok l)  -> { m | files = l.items }

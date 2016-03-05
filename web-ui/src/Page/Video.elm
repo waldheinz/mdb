@@ -6,8 +6,10 @@ module Page.Video (
 
 import Effects exposing ( Effects )
 import Html exposing ( Html )
+import Html.Attributes as HA
 import Signal exposing ( Address )
 
+import Server
 import Types exposing (..)
 
 type alias Model =
@@ -20,7 +22,10 @@ initialModel =
     }
 
 view : Address Action -> Model -> Html
-view aa m = Html.text "Video hier"
+view aa m =
+    Html.video [ HA.src <| Server.videoStreamUrl m.fileId, HA.controls True ]
+        [ Html.text "Kein Video hier?" ]
+
 
 type Action =
     NoOp

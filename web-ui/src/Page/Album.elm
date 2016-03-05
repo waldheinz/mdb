@@ -11,6 +11,7 @@ import Signal exposing ( Address )
 
 import File
 import Person
+import Route
 import Types exposing (..)
 
 type alias Model =
@@ -33,6 +34,9 @@ type Action
     | FileListAction File.ListAction
     | PersonListAction Person.ListAction
 
+noOp : Effects () -> Effects Action
+noOp = Effects.map (\() -> NoOp)
+
 onMount : AlbumId -> Model-> (Model, Effects Action)
 onMount aid m =
     let
@@ -51,8 +55,10 @@ view aa m =
         , File.viewList (Signal.forwardTo aa FileListAction) m.files
         ]
 
-update : Action -> Model -> Model
+update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
-    NoOp    -> m
-    FileListAction la       -> { m | files = File.updateListModel la m.files }
-    PersonListAction pla    -> { m | persons = Person.updateListModel pla m.persons }
+    NoOp                                -> (m, Effects.none)
+    FileListAction (File.VideoSelected fid) ->
+        (m, Route.goRoute (Route.Video fid) |> noOp)
+    FileListAction la                   -> ({ m | files = File.updateListModel la m.files }, Effects.none)
+    PersonListAction pla                -> ({ m | persons = Person.updateListModel pla m.persons }, Effects.none)

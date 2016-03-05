@@ -77,6 +77,7 @@ fetchFiles which =
         endpoint = case which of
             AllFiles        -> "/file"
             AlbumFiles aid  -> "/file/inAlbum/" ++ toString aid
+            PersonNoAlbum pid   -> "/file/personNoAlbum/" ++ toString pid
     in
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings

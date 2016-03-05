@@ -67,3 +67,4 @@ fileListDecoder = JD.object2 (,) ( "fileId" := JD.int ) fileDecoder
 type WhichFiles
     = AllFiles
     | AlbumFiles AlbumId
+    | PersonNoAlbum PersonId

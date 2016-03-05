@@ -1,7 +1,7 @@
 
 module Types (
     -- * Persons
-    PersonId, Person, WithPersons,
+    PersonId, Person, PersonFilter(..), personDecoder, personListDecoder,
 
     -- * Albums
     AlbumId, Album,
@@ -24,10 +24,15 @@ type alias Person =
     { name : String
     }
 
-type alias WithPersons a =
-    { a
-    | persons   : Dict PersonId Person
-    }
+type PersonFilter
+    = AllPersons
+    | AlbumPersons AlbumId  -- ^ persons in that album
+
+personDecoder : JD.Decoder Person
+personDecoder = JD.object1 Person ( "personName" := JD.string )
+
+personListDecoder : JD.Decoder (PersonId, Person)
+personListDecoder = JD.object2 (,) ("personId" := JD.int) personDecoder
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Albums

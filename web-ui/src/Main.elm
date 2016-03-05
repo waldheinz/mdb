@@ -17,24 +17,24 @@ import Page.Home
 import Page.Person
 import Route exposing ( Route(..) )
 import Server exposing ( ApiList, fetchPersons )
-import Types exposing ( Person, PersonId, WithPersons )
+import Types exposing ( .. )
 
 port initialPath : String
 
-type alias Model = WithPersons (WithRoute Route
-    { personPageModel : Page.Person.Model
-    })
+type alias Model = WithRoute Route
+    { homePageModel     : Page.Home.Model
+    , personPageModel   : Page.Person.Model
+    }
 
 initialModel : Model
 initialModel =
   { transitRouter   = TransitRouter.empty Home
-  , persons         = Dict.empty
+  , homePageModel   = Page.Home.initialModel
   , personPageModel = Page.Person.initialModel
   }
 
 type Action
     = RouterAction (TransitRouter.Action Route)
-    | UpdatePersons (Result Http.Error (ApiList (PersonId, Person)))
     | PageHomeAction Page.Home.Action
     | PagePersonAction Page.Person.Action
 
@@ -45,7 +45,12 @@ actions =
 
 mountRoute : Route -> Route -> Model -> (Model, Effects Action)
 mountRoute prevRoute route m = case route of
-    Route.Home                  -> (m, Server.fetchPersons |> Task.toResult |> Task.map UpdatePersons |> Effects.task)
+    Route.Home                  ->
+        let
+            (hp', hpfx) = Page.Home.onMount m.homePageModel
+        in
+            ( { m | homePageModel = hp' }, Effects.map PageHomeAction hpfx )
+
     Route.Person pid            ->
         let
             (pp', ppfx) = Page.Person.onMount pid m.personPageModel
@@ -71,9 +76,7 @@ routerConfig =
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     RouterAction ra         -> TransitRouter.update routerConfig ra m
-    UpdatePersons (Ok pl)   -> ({m | persons = Dict.fromList pl.items}, Effects.none)
-    UpdatePersons (Err e)   -> Debug.log "fetching persons failed" e |> \_ -> ( m, Effects.none )
-    PageHomeAction ha       -> (Page.Home.update ha m, Effects.none)
+    PageHomeAction ha       -> ( { m | homePageModel = Page.Home.update ha m.homePageModel }, Effects.none)
     PagePersonAction pa     ->
         let
             (pp', ppfx) = Page.Person.update pa m.personPageModel
@@ -84,7 +87,7 @@ view : Signal.Address Action -> Model -> Html
 view aa m =
     let
         mainContent = case TransitRouter.getRoute m of
-            Home                -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m
+            Home                -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
             Person pid          -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
             PersonAlbum pid aid -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
 

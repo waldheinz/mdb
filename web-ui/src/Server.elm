@@ -17,7 +17,6 @@ import Json.Decode as JD exposing ( (:=) )
 import Task exposing ( Task )
 
 import Album exposing ( albumListDecoder )
-import Person exposing ( personListDecoder )
 import Types exposing (..)
 
 serverBaseUrl : String
@@ -46,9 +45,16 @@ defaultGetRequest endpoint =
     , body      = Http.empty
     }
 
-fetchPersons : Task Http.Error (ApiList (PersonId, Person))
-fetchPersons = Http.fromJson (listDecoder personListDecoder) (Http.send Http.defaultSettings
-    (defaultGetRequest "/person"))
+fetchPersons : PersonFilter -> Task Http.Error (ApiList (PersonId, Person))
+fetchPersons which =
+    let
+        endpoint = case which of
+            AllPersons          -> "/person"
+            AlbumPersons aid    -> "/person/inAlbum/" ++ toString aid
+    in
+        defaultGetRequest endpoint
+            |> Http.send Http.defaultSettings
+            |> Http.fromJson (listDecoder personListDecoder)
 
 type WhichAlbums
     = AllAlbums

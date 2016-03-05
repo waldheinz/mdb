@@ -1,32 +1,50 @@
 
 module Person (
-    -- * I/O
-    personDecoder, personListDecoder,
-
-    -- * Views
-    ListAction, viewList
+    -- * List
+    ListModel, initialListModel, viewList,
+    ListAction, setListFilter, updateListModel
     ) where
 
 import Dict
+import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Json.Decode as JD exposing ( (:=) )
 import Signal exposing ( Address )
+import Task
 
 import Route exposing ( clickRoute )
-import Types exposing ( PersonId, Person, WithPersons )
+import Server exposing ( ApiList )
+import Types exposing ( .. )
 
-personDecoder : JD.Decoder Person
-personDecoder = JD.object1 Person ( "personName" := JD.string )
+type alias ListModel =
+    { persons       : List (PersonId, Person)
+    , personFilter  : PersonFilter
+    }
 
-personListDecoder : JD.Decoder (PersonId, Person)
-personListDecoder = JD.object2 (,) ("personId" := JD.int) personDecoder
+initialListModel : ListModel
+initialListModel =
+    { persons       = []
+    , personFilter  = AllPersons
+    }
 
 type ListAction
     = PersonSelected PersonId
+    | PersonsLoaded (Result Http.Error (ApiList (PersonId, Person)))
 
-viewList : Address ListAction -> WithPersons a -> Html
+setListFilter : PersonFilter -> ListModel -> (ListModel, Effects ListAction)
+setListFilter which m =
+    let
+        fs' = if which == m.personFilter then m.persons else []
+    in
+        ( { m | personFilter = which, persons = fs' }
+        , Server.fetchPersons which |> Task.toResult |> Task.map PersonsLoaded |> Effects.task
+        )
+
+
+viewList : Address ListAction -> ListModel -> Html
 viewList aa m =
     let
         onePerson (pid, p) =
@@ -35,4 +53,10 @@ viewList aa m =
                     [ Html.text p.name ]
                 ]
     in
-        Dict.toList m.persons |> List.map onePerson |> Html.div [ HA.class "row" ]
+        List.map onePerson m.persons |> Html.div [ HA.class "row" ]
+
+updateListModel : ListAction -> ListModel -> ListModel
+updateListModel a m = case a of
+    PersonSelected _ -> m -- handled externally
+    PersonsLoaded (Ok pl)   -> { m | persons = pl.items }
+    PersonsLoaded (Err ex)  -> Debug.log "loading persons failed" ex |> \_ -> m

@@ -64,7 +64,6 @@ ensureThumb relPath = do
         thumbFile   = thumbDir ++ (show $ md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack relPath) ++ ".jpg"
 
     exists <- liftIO $ doesFileExist thumbFile
-
     unless exists $ do
         src <- fileAbs relPath
         liftIO $ createDirectoryIfMissing True thumbDir

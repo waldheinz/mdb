@@ -49,6 +49,7 @@ api010 = root
 data FileListSelector
     = AllFiles
     | FilesInAlbum AlbumId
+    | PersonNoAlbum PersonId
 
 type WithFile m = ReaderT FileId m
 
@@ -56,15 +57,21 @@ fileResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithFile m) File
 fileResource = R.Resource
     { R.name        = "file"
     , R.description = "Access file info"
-    , R.schema      = withListing AllFiles $ named [("inAlbum", listingBy (FilesInAlbum . read))]
+    , R.schema      = withListing AllFiles schemas
     , R.list        = fileListHandler
-    }
+    } where
+        schemas = named
+            [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
+            , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
+            ]
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (MDB m)
 fileListHandler AllFiles = mkListing xmlJsonO handler where
     handler r = lift $ listFiles (offset r) (count r)
 fileListHandler (FilesInAlbum aid) = mkListing xmlJsonO handler where
     handler _ = lift $ albumFiles aid
+fileListHandler (PersonNoAlbum pid) = mkListing xmlJsonO handler where
+    handler _ = lift $ getRandomPersonFiles pid
 
 -------------------------------------------------------------------------------
 -- Persons

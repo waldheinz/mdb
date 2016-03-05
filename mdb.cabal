@@ -21,14 +21,17 @@ data-files:
 
 executable mdb
   main-is:             Main.hs
-  ghc-options:         -Wall -O2 -threaded -with-rtsopts=-N
+  ghc-options:         -Wall -threaded -with-rtsopts=-N
   -- other-modules:
   -- other-extensions:
   build-depends:
      base >=4.6,
      aeson,
      base16-bytestring,
+     blaze-builder,
      bytestring    >= 0.10,
+     conduit,
+     conduit-extra,
      directory     >= 1.2,
      either,
      exceptions,

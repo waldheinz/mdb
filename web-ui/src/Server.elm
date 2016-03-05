@@ -9,7 +9,7 @@ module Server (
     WhichAlbums(..), fetchAlbums,
 
     -- * Files
-    fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl
+    fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl
     ) where
 
 import Http
@@ -89,4 +89,7 @@ imageUrl : FileId -> String
 imageUrl fid = serverBaseUrl ++ "/image/image/" ++ toString fid
 
 videoStreamUrl : FileId -> String
-videoStreamUrl fid = serverBaseUrl ++ "/video/streamDirect/" ++ toString fid
+videoStreamUrl fid = serverBaseUrl ++ "/video/" ++ toString fid ++ "/stream"
+
+videoFrameUrl : FileId -> Float -> String
+videoFrameUrl fid ts = serverBaseUrl ++ "/video/" ++ toString fid ++ "/frame?ts=" ++ toString ts

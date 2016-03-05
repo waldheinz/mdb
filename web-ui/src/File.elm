@@ -52,13 +52,14 @@ viewList aa m =
     let
         oneFile (fid, f) =
             let
-                clickWhat = if String.startsWith "image/" f.mimeType
-                    then ImageSelected fid
-                    else VideoSelected fid
+                (clickWhat, preview) = if String.startsWith "image/" f.mimeType
+                    then ( ImageSelected fid, Server.fileThumbUrl fid )
+                    else ( VideoSelected fid, Server.videoFrameUrl fid 200 )
+
             in
                 Html.div [ HA.class "file-thumb" ]
                     [ Html.a [ HA.class "", Utils.onClick' aa clickWhat, HA.href <| Server.imageUrl fid ]
-                        [ Html.img [ HA.src <| Server.fileThumbUrl fid ] [] ]
+                        [ Html.img [ HA.src preview  ] [] ]
                     ]
     in
         List.map oneFile m.files |> Html.div [ HA.class "thumb-container" ]

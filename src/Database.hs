@@ -85,6 +85,7 @@ dbTables =
     [ "album"
     , "album_file"
     , "file"
+    , "video"
     , "stream"
     , "stream_metadata"
     , "person"
@@ -103,10 +104,10 @@ initDb p = do
             createDirectory $ dbDir p
             SQL.withConnection (dbDir p </> "index.db") $ \c ->
                 forM_ dbTables $ \table -> do
-                initFn <- getDataFileName $ "files/sql/create-table-" ++ table ++ ".sql"
-                putStrLn $ "creating table " ++ table
-                q <- TIO.readFile initFn
-                SQL.execute_ c $ SQL.Query q
+                    initFn <- getDataFileName $ "files/sql/create-table-" ++ table ++ ".sql"
+                    putStrLn $ "creating table " ++ table
+                    q <- TIO.readFile initFn
+                    SQL.execute_ c $ SQL.Query q
 
 openDb :: MonadIO m => FilePath -> m MediaDb
 openDb dir = do

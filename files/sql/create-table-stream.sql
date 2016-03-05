@@ -5,5 +5,5 @@ CREATE TABLE stream
     , stream_codec      TEXT
     , stream_bit_rate   INTEGER
     , PRIMARY KEY (stream_id, file_id)
+    , FOREIGN KEY (file_id) REFERENCES file(file_id)
     );
-    

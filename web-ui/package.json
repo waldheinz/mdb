@@ -5,7 +5,7 @@
   "scripts": {
     "start": "npm run build-elm && npm run start-server",
     "build-elm": "elm make src/Main.elm --output dist/elm.js",
-    "start-server": "./node_modules/local-web-server/bin/cli.js -s index.html"
+    "start-server": "./node_modules/local-web-server/bin/cli.js --spa index.html"
   },
   "author": "Matthias Treydte",
   "homepage": "https://github.com/etaque/elm-transit-router#readme",

@@ -49,7 +49,7 @@ viewList aa m =
     let
         oneFile (fid, f) =
             Html.div [ HA.class "file-thumb" ]
-                [ Html.a [ HA.class "", HE.onClick aa (FileSelected fid), HA.href "#" ]
+                [ Html.a [ HA.class "", HE.onClick aa (FileSelected fid), HA.href <| Server.imageUrl fid ]
                     [ Html.img [ HA.src <| Server.fileThumbUrl fid ] [] ]
                 ]
     in

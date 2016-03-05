@@ -17,10 +17,10 @@ module Database (
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
-    getPersonAlbums, getRandomPersonFiles,
+    getRandomPersonFiles, getAlbumPersons,
 
     -- * albums
-    addAlbum, getAlbum, getAlbums,
+    addAlbum, getAlbum, getAlbums, getPersonAlbums,
 
     -- * raw queries
     dbExecute, dbQuery, dbQuery_, dbLastRowId, SQL.Only(..)
@@ -274,6 +274,19 @@ getRandomPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
     )
     (pid, pid)
 
+getAlbumPersons :: MonadIO m => AlbumId -> MDB m [Person]
+getAlbumPersons aid = dbQuery
+    ( "SELECT DISTINCT p.person_id, p.person_name FROM person p "
+    <>  "NATURAL JOIN person_file "
+    <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
+    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file "
+    <>          "WHERE person_file.person_id = p.person_id AND album_file.album_id = ?)"
+    ) (SQL.Only aid)
+
+----------------------------------------------------------
+-- albums
+----------------------------------------------------------
+
 -- | Get all albums containing files assigned to the given person.
 getPersonAlbums :: MonadIO m => PersonId -> MDB m [Album]
 getPersonAlbums pid = dbQuery
@@ -282,10 +295,6 @@ getPersonAlbums pid = dbQuery
     <>  "NATURAL JOIN album_file "
     <>  "WHERE person_file.person_id = ?" )
     (SQL.Only pid)
-
-----------------------------------------------------------
--- albums
-----------------------------------------------------------
 
 addAlbum :: MonadIO m => String -> MDB m AlbumId
 addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)

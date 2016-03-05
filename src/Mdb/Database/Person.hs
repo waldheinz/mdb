@@ -45,3 +45,7 @@ type instance PF Person = PFPerson
 
 instance XmlPickler Person where
     xpickle = gxpickle
+
+----------------------
+-- SQL statements
+----------------------

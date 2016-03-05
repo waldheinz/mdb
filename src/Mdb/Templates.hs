@@ -3,8 +3,8 @@
 
 module Mdb.Templates (
     mkHeist, indexPage, personPage, showPage,
-    
-    -- * Album related    
+
+    -- * Album related
     albumsPage, albumPage, albumShowPage
     ) where
 
@@ -42,7 +42,7 @@ album a = do
         <> ("id"        HEIST.## (T.pack $ show $ A.albumId a))
         <> ("poster"    HEIST.## (T.pack $ show poster))
         )
-        
+
 file :: Monad m => DBF.File -> Splice m
 file f = runChildrenWithText $
         ("id"   HEIST.## (T.pack $ show $ DBF.fileId f))
@@ -70,27 +70,27 @@ indexPage hs _ = return (bindSplice "persons" personsSplice hs, "index")
 
 albumPage :: TemplatePage A.AlbumId
 albumPage hs aid = do
-    
+
     (files, title, persons) <- withTransaction $ do
         fs <- albumFiles aid
         [(Only at)] <- dbQuery "SELECT album_name FROM album WHERE album_id = ?" (Only aid)
-        ps <- dbQuery 
+        ps <- dbQuery
             ( "SELECT DISTINCT p.person_id, p.person_name FROM person p "
             <>  "NATURAL JOIN person_file "
             <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
             <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = p.person_id AND album_file.album_id = ? "
             <>  ")"
             ) (Only aid)
-            
+
         return (fs, at, ps)
-            
+
     let spls
             = (bindSplice "files"   $ mapSplices file files)
             $ (bindSplice "file-count"  $ textSplice (T.pack . show . length $ files))
             $ (bindSplice "name"    $ textSplice title)
             $ (bindSplice "persons" $ mapSplices person persons)
             $ hs
-    
+
     return (spls, "album")
 
 pager :: Monad n => Int -> Int -> Splice n
@@ -103,32 +103,32 @@ pager pg pgcnt = runChildrenWith ("pages" HEIST.## (mapSplices page [1..pgcnt]))
 
 albumsPage :: TemplatePage Int
 albumsPage hs pg = do
-        
+
     (albums, pg', pgcnt) <- withTransaction $ do
         [(Only acnt)] <- dbQuery_ "SELECT COUNT(1) from album"
-        
+
         let
             perPage = 6 * 4
             pages   = (acnt + perPage - 1) `div` perPage
             pg'     = max 1 $ min pages pg
             off     = perPage * (pg' - 1)
-        
+
         as <- getAlbums off perPage
         return $ (as, pg', pages)
-    
+
     let spls
             = bindSplice "albums" (mapSplices album albums)
             $ bindSplice "pagination" (pager pg' pgcnt)
             $ hs
-    
+
     return  (spls, "page-albums")
 
 -- | show a file in the context of an album
 albumShowPage :: TemplatePage (Integer ::: Integer)
-albumShowPage hs (aid ::: fid) = do
-    
+albumShowPage hs (_ ::: fid) = do
+
     showPage hs fid
-    
+
 personPage :: TemplatePage Integer
 personPage hs pid = do
     p       <- getPerson pid

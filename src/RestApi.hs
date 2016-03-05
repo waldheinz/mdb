@@ -8,7 +8,7 @@ module RestApi (
 import           Control.Applicative ( Applicative )
 import           Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import           Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Control.Monad.Reader ( ReaderT )
+import           Control.Monad.Reader ( ReaderT, ask )
 import           Control.Monad.Trans.Class ( lift )
 import           Data.Aeson ( ToJSON(..), (.=) )
 import qualified Data.Aeson as JSON
@@ -70,7 +70,9 @@ fileListHandler (FilesInAlbum aid) = mkListing xmlJsonO handler where
 -- Persons
 -------------------------------------------------------------------------------
 
-data PersonSelector = AllPersons
+data PersonSelector
+    = AllPersons
+    | InAlbum AlbumId
 
 type WithPerson m = ReaderT PersonId m
 
@@ -78,14 +80,19 @@ personResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithPerson m) 
 personResource = R.Resource
     { R.name        = "person"
     , R.description = "Access persons"
-    , R.schema      = withListing AllPersons $ named [("id", singleBy read)] -- ("id", listing
+    , R.schema      = withListing AllPersons schemas
     , R.list        = personListHandler
     , R.get         = Nothing
-    }
+    } where
+        schemas = named
+            [ ( "inAlbum"   , listingBy (InAlbum . read) )
+            ]
 
 personListHandler :: MonadIO m => PersonSelector -> ListHandler (MDB m)
-personListHandler AllPersons = mkListing xmlJsonO handler where
-    handler r = lift $ listPersons (offset r) (count r)
+personListHandler which = mkListing xmlJsonO handler where
+    handler r = lift $ case which of
+        AllPersons  -> listPersons (offset r) (count r)
+        InAlbum aid -> getAlbumPersons aid
 
 -------------------------------------------------------------------------------
 -- Albums
@@ -107,12 +114,12 @@ albumResource = R.Resource
     }
     where
         schemas =
-            [ ("withPerson" , listingBy (AlbumWithPerson . read))
-            , ( "byId"      , singleBy read)
+            [ ( "withPerson"    , listingBy (AlbumWithPerson . read))
+            , ( "byId"          , singleBy read)
             ]
 
 albumHandler :: MonadIO m => Handler (WithAlbum m)
-albumHandler = mkIdHandler xmlJsonO $ \_ aid -> lift $ getAlbum aid
+albumHandler = mkIdHandler xmlJsonO $ \() aid -> lift $ lift $ getAlbum aid
 
 albumListHandler :: MonadIO m => AlbumSelector -> ListHandler (MDB m)
 albumListHandler s = mkListing xmlJsonO handler where

@@ -20,12 +20,14 @@ type Route
     = Home
     | Person PersonId
     | PersonAlbum PersonId AlbumId
+    | Video FileId
 
 routeParsers : List (Matcher Route)
 routeParsers =
     [ static    Home        "/"
-    , dyn1      Person      "/person/" int ""
-    , dyn2      PersonAlbum "/person/" int "/album/" int ""
+    , dyn1      Person      "/person/"  int ""
+    , dyn2      PersonAlbum "/person/"  int "/album/" int ""
+    , dyn1      Video       "/video/"   int ""
     ]
 
 decode : String -> Route
@@ -36,6 +38,7 @@ encode route = case route of
     Home                -> "/"
     Person pid          -> "/person/" ++ toString pid
     PersonAlbum pid aid -> "/person/" ++ toString pid ++ "/album/" ++ toString aid
+    Video fid           -> "/video/" ++ toString fid
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Helpers

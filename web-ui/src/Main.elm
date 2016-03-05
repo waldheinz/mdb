@@ -15,6 +15,7 @@ import TransitStyle
 import Page.Album
 import Page.Home
 import Page.Person
+import Page.Video
 import Route exposing ( Route(..) )
 import Server exposing ( ApiList, fetchPersons )
 import Types exposing ( .. )
@@ -24,6 +25,7 @@ port initialPath : String
 type alias Model = WithRoute Route
     { homePageModel     : Page.Home.Model
     , personPageModel   : Page.Person.Model
+    , videoPageModel    : Page.Video.Model
     }
 
 initialModel : Model
@@ -31,12 +33,14 @@ initialModel =
   { transitRouter   = TransitRouter.empty Home
   , homePageModel   = Page.Home.initialModel
   , personPageModel = Page.Person.initialModel
+  , videoPageModel  = Page.Video.initialModel
   }
 
 type Action
     = RouterAction (TransitRouter.Action Route)
     | PageHomeAction Page.Home.Action
     | PagePersonAction Page.Person.Action
+    | PageVideoAction Page.Video.Action
 
 actions : Signal Action
 actions =
@@ -65,6 +69,12 @@ mountRoute prevRoute route m = case route of
         in
             ( { m | personPageModel = ppm' }, Effects.map (Page.Person.AlbumAction >> PagePersonAction) apfx)
 
+    Route.Video fid ->
+        let
+            (vp', pvfx) = Page.Video.onMount fid m.videoPageModel
+        in
+            ( { m | videoPageModel = vp' }, Effects.map PageVideoAction pvfx)
+
 routerConfig : TransitRouter.Config Route Action Model
 routerConfig =
   { mountRoute = mountRoute
@@ -83,6 +93,12 @@ update a m = case a of
         in
             ({ m | personPageModel = pp' }, Effects.map PagePersonAction ppfx )
 
+    PageVideoAction va      ->
+        let
+            (vp', vpfx) = Page.Video.update va m.videoPageModel
+        in
+            ( { m | videoPageModel = vp' }, Effects.map PageVideoAction vpfx )
+
 view : Signal.Address Action -> Model -> Html
 view aa m =
     let
@@ -90,6 +106,7 @@ view aa m =
             Home                -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
             Person pid          -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
             PersonAlbum pid aid -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
+            Video _             -> Page.Video.view (Signal.forwardTo aa PageVideoAction) m.videoPageModel
 
     in
         Html.div [ HA.class "container", HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ]

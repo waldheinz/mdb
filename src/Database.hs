@@ -5,7 +5,7 @@
     #-}
 
 module Database (
-    MediaDb, withMediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
+    MediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
     MDB, runMDB, runMDB', findDbAndRun, withTransaction,
 
     -- * files
@@ -52,11 +52,6 @@ data MediaDb = MediaDb
     , mdbDbDir      :: ! FilePath
     }
 
-withMediaDb :: (Functor m, MonadIO m, MonadMask m) => (MediaDb -> m a) -> m a
-withMediaDb a = liftIO findDbFolder >>= \x -> case x of
-  Nothing  -> liftIO $ fail "no db directory found, maybe try \"mdb init\"?"
-  Just dbf -> bracket (openDb dbf) closeDb a
-
 newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
     deriving
         ( Applicative
@@ -75,10 +70,20 @@ runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT (u
 runMDB' :: MediaDb -> MDB m a -> m a
 runMDB' db f = runReaderT (unMDB f) db
 
-findDbAndRun :: (MonadMask m, MonadIO m) => MDB m a -> m a
-findDbAndRun act = liftIO findDbFolder >>= \x -> case x of
-  Nothing  -> liftIO $ fail "no db directory found, maybe try \"mdb init\"?"
-  Just dbf -> runMDB dbf act
+findDbAndRun :: (MonadMask m, MonadIO m) => Maybe FilePath -> MDB m a -> m a
+findDbAndRun mp act = do
+    let
+        goCheck p = liftIO (doesDirectoryExist $ dbDir p) >>= \ok -> if ok
+            then runMDB (dbDir p) act
+            else fail $ "no db directory found at \"" ++ p ++ "\", maybe try \"mdb init\"?"
+
+        goFind = liftIO findDbFolder >>= \x -> case x of
+            Nothing  -> liftIO $ fail "no db directory found, maybe try \"mdb init\"?"
+            Just dbf -> runMDB dbf act
+
+    case mp of
+        Nothing -> goFind
+        Just p  -> goCheck p
 
 dbTables :: [String]
 dbTables =

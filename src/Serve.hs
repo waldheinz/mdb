@@ -7,6 +7,7 @@ module Serve (
 
 import Control.Applicative ( (<|>) )
 import Control.Monad.Catch ( MonadMask )
+import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import qualified Data.ByteString.Lazy as BSL
 import Data.String ( fromString )
@@ -28,8 +29,8 @@ import Database
 import Paths_mdb ( getDataDir )
 import RestApi ( apiApp )
 
-doServe :: (MonadMask m, Functor m, MonadIO m) => m ()
-doServe = withMediaDb $ \db -> mkApp db >>= liftIO . WARP.run 8080
+doServe :: (MonadMask m, Functor m, MonadIO m) => MDB m ()
+doServe = ask >>= \db -> mkApp db >>= liftIO . WARP.run 8080
 
 mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
 mkApp mdb = do

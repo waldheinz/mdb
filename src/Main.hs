@@ -17,22 +17,25 @@ import           Mdb.Album ( doAlbum )
 main :: IO ()
 main = withMagickWandGenesis $ liftIO $ do
     initFFmpeg
-    mode <- CMD.parseCommandLine
+    opts <- CMD.parseCommandLine
 
-    case mode of
-        CMD.ModeAlbum opt           -> DB.findDbAndRun $ doAlbum opt
-        (CMD.ModeFile op rec fs)    -> DB.findDbAndRun $ doFile op rec fs
-        CMD.ModePerson op           -> DB.findDbAndRun $ doPerson op
-        CMD.ModeInit oi             -> doInit oi
-        CMD.ModeServe               -> DB.findDbAndRun $ SERVE.doServe
+    let
+        mroot = CMD.rootDir opts
+
+    case CMD.mode opts of
+        CMD.ModeAlbum opt           -> DB.findDbAndRun mroot $ doAlbum opt
+        CMD.ModeFile op rec fs      -> DB.findDbAndRun mroot $ doFile op rec fs
+        CMD.ModePerson op           -> DB.findDbAndRun mroot $ doPerson op
+        CMD.ModeInit                -> doInit mroot
+        CMD.ModeServe               -> DB.findDbAndRun mroot SERVE.doServe
 
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
-doPerson (CMD.AddPerson n) = (DB.addPerson n) >>= \pid ->
+doPerson (CMD.AddPerson n) = DB.addPerson n >>= \pid ->
     liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
 doPerson (CMD.SetPersonImage pid file) = DB.personImageFile pid >>= (liftIO . copyFile file)
 
-doInit :: CMD.OptInit -> IO ()
-doInit (CMD.OptInit mp) = do
+doInit :: Maybe FilePath -> IO ()
+doInit mp = do
   p <- case mp of
     Just ap -> return ap
     Nothing -> getCurrentDirectory

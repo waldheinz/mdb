@@ -1,8 +1,8 @@
 
 module Mdb.CmdLine (
-    Mode(..), OptAlbum(..), OptInit(..), OptPerson(..),
-    OptFile(..), AssignTarget(..), parseCommandLine,
-    cmdLineParser
+    MdbOptions(..),
+    Mode(..), OptAlbum(..), OptPerson(..),
+    OptFile(..), AssignTarget(..), parseCommandLine
     ) where
 
 import Options.Applicative
@@ -11,20 +11,16 @@ import Mdb.Database.Album ( AlbumId )
 import Mdb.Database.Person ( PersonId )
 
 data Mode
-    = ModeInit OptInit
+    = ModeInit
     | ModeAlbum OptAlbum
     | ModeFile OptFile Bool [FilePath]
     | ModePerson OptPerson
     | ModeServe
     deriving ( Show )
 
-data OptInit = OptInit
-    { initDir :: Maybe FilePath }
-    deriving ( Show )
-
 initOptions :: Parser Mode
-initOptions = ModeInit . OptInit <$> optional (strArgument ( metavar "DIR" ))
-    
+initOptions = pure ModeInit
+
 data OptAlbum
     = AlbumCreate String
     deriving ( Show )
@@ -79,7 +75,7 @@ fileScan = FileScan
             (   long "sha1"
             <>  help "calculate SHA1 for files"
             )
-        
+
 fileAssign :: Parser OptFile
 fileAssign = FileAssign <$> some (p <|> np <|> a <|> na) where
     p = AssignPerson <$> option auto
@@ -130,8 +126,8 @@ personOptions = ModePerson
 serveOptions :: Parser Mode
 serveOptions = pure ModeServe
 
-cmdLineParser :: Parser Mode
-cmdLineParser = subparser
+modeParser :: Parser Mode
+modeParser = subparser
     (   command "file" (info (helper <*> fileOptions)
             ( progDesc "Manage files in the database" ))
     <>  command "init" (info (helper <*> initOptions)
@@ -144,10 +140,20 @@ cmdLineParser = subparser
             ( progDesc "Manage albums" ) )
     )
 
-parseCommandLine :: IO Mode
+data MdbOptions = MdbOptions
+    { rootDir :: Maybe FilePath -- ^ root of the MDB tree (the directory containing the ".mdb" directory)
+    , mode    :: Mode
+    } deriving ( Show )
+
+parseCommandLine :: IO MdbOptions
 parseCommandLine = execParser opts
-  where
-    opts = info (helper <*> cmdLineParser)
-      ( fullDesc
-     <> progDesc "Print a greeting for TARGET"
-     <> header "hello - a test for optparse-applicative" )
+    where
+        opts = info (helper <*> cmdLineParser)
+            ( fullDesc
+            <>  progDesc "Print a greeting for TARGET"
+            <>  header "hello - a test for optparse-applicative"
+            )
+
+        cmdLineParser = MdbOptions
+            <$> optional (strOption ( long "root" <> metavar "DIR" <> help "Specify base directory" ))
+            <*> modeParser

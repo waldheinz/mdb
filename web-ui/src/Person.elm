@@ -2,22 +2,27 @@
 module Person (
     -- * List
     ListModel, initialListModel, viewList,
-    ListAction, setListFilter, updateListModel
+    ListAction, setListFilter, updateListModel,
+
+    -- * Editing
+    updatePerson
+    
     ) where
 
-import Dict
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Html.Events as HE
 import Http
-import Json.Decode as JD exposing ( (:=) )
 import Signal exposing ( Address )
 import Task
 
 import Route exposing ( clickRoute )
 import Server exposing ( ApiList )
 import Types exposing ( .. )
+
+------------------------------------------------------------------------------------------------------------------------
+-- List
+------------------------------------------------------------------------------------------------------------------------
 
 type alias ListModel =
     { persons       : List (PersonId, Person)
@@ -60,3 +65,14 @@ updateListModel a m = case a of
     PersonSelected _ -> m -- handled externally
     PersonsLoaded (Ok pl)   -> { m | persons = pl.items }
     PersonsLoaded (Err ex)  -> Debug.log "loading persons failed" ex |> \_ -> m
+
+------------------------------------------------------------------------------------------------------------------------
+-- Edit
+------------------------------------------------------------------------------------------------------------------------
+
+updatePerson : (Person -> Person) -> PersonId -> Person -> (Person, Effects ())
+updatePerson f pid p =
+    let
+        p' = f p
+    in
+        (p', Server.putPerson pid p' |> Task.toResult |> Task.map (\_ -> ()) |> Effects.task)

@@ -2,6 +2,7 @@
 module Types (
     -- * Persons
     PersonId, Person, PersonFilter(..), personDecoder, personListDecoder,
+    encodePerson,
 
     -- * Albums
     AlbumId, Album,
@@ -13,6 +14,7 @@ module Types (
 
 import Dict exposing ( Dict )
 import Json.Decode as JD exposing ( (:=) )
+import Json.Encode as JE
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
@@ -32,7 +34,13 @@ personDecoder : JD.Decoder Person
 personDecoder = JD.object1 Person ( "personName" := JD.string )
 
 personListDecoder : JD.Decoder (PersonId, Person)
-personListDecoder = JD.object2 (,) ("personId" := JD.int) personDecoder
+personListDecoder = JD.object2 (,) ( "personId" := JD.int ) personDecoder
+
+encodePerson : PersonId -> Person -> JE.Value
+encodePerson pid p = JE.object
+    [ ( "personId"      , JE.int pid )
+    , ( "personName"    , JE.string p.name )
+    ]
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Albums

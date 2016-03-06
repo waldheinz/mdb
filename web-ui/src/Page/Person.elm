@@ -14,9 +14,11 @@ import Task
 import Album exposing (ListAction(..))
 import File
 import Page.Album
+import Person
 import Route
 import Server exposing ( ApiList, WhichAlbums(..) )
 import Types exposing ( .. )
+import Utils
 
 type alias Model =
     { personId      : PersonId
@@ -42,6 +44,7 @@ type Action
     | AlbumAction Page.Album.Action
     | FileListAction File.ListAction
     | PersonLoaded (Result Http.Error Person)
+    | ChangeName String
 
 noOp : Effects () -> Effects Action
 noOp = Effects.map (\() -> NoOp)
@@ -68,7 +71,7 @@ view aa m =
             Just p  -> p.name
     in
         Html.div []
-            [ Html.h1 [ HA.class "page-lead" ] [ Html.text pname ]
+            [ Html.h1 [ HA.class "page-lead" ] [ Utils.editable (Signal.forwardTo aa ChangeName) pname ]
             , Html.h2 [] [ Html.text "Albums" ]
             , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
             , Html.h2 [] [ Html.text "Random Files" ]
@@ -78,6 +81,14 @@ view aa m =
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     NoOp                                -> (m, Effects.none)
+    ChangeName n                        -> case m.person of
+        Nothing -> (m, Effects.none)
+        Just p ->
+            let
+                (p', pfx) = Person.updatePerson (\p -> { p | name = n }) m.personId p
+            in
+                ( { m | person = Just p' }, noOp pfx)
+                
     AlbumsLoaded (Err err)              -> Debug.log "loading albums failed" err |> \_ -> (m, Effects.none)
     AlbumsLoaded (Ok al)                -> ( { m | albums = Dict.fromList al.items }, Effects.none )
     PersonLoaded (Err err)              -> Debug.log "loading person failed" err |> \_ -> (m, Effects.none)

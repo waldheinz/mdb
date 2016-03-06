@@ -3,7 +3,7 @@ module Server (
     ApiList,
 
     -- * Persons
-    fetchPerson, fetchPersons,
+    fetchPerson, fetchPersons, putPerson,
 
     -- * Albums
     WhichAlbums(..), fetchAlbums,
@@ -14,6 +14,7 @@ module Server (
 
 import Http
 import Json.Decode as JD exposing ( (:=) )
+import Json.Encode as JE
 import Task exposing ( Task )
 
 import Album exposing ( albumListDecoder )
@@ -37,13 +38,20 @@ listDecoder dec = JD.object3 ApiList
     ( "count"   := JD.int )
     ( "items"   := JD.list dec )
 
-defaultGetRequest : String -> Http.Request
-defaultGetRequest endpoint =
-    { verb      = "GET"
-    , headers   = [("Accept", "application/json")]
+defaultRequest : List (String, String) -> String -> Http.Body -> String -> Http.Request
+defaultRequest headers verb body endpoint =
+    { verb      = verb
+    , headers   = ( "Accept", "application/json" ) :: headers
     , url       = apiBaseUrl ++ endpoint
-    , body      = Http.empty
+    , body      = body
     }
+
+defaultGetRequest : String -> Http.Request
+defaultGetRequest = defaultRequest [] "GET" Http.empty
+
+defaultPutRequest : JE.Value -> String -> Http.Request
+defaultPutRequest value = JE.encode 0 value |> Http.string
+    |> defaultRequest [ ( "Content-Type", "application/json" ) ] "PUT"
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
@@ -64,6 +72,10 @@ fetchPerson : PersonId -> Task Http.Error Person
 fetchPerson pid = defaultGetRequest ("/person/byId/" ++ toString pid)
     |> Http.send Http.defaultSettings
     |> Http.fromJson personDecoder
+
+putPerson : PersonId -> Person -> Task Http.RawError Http.Response
+putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toString pid)
+    |> Http.send Http.defaultSettings
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Albums

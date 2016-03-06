@@ -1,6 +1,7 @@
 dist/
+elm-stuff/
 *~
 **/#*#
 .cabal-sandbox
 cabal.sandbox.config
-
+files/htdocs/js/mdb.js

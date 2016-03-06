@@ -20,7 +20,7 @@ import Album exposing ( albumListDecoder )
 import Types exposing (..)
 
 serverBaseUrl : String
-serverBaseUrl = "http://localhost:8080"
+serverBaseUrl = "" -- ^ yes, we want that relative for now
 
 apiBaseUrl : String
 apiBaseUrl = serverBaseUrl ++ "/api/0.1.0"

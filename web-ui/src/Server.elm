@@ -3,7 +3,7 @@ module Server (
     ApiList,
 
     -- * Persons
-    fetchPersons,
+    fetchPerson, fetchPersons,
 
     -- * Albums
     WhichAlbums(..), fetchAlbums,
@@ -45,6 +45,10 @@ defaultGetRequest endpoint =
     , body      = Http.empty
     }
 
+------------------------------------------------------------------------------------------------------------------------
+-- Persons
+------------------------------------------------------------------------------------------------------------------------
+
 fetchPersons : PersonFilter -> Task Http.Error (ApiList (PersonId, Person))
 fetchPersons which =
     let
@@ -55,6 +59,15 @@ fetchPersons which =
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder personListDecoder)
+
+fetchPerson : PersonId -> Task Http.Error Person
+fetchPerson pid = defaultGetRequest ("/person/byId/" ++ toString pid)
+    |> Http.send Http.defaultSettings
+    |> Http.fromJson personDecoder
+
+------------------------------------------------------------------------------------------------------------------------
+-- Albums
+------------------------------------------------------------------------------------------------------------------------
 
 type WhichAlbums
     = AllAlbums
@@ -71,6 +84,10 @@ fetchAlbums which =
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder albumListDecoder)
 
+------------------------------------------------------------------------------------------------------------------------
+-- Files
+------------------------------------------------------------------------------------------------------------------------
+
 fetchFiles : WhichFiles -> Task Http.Error (ApiList (FileId, File))
 fetchFiles which =
     let
@@ -82,6 +99,10 @@ fetchFiles which =
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder fileListDecoder)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Media
+------------------------------------------------------------------------------------------------------------------------
 
 fileThumbUrl : FileId -> String
 fileThumbUrl fid = serverBaseUrl ++ "/api/image/thumbnail/" ++ toString fid

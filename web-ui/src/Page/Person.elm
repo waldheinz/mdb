@@ -20,6 +20,7 @@ import Types exposing ( .. )
 
 type alias Model =
     { personId      : PersonId
+    , person        : Maybe Person
     , albums        : Dict AlbumId Album
     , albumPage     : Page.Album.Model
     , randomFiles   : File.ListModel
@@ -28,6 +29,7 @@ type alias Model =
 initialModel : Model
 initialModel =
     { personId      = 0
+    , person        = Nothing
     , albums        = Dict.empty
     , albumPage     = Page.Album.initialModel
     , randomFiles   = File.mkListModel AllFiles
@@ -39,6 +41,7 @@ type Action
     | AlbumListAction Album.ListAction
     | AlbumAction Page.Album.Action
     | FileListAction File.ListAction
+    | PersonLoaded (Result Http.Error Person)
 
 noOp : Effects () -> Effects Action
 noOp = Effects.map (\() -> NoOp)
@@ -48,26 +51,37 @@ onMount pid m =
     let
         (rf', rffx) = File.setListFilter (PersonNoAlbum pid) m.randomFiles
         fa          = Server.fetchAlbums (PersonAlbums pid) |> Task.toResult |> Task.map AlbumsLoaded |> Effects.task
+        fp          = Server.fetchPerson pid |> Task.toResult |> Task.map PersonLoaded |> Effects.task
+        p'          = if pid == m.personId
+            then m.person
+            else Nothing
     in
-        ( { m | personId = pid, randomFiles = rf' }
-        , Effects.batch [ fa, Effects.map FileListAction rffx ]
+        ( { m | personId = pid, randomFiles = rf', person = p' }
+        , Effects.batch [ fa, Effects.map FileListAction rffx, fp ]
         )
 
 view : Signal.Address Action -> Model -> Html
 view aa m =
-    Html.div []
-        [ Html.h1 [ HA.class "page-lead" ] [ Html.text "Person" ]
-        , Html.h2 [] [ Html.text "Albums" ]
-        , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
-        , Html.h2 [] [ Html.text "Random Files" ]
-        , File.viewList (Signal.forwardTo aa FileListAction) m.randomFiles
-        ]
+    let
+        pname = case m.person of
+            Nothing -> "Person #" ++ toString m.personId
+            Just p  -> p.name
+    in
+        Html.div []
+            [ Html.h1 [ HA.class "page-lead" ] [ Html.text pname ]
+            , Html.h2 [] [ Html.text "Albums" ]
+            , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
+            , Html.h2 [] [ Html.text "Random Files" ]
+            , File.viewList (Signal.forwardTo aa FileListAction) m.randomFiles
+            ]
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     NoOp                                -> (m, Effects.none)
     AlbumsLoaded (Err err)              -> Debug.log "loading albums failed" err |> \_ -> (m, Effects.none)
     AlbumsLoaded (Ok al)                -> ( { m | albums = Dict.fromList al.items }, Effects.none )
+    PersonLoaded (Err err)              -> Debug.log "loading person failed" err |> \_ -> (m, Effects.none)
+    PersonLoaded (Ok p)                 -> ( { m | person = Just p}, Effects.none )
     AlbumListAction (AlbumSelected aid) -> ( m, Route.goRoute (Route.PersonAlbum m.personId aid) |> noOp )
     FileListAction (File.VideoSelected fid) ->
         (m, Route.goRoute (Route.Video fid) |> noOp)

@@ -23,13 +23,18 @@ initialModel =
 
 view : Address Action -> Model -> Html
 view aa m =
-    Html.video
-        [ HA.src <| Server.videoStreamUrl m.fileId
-        , HA.controls True
-        , HA.type' "video/webm"
-        , HA.poster <| Server.videoFrameUrl m.fileId 200
-        ]
-        [ Html.text "Kein Video hier?" ]
+    let
+        player =
+            Html.video
+                [ HA.src <| Server.videoStreamUrl m.fileId
+                , HA.controls True
+                , HA.type' "video/webm"
+                , HA.poster <| Server.videoFrameUrl m.fileId 200
+                ]
+                [ Html.text "Kein Video hier?" ]
+    in
+        Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
+            [ player ]
 
 
 type Action =

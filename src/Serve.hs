@@ -6,6 +6,7 @@ module Serve (
     ) where
 
 import Control.Applicative ( (<|>) )
+import Control.Monad ( (>=>) )
 import Control.Monad.Catch ( MonadMask )
 import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
@@ -28,17 +29,19 @@ import Paths_mdb ( getDataDir )
 import RestApi ( apiApp )
 
 doServe :: (MonadMask m, Functor m, MonadIO m) => MDB m ()
-doServe = ask >>= \db -> mkApp db >>= liftIO . WARP.run 8080
+doServe = ask >>= (mkApp >=> liftIO . WARP.run 8080)
 
 mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
 mkApp mdb = do
     static  <- staticFiles
     heist   <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
     return $ mapUrls $
-                mount "api"     (apiApp mdb)
-            <|> mount "image"   (imageApp mdb)
+                mount "api"     (mapUrls $
+                    mount "image"   (imageApp mdb)
+                <|> mount "video"   (videoApp mdb)
+                <|> mountRoot (apiApp mdb)
+                )
             <|> mount "static"  static
-            <|> mount "video"   (videoApp mdb)
             <|> mountRoot       (templates mdb heist)
 
 staticFiles :: MonadIO m => m Application

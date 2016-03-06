@@ -84,13 +84,13 @@ fetchFiles which =
             |> Http.fromJson (listDecoder fileListDecoder)
 
 fileThumbUrl : FileId -> String
-fileThumbUrl fid = serverBaseUrl ++ "/image/thumbnail/" ++ toString fid
+fileThumbUrl fid = serverBaseUrl ++ "/api/image/thumbnail/" ++ toString fid
 
 imageUrl : FileId -> String
-imageUrl fid = serverBaseUrl ++ "/image/image/" ++ toString fid
+imageUrl fid = serverBaseUrl ++ "/api/image/image/" ++ toString fid
 
 videoStreamUrl : FileId -> String
-videoStreamUrl fid = serverBaseUrl ++ "/video/" ++ toString fid ++ "/stream"
+videoStreamUrl fid = serverBaseUrl ++ "/api/video/" ++ toString fid ++ "/stream"
 
 videoFrameUrl : FileId -> Float -> String
-videoFrameUrl fid ts = serverBaseUrl ++ "/video/" ++ toString fid ++ "/frame?ts=" ++ toString ts
+videoFrameUrl fid ts = serverBaseUrl ++ "/api/video/" ++ toString fid ++ "/frame?ts=" ++ toString ts

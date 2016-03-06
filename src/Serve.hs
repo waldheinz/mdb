@@ -17,8 +17,6 @@ import Network.Wai ( Application, responseLBS, responseBuilder )
 import Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
 import Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
-import Network.Wai.Predicate
-import Network.Wai.Routing
 import           Heist as HEIST
 import           Heist.Interpreted as HEIST
 
@@ -49,13 +47,8 @@ staticFiles = liftIO $ do
     return $ staticApp (defaultFileServerSettings $ fromString $ dir ++ "/files/htdocs")
 
 templates :: MediaDb -> HEIST.HeistState (MDB IO) -> Application
-templates mdb heist req respond = do
-    runMDB' mdb $ route (start heist) req (liftIO . respond)
-
-start :: HEIST.HeistState (MDB IO) -> Tree (App (MDB IO))
-start heist = prepare $ do
+templates mdb heist _ respond = do
     let
-        tpl = continue . serveTemplate
         serveTemplate page a = do
             (hs, t) <- page heist a
             mr <- HEIST.renderTemplate hs (encodeUtf8 t)
@@ -64,10 +57,5 @@ start heist = prepare $ do
                 Just (builder, mimeType) ->
                     responseBuilder status200 [("Content-Type", mimeType)] builder
 
-    get "/"                     (tpl indexPage)     $ true
-    get "/albums"               (tpl albumsPage)    $ constant 1
-    get "/albums/:pg"           (tpl albumsPage)    $ capture "pg"
-    get "/album/:aid"           (tpl albumPage)     $ capture "aid"
-    get "/album/:aid/show/:fid" (tpl albumShowPage) $ capture "aid" .&. capture "fid"
-    get "/person/:id"           (tpl personPage)    $ capture "id"
-    get "/show/:fid"            (tpl showPage)      $ capture "fid"
+    resp <- runMDB' mdb $ serveTemplate indexPage ()
+    respond resp

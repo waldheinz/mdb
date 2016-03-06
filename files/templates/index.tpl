@@ -39,6 +39,6 @@
             initialPath: window.location.pathname
         });
     </script>
-    <script src="static/js/jquery-2.2.0.min.js"></script>
+    <script src="static/js/jquery.min.js"></script>
     <script src="static/js/bootstrap.min.js"></script>
 </html>

@@ -24,7 +24,7 @@ import qualified Rest.Resource as R
 import           Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId )
-import           Mdb.Database.Person ( PersonId, Person )
+import           Mdb.Database.Person ( PersonId, Person(..) )
 
 apiApp :: MediaDb -> WAI.Application
 apiApp mdb = addHeaders [ ("Access-Control-Allow-Origin", "*") ] $
@@ -82,16 +82,18 @@ data PersonSelector
     = AllPersons
     | InAlbum AlbumId
 
-type WithPerson m = ReaderT Person (MDB m)
+type WithPerson m = ReaderT PersonId (MDB m)
 
 personResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithPerson m) PersonId PersonSelector Void
 personResource = R.Resource
     { R.name        = "person"
     , R.description = "Access persons"
-    , R.enter       = \pid k -> getPerson pid >>= runReaderT k
+    , R.enter       = \pid k -> runReaderT k pid
     , R.schema      = withListing AllPersons schemas
     , R.list        = personListHandler
-    , R.get         = Just $ mkIdHandler xmlJsonO $ \() _ -> lift ask
+    , R.private     = False
+    , R.get         = Just $ mkConstHandler xmlJsonO $ lift ask >>= \pid -> (lift $ lift $ getPerson pid)
+    , R.update      = Just updatePerson
     } where
         schemas = named
             [ ( "byId"      , singleBy read )
@@ -103,6 +105,14 @@ personListHandler which = mkListing xmlJsonO handler where
     handler r = lift $ case which of
         AllPersons  -> listPersons (offset r) (count r)
         InAlbum aid -> getAlbumPersons aid
+
+updatePerson :: MonadIO m => Handler (WithPerson m)
+updatePerson = mkInputHandler xmlJsonI handler where
+    handler p = do
+        pid <- ask
+        lift . lift $ dbExecute
+            "UPDATE person SET person_name = ? WHERE person_id = ?"
+            (personName p, pid)
 
 -------------------------------------------------------------------------------
 -- Albums

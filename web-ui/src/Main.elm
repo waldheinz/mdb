@@ -1,11 +1,9 @@
 
 module Main ( main ) where
 
-import Dict exposing ( Dict )
 import Effects exposing ( Effects, Never )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Http
 import Task
 import Signal
 import StartApp
@@ -17,8 +15,6 @@ import Page.Home
 import Page.Person
 import Page.Video
 import Route exposing ( Route(..) )
-import Server exposing ( ApiList, fetchPersons )
-import Types exposing ( .. )
 
 port initialPath : String
 
@@ -112,6 +108,7 @@ view aa m =
         Html.div [ HA.class "container", HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ]
             [ mainContent ]
 
+app : StartApp.App (WithRoute Route Model)
 app = StartApp.start
     { init      = TransitRouter.init routerConfig initialPath initialModel
     , update    = update

@@ -6,9 +6,10 @@ module RestApi (
     ) where
 
 import           Control.Applicative ( Applicative )
+import           Control.Monad ( (>=>) )
 import           Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import           Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Control.Monad.Reader ( ReaderT, ask )
+import           Control.Monad.Reader ( ReaderT, ask, runReaderT )
 import           Control.Monad.Trans.Class ( lift )
 import           Data.Aeson ( ToJSON(..), (.=) )
 import qualified Data.Aeson as JSON
@@ -23,7 +24,7 @@ import qualified Rest.Resource as R
 import           Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId )
-import           Mdb.Database.Person ( PersonId )
+import           Mdb.Database.Person ( PersonId, Person )
 
 apiApp :: MediaDb -> WAI.Application
 apiApp mdb = addHeaders [ ("Access-Control-Allow-Origin", "*") ] $
@@ -81,18 +82,20 @@ data PersonSelector
     = AllPersons
     | InAlbum AlbumId
 
-type WithPerson m = ReaderT PersonId m
+type WithPerson m = ReaderT Person (MDB m)
 
 personResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithPerson m) PersonId PersonSelector Void
 personResource = R.Resource
     { R.name        = "person"
     , R.description = "Access persons"
+    , R.enter       = \pid k -> getPerson pid >>= runReaderT k
     , R.schema      = withListing AllPersons schemas
     , R.list        = personListHandler
-    , R.get         = Nothing
+    , R.get         = Just $ mkIdHandler xmlJsonO $ \() _ -> lift ask
     } where
         schemas = named
-            [ ( "inAlbum"   , listingBy (InAlbum . read) )
+            [ ( "byId"      , singleBy read )
+            , ( "inAlbum"   , listingBy (InAlbum . read) )
             ]
 
 personListHandler :: MonadIO m => PersonSelector -> ListHandler (MDB m)

@@ -26,7 +26,7 @@ module Database (
     dbExecute, dbQuery, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
 
-import Control.Monad ( forM_ )
+import Control.Monad ( forM_, liftM )
 import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import Control.Monad.Reader ( MonadReader, ReaderT, ask, asks, runReaderT )
@@ -248,10 +248,10 @@ addPerson name = asks mdbConn >>= \c -> liftIO $ do
         (SQL.Only name)
     SQL.query_ c "SELECT last_insert_rowid()" >>= return . SQL.fromOnly . head
 
-getPerson :: MonadIO m => Integer -> MDB m Person
-getPerson pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
+getPerson :: MonadIO m => PersonId -> MDB m Person
+getPerson pid = asks mdbConn >>= \c -> liftIO $ liftM head $ SQL.query c
         "SELECT person_id, person_name FROM person WHERE (person_id = ?)"
-        (SQL.Only pid) >>= return . head
+        (SQL.Only pid)
 
 listPersons :: MonadIO m => Int -> Int -> MDB m [Person]
 listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c

@@ -25,6 +25,7 @@ import           Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId, Person(..) )
+import           Mdb.Database.Video ( VideoId, Video(..) )
 
 apiApp :: MediaDb -> WAI.Application
 apiApp mdb = addHeaders [ ("Access-Control-Allow-Origin", "*") ] $
@@ -38,10 +39,12 @@ api010 = root
             -/ albums
             -/ files
             -/ persons
+            -/ videos
     where
         albums  = route albumResource
         files   = route fileResource
         persons = route personResource
+        videos  = route videoResource
 
 -------------------------------------------------------------------------------
 -- Files
@@ -146,3 +149,24 @@ albumListHandler s = mkListing xmlJsonO handler where
     handler r = lift $ case s of
         AllAlbums           -> getAlbums (offset r) (count r)
         AlbumWithPerson pid -> getPersonAlbums pid -- (offset r) (count r)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Videos / Streams
+------------------------------------------------------------------------------------------------------------------------
+
+
+data VideoSelect
+    = ByFile FileId
+
+type WithVideo m = ReaderT VideoSelect (MDB m)
+
+videoResource :: MonadIO m => Resource (MDB m) (WithVideo m) VideoSelect Void Void
+videoResource = mkResourceReader
+    { R.name    = "video"
+    , R.schema  = noListing $ named [ ("inFile", singleBy (ByFile. read)) ]
+    , R.get     = Just getVideo
+    }
+
+getVideo :: MonadIO m => Handler (WithVideo m)
+getVideo = mkIdHandler jsonO $ \() vs -> case vs of
+    ByFile fid -> lift . lift $ getVideoForFile fid

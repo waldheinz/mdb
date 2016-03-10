@@ -13,7 +13,7 @@ module Database (
     fileAbs, assignFileAlbum, albumFiles,
 
     -- * videos / streams
-    setVideoInfo, clearStreams, addStream,
+    setVideoInfo, clearStreams, addStream, getVideoForFile,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
@@ -42,6 +42,7 @@ import Paths_mdb
 import Mdb.Database.Album ( Album, AlbumId )
 import Mdb.Database.File ( File, FileId )
 import Mdb.Database.Person ( Person, PersonId )
+import Mdb.Database.Video ( Video, VideoId )
 
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
@@ -203,19 +204,24 @@ clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     "DELETE FROM stream WHERE (file_id = ?)"
     (SQL.Only fid)
 
-addStream :: MonadIO m => FileId -> StreamId -> (String, String, Int) -> MDB m ()
-addStream fid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
+addStream :: MonadIO m => VideoId -> StreamId -> (String, String, Int) -> MDB m ()
+addStream vid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     ("INSERT OR REPLACE INTO stream"
-        <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate)"
+        <> " (stream_id, video_id, stream_media_type, stream_codec, stream_bit_rate)"
         <> " VALUES (?, ?, ?, ?, ?)")
-    (sid, fid, mt, cd, br)
+    (sid, vid, mt, cd, br)
 
-setVideoInfo :: MonadIO m => FileId -> String -> Double -> MDB m ()
+setVideoInfo :: MonadIO m => FileId -> String -> Double -> MDB m VideoId
 setVideoInfo fid fmtName duration = dbExecute
     (   "INSERT OR REPLACE INTO video"
-    <>  " (file_id, video_duration, video_format)"
-    <>  " VALUES (?, ?, ?)")
-    (fid, duration, fmtName)
+    <>  " (video_id, file_id, video_duration, video_format)"
+    <>  " VALUES ((SELECT video_id FROM video WHERE file_id = ?), ?, ?, ?)")
+    (fid, fid, duration, fmtName) >> dbLastRowId
+
+getVideoForFile :: MonadIO m => FileId -> MDB m Video
+getVideoForFile fid = liftM head $ dbQuery
+    "SELECT video_id, video_duration, video_format FROM video WHERE file_id=?"
+    (SQL.Only fid)
 
 fileIdFromName :: MonadIO m => FilePath -> MDB m (Maybe FileId)
 fileIdFromName fn = do

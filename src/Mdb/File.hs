@@ -98,7 +98,8 @@ addVideoInfo fn fid = FFM.withAvFile fn $ do
     (fmtName, duration) <- (,) <$> FFM.formatName <*> FFM.duration
     let
         durationSeconds = fromIntegral duration / 1000000
-    lift $ setVideoInfo fid fmtName durationSeconds
+
+    vid <- lift $ setVideoInfo fid fmtName durationSeconds
 
     ns <- FFM.nbStreams
     forM_ [0..(ns-1)] $ \sid -> FFM.withStream sid $ do
@@ -109,6 +110,7 @@ addVideoInfo fn fid = FFM.withAvFile fn $ do
                 tn <- FFM.codecMediaTypeName cctx
                 cn <- FFM.codecName cctx
                 br <- FFM.streamBitrate cctx
-                (lift . lift) $ addStream fid (fromIntegral sid) (tn, cn, br)
+                (lift . lift) $ addStream vid (fromIntegral sid) (tn, cn, br)
+                return ()
 
-    liftIO $ print $ fn ++ ": " ++ show ns ++ " streams, " ++ show (round durationSeconds) ++ "s"
+    liftIO $ print $ fn ++ ": " ++ show ns ++ " streams, " ++ show (round durationSeconds :: Int) ++ " seconds"

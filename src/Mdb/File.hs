@@ -5,32 +5,25 @@ module Mdb.File (
   doFile
   ) where
 
-import qualified Codec.FFmpeg.Decode as FFM
 import qualified Codec.FFmpeg.Probe as FFM
-import qualified Codec.FFmpeg.Types as FFM
-import Control.Applicative ( (<$>) )
 import Control.Exception.Base ( IOException )
-import Control.Monad ( forM, forM_, unless, foldM, when )
-import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
+import Control.Monad ( forM_, unless, foldM, when, liftM )
+import Control.Monad.Catch ( MonadMask, catchIOError )
 import Control.Monad.Trans.Class ( lift )
-import Control.Monad.Trans.Either
-import Control.Monad.Error.Class ( catchError )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import qualified Data.Text as T
 import Data.Text.Encoding ( decodeUtf8 )
 import qualified Data.ByteString.Lazy as BSL
 import qualified Data.ByteString.Base16.Lazy as HEX
 import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
-import Data.Maybe ( catMaybes )
 import Network.Mime ( defaultMimeLookup )
 import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContents )
 import System.FilePath ( (</>) )
-import System.IO ( IOMode(..), withFile, hFileSize )
 import System.Posix.Files ( fileSize, getFileStatus )
 
 import qualified Mdb.CmdLine  as CMD
 import Database
-import Mdb.Database.File ( FileId )
+import Mdb.Database.File ( FileId, fileMime )
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
 doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
@@ -52,20 +45,23 @@ doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
     (pids, aids) <- foldM prepare ([], []) tgts
     mapM_ (withFiles (go pids aids) rec) fs
 
-doFile (CMD.FileAdd) rec fs = withTransaction $ mapM_ (withFiles go rec) fs where
+doFile CMD.FileAdd rec fs = withTransaction $ mapM_ (withFiles go rec) fs where
     go fn = hasFile fn >>= \known -> unless known $ checkFile fn
 
 doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles go rec) fs where
     go fn = withTransaction $ do
         mfid <- fileIdFromName fn
         case mfid of
-             Nothing    -> liftIO $ putStrLn $ "unregistered file: " ++ fn
-             Just fid   -> do
-                 when sha $ do
-                    hash <- liftIO $ BSL.readFile fn >>= return . bytestringDigest . sha1
+            Nothing    -> liftIO $ putStrLn $ "unregistered file: " ++ fn
+            Just fid   -> do
+                when sha $ do
+                    hash <- liftIO $  liftM (bytestringDigest . sha1) (BSL.readFile fn)
                     dbExecute "UPDATE file SET file_sha1=? WHERE file_id=?" (hash, fid)
                     liftIO $ putStrLn $ fn ++ ":" ++ show (HEX.encode hash)
-    
+
+                f <- fileById fid
+                when ("video" `T.isPrefixOf` fileMime f) $ addVideoInfo fn fid
+
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"
 
@@ -90,17 +86,20 @@ withFiles f rec fp = unless (ignoreFile fp) $ do
 checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
 checkFile fn = do
     liftIO $ putStrLn fn
-    (flip catchIOError)
+    flip catchIOError
         (\e -> (\x -> liftIO $ putStrLn $ "caught: " ++ show x) (e :: IOException))
         $ do
             sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
             _ <- addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
             return ()
 
-addStreamInfo :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
-addStreamInfo fn fid = FFM.withAvFile fn $ do
-    FFM.formatName >>= liftIO . putStrLn
-    FFM.formatMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
+addVideoInfo :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
+addVideoInfo fn fid = FFM.withAvFile fn $ do
+    (fmtName, duration) <- (,) <$> FFM.formatName <*> FFM.duration
+    let
+        durationSeconds = fromIntegral duration / 1000000
+    lift $ setVideoInfo fid fmtName durationSeconds
+
     ns <- FFM.nbStreams
     forM_ [0..(ns-1)] $ \sid -> FFM.withStream sid $ do
         mcctx <- FFM.codecContext
@@ -111,6 +110,5 @@ addStreamInfo fn fid = FFM.withAvFile fn $ do
                 cn <- FFM.codecName cctx
                 br <- FFM.streamBitrate cctx
                 (lift . lift) $ addStream fid (fromIntegral sid) (tn, cn, br)
-                liftIO $ putStrLn $ show (tn, cn, br)
-                FFM.streamMetadata >>= FFM.dictFoldM_ (\x -> (liftIO . putStrLn . show) x)
-                
+
+    liftIO $ print $ fn ++ ": " ++ show ns ++ " streams, " ++ show (round durationSeconds) ++ "s"

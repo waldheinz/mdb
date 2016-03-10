@@ -12,8 +12,8 @@ module Database (
     addFile, fileById, hasFile, listFiles, fileIdFromName, assignFilePerson,
     fileAbs, assignFileAlbum, albumFiles,
 
-    -- * streams
-    clearStreams, addStream,
+    -- * videos / streams
+    setVideoInfo, clearStreams, addStream,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
@@ -205,10 +205,17 @@ clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
 
 addStream :: MonadIO m => FileId -> StreamId -> (String, String, Int) -> MDB m ()
 addStream fid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
-    ("INSERT INTO stream"
+    ("INSERT OR REPLACE INTO stream"
         <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate)"
         <> " VALUES (?, ?, ?, ?, ?)")
     (sid, fid, mt, cd, br)
+
+setVideoInfo :: MonadIO m => FileId -> String -> Double -> MDB m ()
+setVideoInfo fid fmtName duration = dbExecute
+    (   "INSERT OR REPLACE INTO video"
+    <>  " (file_id, video_duration, video_format)"
+    <>  " VALUES (?, ?, ?)")
+    (fid, duration, fmtName)
 
 fileIdFromName :: MonadIO m => FilePath -> MDB m (Maybe FileId)
 fileIdFromName fn = do

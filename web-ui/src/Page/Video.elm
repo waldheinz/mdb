@@ -7,18 +7,22 @@ module Page.Video (
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
+import Http
 import Signal exposing ( Address )
+import Task
 
 import Server
 import Types exposing (..)
 
 type alias Model =
-    { fileId : FileId
+    { fileId    : FileId
+    , videoInfo : Maybe Video
     }
 
 initialModel : Model
 initialModel =
-    { fileId = 0
+    { fileId    = 0
+    , videoInfo = Nothing
     }
 
 view : Address Action -> Model -> Html
@@ -37,11 +41,17 @@ view aa m =
             [ player ]
 
 
-type Action =
-    NoOp
+type Action
+    = NoOp
+    | FetchedVideoInfo (Result Http.Error Video)
 
 onMount : FileId -> Model -> (Model, Effects Action)
-onMount fid m = ( { m | fileId = fid }, Effects.none )
+onMount fid m =
+    let
+        v'  = if fid == m.fileId then m.videoInfo else Nothing
+        fx  = Server.fetchVideoForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+    in
+     ( { m | fileId = fid, videoInfo = v' }, fx )
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = (m, Effects.none)

@@ -9,7 +9,10 @@ module Server (
     WhichAlbums(..), fetchAlbums,
 
     -- * Files
-    fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl
+    fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl,
+
+    -- * Videos
+    fetchVideoForFile
     ) where
 
 import Http
@@ -111,6 +114,11 @@ fetchFiles which =
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder fileListDecoder)
+
+fetchVideoForFile : FileId -> Task Http.Error Video
+fetchVideoForFile fid = defaultGetRequest ("/video/inFile/" ++ toString fid)
+    |> Http.send Http.defaultSettings
+    |> Http.fromJson videoDecoder
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Media

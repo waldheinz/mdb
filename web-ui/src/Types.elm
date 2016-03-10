@@ -9,10 +9,12 @@ module Types (
 
     -- * Files
     FileId, File, fileDecoder, fileListDecoder,
-    WhichFiles(..)
+    WhichFiles(..),
+
+    -- * Videos
+    VideoId, Video, videoDecoder
     ) where
 
-import Dict exposing ( Dict )
 import Json.Decode as JD exposing ( (:=) )
 import Json.Encode as JE
 
@@ -76,3 +78,19 @@ type WhichFiles
     = AllFiles
     | AlbumFiles AlbumId
     | PersonNoAlbum PersonId
+
+------------------------------------------------------------------------------------------------------------------------
+-- Videos
+------------------------------------------------------------------------------------------------------------------------
+
+type alias VideoId = Int
+
+type alias Video =
+    { duration  : Float
+    , format    : String
+    }
+
+videoDecoder : JD.Decoder Video
+videoDecoder = JD.object2 Video
+    ( "duration"    := JD.float )
+    ( "format"      := JD.string )

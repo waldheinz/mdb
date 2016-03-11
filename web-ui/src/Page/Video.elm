@@ -7,11 +7,8 @@ module Page.Video (
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Http
 import Signal exposing ( Address )
-import Task
 
-import Server
 import Types exposing (..)
 import VideoPlayer as V
 

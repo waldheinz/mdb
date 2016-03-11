@@ -18,7 +18,7 @@ import Types exposing (..)
 import Utils exposing ( onClick' )
 import Native.VideoPlayer
 
-type PlayState = Playing | Paused
+type PlayState = Playing | Paused | Seeking
 
 type alias Model =
     { videoBaseUrl  : String
@@ -46,7 +46,14 @@ setVideo fid m =
     let
         m' = if fid == m.fileId
                 then m
-                else { m | fileId = fid, playTime = 0, videoBaseUrl = Server.videoStreamUrl fid, videoInfo = Nothing }
+                else
+                    { m
+                    | fileId        = fid
+                    , playTime      = 0
+                    , playStartTime = 0
+                    , videoBaseUrl  = Server.videoStreamUrl fid
+                    , videoInfo     = Nothing
+                    }
         fx = Server.fetchVideoForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
     in
         ( m', fx )
@@ -58,11 +65,13 @@ type Action
     | Play
     | Pause
     | FetchedVideoInfo (Result Http.Error Video)
+    | SeekTo Float
 
 currentTime : Model -> Float
 currentTime m = case m.playState of
     Paused  -> m.playStartTime
     Playing -> m.playStartTime + m.playTime
+    Seeking -> m.playStartTime
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
@@ -73,6 +82,11 @@ update a m = case a of
     PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
     FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
+    SeekTo t            ->
+        let
+            m' = { m | playStartTime = t, playState = Seeking }
+        in
+            (m' , setPlay m' True |> Effects.task )
 
 setPlay : Model -> Bool -> Task Effects.Never Action
 setPlay m play = Native.VideoPlayer.setPlay m play
@@ -98,10 +112,21 @@ controls aa m =
         playClick = onClick' aa (if m.playState == Paused then Play else Pause)
         progress duration =
             let
+                clickLocation : JD.Decoder (Int, Int) -- x and width
+                clickLocation =
+                    JD.object2 (,)
+                        (JD.object2 (-)
+                            (JD.at ["pageX"] JD.int)
+                            (JD.at ["currentTarget", "offsetLeft"] JD.int)
+                        )
+                        (JD.at ["currentTarget", "clientWidth"] JD.int)
                 pct = currentTime m / duration * 100
+                seek (x, w) = Signal.message aa (SeekTo (toFloat x / toFloat w * duration))
             in
                 Html.div
-                    [ HA.style [ ("width" , "100%"), ("height", "10px") ] ]
+                    [ HA.style [ ("width" , "100%"), ("height", "10px") ]
+                    , HE.on "click" clickLocation seek
+                    ]
                     [ Html.div
                         [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
                         []

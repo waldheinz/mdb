@@ -30,11 +30,16 @@ initialModel =
 
 view : Address Action -> Model -> Html
 view aa m =
-        Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
-            [ V.view m.videoModel ]
+    Html.div []
+        [ Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
+            [ V.view (Signal.forwardTo aa PlayerAction) m.videoModel ]
+        , V.controls (Signal.forwardTo aa PlayerAction) m.videoModel
+        , Html.text <| toString m.videoModel
+        ]
 
 type Action
     = NoOp
+    | PlayerAction V.Action
     | FetchedVideoInfo (Result Http.Error Video)
 
 onMount : FileId -> Model -> (Model, Effects Action)
@@ -47,4 +52,11 @@ onMount fid m =
      ( { m | fileId = fid, videoInfo = vi', videoModel = v' }, fx )
 
 update : Action -> Model -> (Model, Effects Action)
-update a m = (m, Effects.none)
+update a m = case a of
+    PlayerAction pa ->
+        let
+            (p', pfx) = V.update pa m.videoModel
+        in
+            ( { m | videoModel = p'}, Effects.map PlayerAction pfx )
+
+    _               -> (m, Effects.none)

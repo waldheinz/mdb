@@ -29,6 +29,30 @@
             .file-thumb  img {
                 height: 128px;
             }
+
+            .video-controls {
+                position: absolute;
+                bottom: 0;
+                width: 100%;
+                padding-top: 10px;
+                background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75));
+            }
+
+            .video-progress {
+                width: 100%;
+                height: 8px;
+                background-color: rgba(255, 255, 255, 0.5);
+                cursor: pointer;
+            }
+
+            .video-button {
+                background-color: transparent;
+                border: none;
+                color: white;
+                padding: 5px;
+                font-size: 20px;
+                outline: none;
+            }
         </style>
     </head>
     <body>

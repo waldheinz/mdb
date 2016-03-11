@@ -123,23 +123,24 @@ controls aa m =
                 pct = currentTime m / duration * 100
                 seek (x, w) = Signal.message aa (SeekTo (toFloat x / toFloat w * duration))
             in
-                Html.div
-                    [ HA.style
-                        [ ("width" , "100%")
-                        , ("height", "8px")
-                        , ("background-color", "rgba(255, 255, 255, 0.5)")
-                        ]
-                    , HE.on "click" clickLocation seek
-                    ]
+                Html.div [ HA.class "video-progress", HE.on "click" clickLocation seek ]
                     [ Html.div
                         [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
                         []
                     ]
     in
-        Html.div [ HA.style [ ("position", "absolute"), ("bottom", "10px"), ("width", "100%")]]
+        Html.div [ HA.class "video-controls" ]
             [ Html.div [ HA.style [ ("position", "relative"), ("width", "95%"), ("margin", "0 auto") ] ]
                 <| List.filterMap identity
                     [ Maybe.map (\vi -> progress vi.duration) m.videoInfo
-                    , Just <| Html.button [ playClick ] [ Html.text "play" ]
+                    , Just <| Html.button [ playClick, HA.class "video-button" ]
+                        [ Html.span
+                            [ HA.classList
+                                [ ( "glyphicon", True)
+                                , ( "glyphicon-play", m.playState == Paused )
+                                , ( "glyphicon-pause", m.playState == Playing )
+                                ]
+                            ] []
+                        ]
                     ]
             ]

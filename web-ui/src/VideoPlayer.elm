@@ -9,6 +9,7 @@ import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Html.Events as HE
+import Http
 import Signal exposing ( Address )
 import Task exposing ( Task )
 
@@ -26,6 +27,7 @@ type alias Model =
     , playStartTime : Float
     , playState     : PlayState
     , playerId      : String
+    , videoInfo     : Maybe Video
     }
 
 initialModel : String -> Model
@@ -36,10 +38,18 @@ initialModel playerId =
     , playStartTime = 0
     , playState     = Paused
     , playerId      = playerId
+    , videoInfo     = Nothing
     }
 
-setVideo : FileId -> Model -> Model
-setVideo fid m = { m | fileId = fid, playTime = 0, videoBaseUrl = Server.videoStreamUrl fid }
+setVideo : FileId -> Model -> (Model, Effects Action)
+setVideo fid m =
+    let
+        m' = if fid == m.fileId
+                then m
+                else { m | fileId = fid, playTime = 0, videoBaseUrl = Server.videoStreamUrl fid, videoInfo = Nothing }
+        fx = Server.fetchVideoForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+    in
+        ( m', fx )
 
 type Action
     = NoOp
@@ -47,6 +57,7 @@ type Action
     | PlayTimeChanged Float
     | Play
     | Pause
+    | FetchedVideoInfo (Result Http.Error Video)
 
 currentTime : Model -> Float
 currentTime m = case m.playState of
@@ -60,6 +71,8 @@ update a m = case a of
     Pause               -> ( { m | playStartTime = currentTime m }, setPlay m False |> Effects.task )
     PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
     PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
+    FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
+    FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
 
 setPlay : Model -> Bool -> Task Effects.Never Action
 setPlay m play = Native.VideoPlayer.setPlay m play
@@ -83,16 +96,18 @@ controls : Address Action -> Model -> Html
 controls aa m =
     let
         playClick = onClick' aa (if m.playState == Paused then Play else Pause)
-        pct = currentTime m
-        progress =
-            Html.div
-                [ HA.style [ ("width" , "100%"), ("height", "10px") ] ]
-                [ Html.div
-                    [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
-                    []
-                ]
+        progress duration =
+            let
+                pct = currentTime m / duration * 100
+            in
+                Html.div
+                    [ HA.style [ ("width" , "100%"), ("height", "10px") ] ]
+                    [ Html.div
+                        [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
+                        []
+                    ]
     in
         Html.div []
-            [ progress
+            [ Maybe.map (\vi -> progress vi.duration) m.videoInfo |> Maybe.withDefault (Html.text "duration unknown")
             , Html.button [ playClick ] [ Html.text "play" ]
             ]

@@ -17,14 +17,12 @@ import VideoPlayer as V
 
 type alias Model =
     { fileId        : FileId
-    , videoInfo     : Maybe Video
     , videoModel    : V.Model
     }
 
 initialModel : Model
 initialModel =
     { fileId        = 0
-    , videoInfo     = Nothing
     , videoModel    = V.initialModel "page-video"
     }
 
@@ -40,16 +38,14 @@ view aa m =
 type Action
     = NoOp
     | PlayerAction V.Action
-    | FetchedVideoInfo (Result Http.Error Video)
 
 onMount : FileId -> Model -> (Model, Effects Action)
 onMount fid m =
     let
-        v'  = if fid == m.fileId then m.videoModel else m.videoModel |> V.setVideo fid
-        vi' = if fid == m.fileId then m.videoInfo else Nothing
-        fx  = Server.fetchVideoForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+        (v', pfx) = V.setVideo fid m.videoModel
+
     in
-     ( { m | fileId = fid, videoInfo = vi', videoModel = v' }, fx )
+     ( { m | fileId = fid, videoModel = v' }, Effects.map PlayerAction pfx )
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of

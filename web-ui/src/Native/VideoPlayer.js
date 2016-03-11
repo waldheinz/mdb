@@ -12,8 +12,6 @@ Elm.Native.VideoPlayer.make = function(elm) {
     var noOp = { ctor : "NoOp" };
 
     function doSetPlay(model, play) {
-        console.log("doSetPlay " + play);
-
         return Task.asyncFunction(function (callback) {
             var elem = document.getElementById(model.playerId);
 

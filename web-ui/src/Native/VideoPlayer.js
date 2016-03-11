@@ -18,7 +18,7 @@ Elm.Native.VideoPlayer.make = function(elm) {
             var elem = document.getElementById(model.playerId);
 
             if (play) {
-                elem.src = model.videoBaseUrl;
+                elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
                 elem.play();
             } else {
                 elem.pause();

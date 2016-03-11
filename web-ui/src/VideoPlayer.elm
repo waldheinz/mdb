@@ -23,6 +23,7 @@ type alias Model =
     { videoBaseUrl  : String
     , fileId        : FileId
     , playTime      : Float
+    , playStartTime : Float
     , playState     : PlayState
     , playerId      : String
     }
@@ -32,6 +33,7 @@ initialModel playerId =
     { videoBaseUrl  = ""
     , fileId        = 0
     , playTime      = 0
+    , playStartTime = 0
     , playState     = Paused
     , playerId      = playerId
     }
@@ -42,33 +44,55 @@ setVideo fid m = { m | fileId = fid, playTime = 0, videoBaseUrl = Server.videoSt
 type Action
     = NoOp
     | PlayStateChanged PlayState
+    | PlayTimeChanged Float
     | Play
     | Pause
 
+currentTime : Model -> Float
+currentTime m = case m.playState of
+    Paused  -> m.playStartTime
+    Playing -> m.playStartTime + m.playTime
+
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
-    Play                -> (m, setPlay m True |> Effects.task)
-    Pause               -> (m, setPlay m False |> Effects.task)
+    NoOp                -> ( m, Effects.none )
+    Play                -> ( m, setPlay m True |> Effects.task )
+    Pause               -> ( { m | playStartTime = currentTime m }, setPlay m False |> Effects.task )
     PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
-    _                   -> (m, Effects.none)
+    PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
 
 setPlay : Model -> Bool -> Task Effects.Never Action
 setPlay m play = Native.VideoPlayer.setPlay m play
 
 view : Address Action -> Model -> Html
 view aa m =
-    Html.video
-        [ HA.type' "video/webm"
-        , HA.id m.playerId
-        , HA.poster <| Server.videoFrameUrl m.fileId 200
-        , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-        , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-        ]
-        [ Html.text "Kein Video hier?" ]
+    let
+        targetCurrentTime = JD.at ["target", "currentTime"] JD.float
+    in
+        Html.video
+            [ HA.type' "video/webm"
+            , HA.id m.playerId
+            , HA.poster <| Server.videoFrameUrl m.fileId 200
+            , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
+            , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
+            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+            ]
+            [ Html.text "Kein Video hier?" ]
 
 controls : Address Action -> Model -> Html
 controls aa m =
     let
         playClick = onClick' aa (if m.playState == Paused then Play else Pause)
+        pct = currentTime m
+        progress =
+            Html.div
+                [ HA.style [ ("width" , "100%"), ("height", "10px") ] ]
+                [ Html.div
+                    [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
+                    []
+                ]
     in
-        Html.button [ playClick ] [ Html.text "play" ]
+        Html.div []
+            [ progress
+            , Html.button [ playClick ] [ Html.text "play" ]
+            ]

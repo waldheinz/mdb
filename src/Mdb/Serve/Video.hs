@@ -25,7 +25,7 @@ videoApp :: MediaDb -> Application
 videoApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
     root = prepare $ do
         get "/:id/frame"        (continue frame)        $ capture "id" .&. query "ts"
-        get "/:id/stream"       (continue stream)       $ capture "id"
+        get "/:id/stream"       (continue stream)       $ capture "id" .&. query "t"
         get "/:id/streamDirect" (continue streamDirect) $ capture "id"
 
 roundTimeToMs :: Double -> Integer
@@ -46,19 +46,16 @@ frame (fid ::: ts) = do
         createFrame = callCommand cmd
 
     exists <- liftIO $ doesFileExist outFile
-    unless exists $ do
-        liftIO $ createDirectoryIfMissing True thumbDir
-        liftIO $ createFrame
-
+    unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return $ responseFile status200 [] outFile Nothing
 
-stream :: MonadIO m => DBF.FileId -> MDB m Response
-stream fid = do
+stream :: MonadIO m => (DBF.FileId ::: Double) -> MDB m Response
+stream (fid ::: ts) = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f
 
     let
-        cmd = "ffmpeg -i \"" ++ p ++ "\" -f matroska - 2>/dev/null"
+        cmd = "ffmpeg -ss " ++ show ts ++ " -i \"" ++ p ++ "\" -f matroska - 2>/dev/null"
         str write flush = do
             void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
             flush

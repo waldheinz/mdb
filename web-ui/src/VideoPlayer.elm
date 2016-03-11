@@ -1,6 +1,6 @@
 
 module VideoPlayer (
-    Model, initialModel, setVideo, view, controls,
+    Model, initialModel, setVideo, view,
     Action(Play), update
     ) where
 
@@ -96,15 +96,18 @@ view aa m =
     let
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
     in
-        Html.video
-            [ HA.type' "video/webm"
-            , HA.id m.playerId
-            , HA.poster <| Server.videoFrameUrl m.fileId 200
-            , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-            , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+        Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
+            [ Html.video
+                [ HA.type' "video/webm"
+                , HA.id m.playerId
+                , HA.poster <| Server.videoFrameUrl m.fileId 200
+                , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
+                , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
+                , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+                ]
+                [ Html.text "Kein Video hier?" ]
+            , controls aa m
             ]
-            [ Html.text "Kein Video hier?" ]
 
 controls : Address Action -> Model -> Html
 controls aa m =
@@ -115,16 +118,17 @@ controls aa m =
                 clickLocation : JD.Decoder (Int, Int) -- x and width
                 clickLocation =
                     JD.object2 (,)
-                        (JD.object2 (-)
-                            (JD.at ["pageX"] JD.int)
-                            (JD.at ["currentTarget", "offsetLeft"] JD.int)
-                        )
+                        (JD.at ["offsetX"] JD.int)
                         (JD.at ["currentTarget", "clientWidth"] JD.int)
                 pct = currentTime m / duration * 100
                 seek (x, w) = Signal.message aa (SeekTo (toFloat x / toFloat w * duration))
             in
                 Html.div
-                    [ HA.style [ ("width" , "100%"), ("height", "10px") ]
+                    [ HA.style
+                        [ ("width" , "100%")
+                        , ("height", "8px")
+                        , ("background-color", "rgba(255, 255, 255, 0.5)")
+                        ]
                     , HE.on "click" clickLocation seek
                     ]
                     [ Html.div
@@ -132,7 +136,10 @@ controls aa m =
                         []
                     ]
     in
-        Html.div []
-            [ Maybe.map (\vi -> progress vi.duration) m.videoInfo |> Maybe.withDefault (Html.text "duration unknown")
-            , Html.button [ playClick ] [ Html.text "play" ]
+        Html.div [ HA.style [ ("position", "absolute"), ("bottom", "10px"), ("width", "100%")]]
+            [ Html.div [ HA.style [ ("position", "relative"), ("width", "95%"), ("margin", "0 auto") ] ]
+                <| List.filterMap identity
+                    [ Maybe.map (\vi -> progress vi.duration) m.videoInfo
+                    , Just <| Html.button [ playClick ] [ Html.text "play" ]
+                    ]
             ]

@@ -24,14 +24,8 @@ initialModel =
     }
 
 view : Address Action -> Model -> Html
-view aa m =
-    Html.div []
-        [ Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
-            [ V.view (Signal.forwardTo aa PlayerAction) m.videoModel ]
-        , V.controls (Signal.forwardTo aa PlayerAction) m.videoModel
-        , Html.text <| toString m.videoModel
-        ]
-
+view aa m = V.view (Signal.forwardTo aa PlayerAction) m.videoModel
+    
 type Action
     = NoOp
     | PlayerAction V.Action

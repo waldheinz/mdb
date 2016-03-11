@@ -55,7 +55,13 @@ stream (fid ::: ts) = do
     p <- fileAbs $ DBF.filePath f
 
     let
-        cmd = "ffmpeg -ss " ++ show ts ++ " -i \"" ++ p ++ "\" -f matroska - 2>/dev/null"
+        cmd = "ffmpeg -ss " ++ show ts ++
+            " -i \"" ++ p ++ "\"" ++
+--            " -vf scale=-2:240" ++
+            " -c:v libx264 -preset veryfast" ++
+            " -f matroska" ++
+--            " /tmp/out.mkv 2>&1"
+            " - 2>/dev/null"
         str write flush = do
             void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
             flush

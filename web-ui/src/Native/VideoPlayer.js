@@ -12,7 +12,7 @@ Elm.Native.VideoPlayer.make = function(elm) {
     var noOp = { ctor : "NoOp" };
 
     function doSetPlay(model, play) {
-        return Task.asyncFunction(function (callback) {
+        return Task.asyncFunction(function(callback) {
             var elem = document.getElementById(model.playerId);
 
             if (play) {
@@ -26,7 +26,30 @@ Elm.Native.VideoPlayer.make = function(elm) {
         });
     }
 
+    function doGoFullscreen(model) {
+        var elem = document.getElementById(model.playerId + "-container");
+
+        if (elem) {
+            try {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                } else if (elem.mozRequestFullScreen) {
+                    elem.mozRequestFullScreen();
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                }
+            } catch (ex) {
+                /* what shall one do? */
+            }
+        }
+
+        return Task.succeed(noOp);
+    }
+
     return elm.Native.VideoPlayer.values = {
-        setPlay : F2(doSetPlay)
+        setPlay         : F2(doSetPlay),
+        goFullscreen    : doGoFullscreen
     };
 };

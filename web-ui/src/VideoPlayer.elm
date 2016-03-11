@@ -74,6 +74,7 @@ type Action
     | FetchedVideoInfo (Result Http.Error Video)
     | SeekTo Float
     | MouseMoved Bool
+    | GoFullscreen
 
 currentTime : Model -> Float
 currentTime m = case m.playState of
@@ -91,6 +92,7 @@ update a m = case a of
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
     FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
     MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
+    GoFullscreen    -> (m, goFullscreen m |> Effects.task)
     SeekTo t            ->
         let
             m' = { m | playStartTime = t, playState = Seeking }
@@ -100,22 +102,27 @@ update a m = case a of
 setPlay : Model -> Bool -> Task Effects.Never Action
 setPlay m play = Native.VideoPlayer.setPlay m play
 
+goFullscreen : Model -> Task Effects.Never Action
+goFullscreen m = Native.VideoPlayer.goFullscreen m
+
 view : Address Action -> Model -> Html
 view aa m =
     let
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
     in
         Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
-            [ Html.video
-                [ HA.type' "video/webm"
-                , HA.id m.playerId
-                , HA.poster <| Server.videoFrameUrl m.fileId 200
-                , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-                , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-                , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+            [ Html.div [ HA.id <| m.playerId ++ "-container" ]
+                [ Html.video
+                    [ HA.type' "video/webm"
+                    , HA.id m.playerId
+                    , HA.poster <| Server.videoFrameUrl m.fileId 200
+                    , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
+                    , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
+                    , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+                    ]
+                    [ Html.text "Kein Video hier?" ]
+                , controls aa m
                 ]
-                [ Html.text "Kein Video hier?" ]
-            , controls aa m
             ]
 
 controls : Address Action -> Model -> Html
@@ -151,6 +158,9 @@ controls aa m =
                                 , ( "glyphicon-pause", m.playState == Playing )
                                 ]
                             ] []
+                        ]
+                    , Just <| Html.button [ onClick' aa GoFullscreen, HA.class "video-button" ]
+                        [ Html.span [ HA.class "glyphicon glyphicon-fullscreen" ] []
                         ]
                     ]
             ]

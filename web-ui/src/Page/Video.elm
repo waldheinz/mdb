@@ -1,7 +1,7 @@
 
 module Page.Video (
     Model, initialModel, view,
-    Action, onMount, update
+    Action(PlayerAction), onMount, update
     ) where
 
 import Effects exposing ( Effects )

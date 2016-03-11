@@ -36,6 +36,7 @@
                 width: 100%;
                 padding-top: 10px;
                 background: linear-gradient(to bottom, rgba(0, 0, 0, 0), rgba(0, 0, 0, 0.75));
+                transition:opacity 0.25s ease;
             }
 
             .video-progress {

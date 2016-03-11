@@ -15,6 +15,7 @@ import Page.Home
 import Page.Person
 import Page.Video
 import Route exposing ( Route(..) )
+import VideoPlayer as VP
 
 port initialPath : String
 
@@ -39,9 +40,10 @@ type Action
     | PageVideoAction Page.Video.Action
 
 actions : Signal Action
-actions =
-  -- use mergeMany if you have other mailboxes or signals to feed into StartApp
-  Signal.map RouterAction TransitRouter.actions
+actions = Signal.mergeMany
+    [ Signal.map RouterAction TransitRouter.actions
+    , Signal.map (Page.Video.PlayerAction >> PageVideoAction) VP.input
+    ]
 
 mountRoute : Route -> Route -> Model -> (Model, Effects Action)
 mountRoute prevRoute route m = case route of

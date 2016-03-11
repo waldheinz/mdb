@@ -1,7 +1,7 @@
 
 module VideoPlayer (
     Model, initialModel, setVideo, view,
-    Action(Play), update
+    Action, update, input
     ) where
 
 import Json.Decode as JD
@@ -10,8 +10,10 @@ import Html exposing ( Html )
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
-import Signal exposing ( Address )
+import Mouse
+import Signal exposing ( Address, Signal )
 import Task exposing ( Task )
+import Time
 
 import Server
 import Types exposing (..)
@@ -28,6 +30,7 @@ type alias Model =
     , playState     : PlayState
     , playerId      : String
     , videoInfo     : Maybe Video
+    , mouseMoved    : Bool
     }
 
 initialModel : String -> Model
@@ -39,7 +42,11 @@ initialModel playerId =
     , playState     = Paused
     , playerId      = playerId
     , videoInfo     = Nothing
+    , mouseMoved    = True
     }
+
+input : Signal Action
+input = Time.since (3 * Time.second) (Mouse.position) |> Signal.map MouseMoved
 
 setVideo : FileId -> Model -> (Model, Effects Action)
 setVideo fid m =
@@ -66,6 +73,7 @@ type Action
     | Pause
     | FetchedVideoInfo (Result Http.Error Video)
     | SeekTo Float
+    | MouseMoved Bool
 
 currentTime : Model -> Float
 currentTime m = case m.playState of
@@ -82,6 +90,7 @@ update a m = case a of
     PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
     FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
+    MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
     SeekTo t            ->
         let
             m' = { m | playStartTime = t, playState = Seeking }
@@ -128,8 +137,9 @@ controls aa m =
                         [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
                         []
                     ]
+        opacity = if m.mouseMoved then 1 else 0
     in
-        Html.div [ HA.class "video-controls" ]
+        Html.div [ HA.class "video-controls", HA.style [ ("opacity", toString opacity)] ]
             [ Html.div [ HA.style [ ("position", "relative"), ("width", "95%"), ("margin", "0 auto") ] ]
                 <| List.filterMap identity
                     [ Maybe.map (\vi -> progress vi.duration) m.videoInfo

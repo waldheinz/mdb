@@ -98,11 +98,13 @@ dbTables =
     , "person_file"
     , "movie"
     , "movie_person"
+    , "user"
+    , "user_session"
     ]
 
 initDb :: FilePath -> IO ()
 initDb p = do
-    putStrLn $ "initializing mdb in " ++ (dbDir p)
+    putStrLn $ "initializing mdb in " ++ dbDir p
 
     doesDirectoryExist (dbDir p) >>= \ex -> if ex
         then fail "directory does already exist"
@@ -131,8 +133,8 @@ findDbFolder = getCurrentDirectory >>= go where
   go d = do
     here <- doesDirectoryExist $ dbDir d
     if here
-      then return $ (Just $ dbDir d)
-      else let d' = takeDirectory d in if (d' == d)
+      then return (Just $ dbDir d)
+      else let d' = takeDirectory d in if d' == d
                                        then return Nothing
                                        else go d'
 
@@ -169,12 +171,10 @@ fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath
 addFile :: MonadIO m => (FilePath, Integer, T.Text) -> MDB m FileId
 addFile (absPath, fs, mime) = do
     relPath <- relFile absPath
-    asks mdbConn >>= \c -> liftIO $ do
-        SQL.execute c
-            "INSERT INTO file (file_name, file_size, file_mime) VALUES (?, ?, ?)"
-            (relPath, fs, mime)
-
-        SQL.query_ c "SELECT last_insert_rowid()" >>= return . SQL.fromOnly . head
+    dbExecute
+        "INSERT INTO file (file_name, file_size, file_mime) VALUES (?, ?, ?)"
+        (relPath, fs, mime)
+    dbLastRowId
 
 hasFile :: MonadIO m => FilePath -> MDB m Bool
 hasFile p = do
@@ -230,16 +230,16 @@ fileIdFromName fn = do
         "SELECT file_id FROM file WHERE file_name=? LIMIT 1"
         (SQL.Only relPath) >>= \ids -> case ids of
                                             [SQL.Only fid]  -> return $ Just fid
-                                            _               -> return $ Nothing
+                                            _               -> return Nothing
 
 assignFilePerson :: MonadIO m => FileId -> PersonId -> MDB m ()
 assignFilePerson fid pid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
-    ("INSERT OR IGNORE INTO person_file (person_id, file_id) VALUES (?, ?)")
+    "INSERT OR IGNORE INTO person_file (person_id, file_id) VALUES (?, ?)"
     (pid, fid)
 
 assignFileAlbum :: MonadIO m => FileId -> AlbumId -> MDB m ()
 assignFileAlbum fid aid = dbExecute
-    ("INSERT OR IGNORE INTO album_file (album_id, file_id) VALUES (?, ?)")
+    "INSERT OR IGNORE INTO album_file (album_id, file_id) VALUES (?, ?)"
     (aid, fid)
 
 albumFiles :: MonadIO m => AlbumId -> MDB m [File]
@@ -255,11 +255,9 @@ albumFiles aid = dbQuery
 -----------------------------------------------------------------
 
 addPerson :: MonadIO m => String -> MDB m PersonId
-addPerson name = asks mdbConn >>= \c -> liftIO $ do
-    SQL.execute c
-        ("INSERT INTO person (person_name) VALUES (?)")
-        (SQL.Only name)
-    SQL.query_ c "SELECT last_insert_rowid()" >>= return . SQL.fromOnly . head
+addPerson name = dbExecute
+    "INSERT INTO person (person_name) VALUES (?)"
+    (SQL.Only name) >> dbLastRowId
 
 getPerson :: MonadIO m => PersonId -> MDB m Person
 getPerson pid = asks mdbConn >>= \c -> liftIO $ liftM head $ SQL.query c

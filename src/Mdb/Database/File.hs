@@ -13,16 +13,14 @@ module Mdb.Database.File (
 
 import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
+import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import qualified Data.Text as T
 import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
-import           Generics.Regular ( deriveAll, PF )
-import           Generics.Regular.XmlPickler ( gxpickle )
 import           GHC.Generics
-import           Text.XML.HXT.Arrow.Pickle ( XmlPickler(..) )
 
-type FileId = Integer
+type FileId = Int64
 
 data File = File
     { fileId    :: ! FileId
@@ -42,9 +40,3 @@ instance FromJSON File where
 
 instance JSONSchema File where
   schema = gSchema
-
-$(deriveAll ''File "PFFile")
-type instance PF File = PFFile
-
-instance XmlPickler File where
-    xpickle = gxpickle

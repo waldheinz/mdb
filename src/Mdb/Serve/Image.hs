@@ -21,6 +21,7 @@ import           System.Directory ( doesFileExist, createDirectoryIfMissing )
 
 import           Database
 import qualified Mdb.Database.File as DBF
+import           Mdb.Database.Person ( PersonId )
 
 imageApp :: MediaDb -> Application
 imageApp mdb req respond = runMDB' mdb
@@ -38,7 +39,7 @@ getImage fid = do
     p <- fileAbs $ DBF.filePath f
     return $ responseFile status200 [] p Nothing
 
-pImage :: MonadIO m => Integer -> MDB m Response
+pImage :: MonadIO m => PersonId -> MDB m Response
 pImage pid = personImageFile pid >>= ensureThumb >>=
     \p -> return $ responseFile status200 [] p Nothing
 

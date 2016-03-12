@@ -70,11 +70,11 @@ fileResource = R.Resource
             ]
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (MDB m)
-fileListHandler AllFiles = mkListing xmlJsonO handler where
+fileListHandler AllFiles = mkListing jsonO handler where
     handler r = lift $ listFiles (offset r) (count r)
-fileListHandler (FilesInAlbum aid) = mkListing xmlJsonO handler where
+fileListHandler (FilesInAlbum aid) = mkListing jsonO handler where
     handler _ = lift $ albumFiles aid
-fileListHandler (PersonNoAlbum pid) = mkListing xmlJsonO handler where
+fileListHandler (PersonNoAlbum pid) = mkListing jsonO handler where
     handler _ = lift $ getRandomPersonFiles pid
 
 -------------------------------------------------------------------------------
@@ -95,7 +95,7 @@ personResource = R.Resource
     , R.schema      = withListing AllPersons schemas
     , R.list        = personListHandler
     , R.private     = False
-    , R.get         = Just $ mkConstHandler xmlJsonO $ lift ask >>= \pid -> (lift $ lift $ getPerson pid)
+    , R.get         = Just $ mkConstHandler jsonO $ lift ask >>= \pid -> (lift $ lift $ getPerson pid)
     , R.update      = Just updatePerson
     } where
         schemas = named
@@ -104,13 +104,13 @@ personResource = R.Resource
             ]
 
 personListHandler :: MonadIO m => PersonSelector -> ListHandler (MDB m)
-personListHandler which = mkListing xmlJsonO handler where
+personListHandler which = mkListing jsonO handler where
     handler r = lift $ case which of
         AllPersons  -> listPersons (offset r) (count r)
         InAlbum aid -> getAlbumPersons aid
 
 updatePerson :: MonadIO m => Handler (WithPerson m)
-updatePerson = mkInputHandler xmlJsonI handler where
+updatePerson = mkInputHandler jsonI handler where
     handler p = do
         pid <- ask
         lift . lift $ dbExecute
@@ -142,10 +142,10 @@ albumResource = R.Resource
             ]
 
 albumHandler :: MonadIO m => Handler (WithAlbum m)
-albumHandler = mkIdHandler xmlJsonO $ \() aid -> lift $ lift $ getAlbum aid
+albumHandler = mkIdHandler jsonO $ \() aid -> lift $ lift $ getAlbum aid
 
 albumListHandler :: MonadIO m => AlbumSelector -> ListHandler (MDB m)
-albumListHandler s = mkListing xmlJsonO handler where
+albumListHandler s = mkListing jsonO handler where
     handler r = lift $ case s of
         AllAlbums           -> getAlbums (offset r) (count r)
         AlbumWithPerson pid -> getPersonAlbums pid -- (offset r) (count r)

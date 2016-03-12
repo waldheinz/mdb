@@ -13,18 +13,16 @@ module Mdb.Database.Album (
 
 import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
+import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import qualified Data.Text as T
 import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
-import           Generics.Regular ( deriveAll, PF )
-import           Generics.Regular.XmlPickler ( gxpickle )
 import           GHC.Generics
-import           Text.XML.HXT.Arrow.Pickle ( XmlPickler(..) )
 
 import           Mdb.Database.File ( FileId )
 
-type AlbumId = Integer
+type AlbumId = Int64
 
 data Album = Album
     { albumId       :: ! AlbumId
@@ -43,9 +41,3 @@ instance FromJSON Album where
 
 instance JSONSchema Album where
   schema = gSchema
-
-$(deriveAll ''Album "PFAlbum")
-type instance PF Album = PFAlbum
-
-instance XmlPickler Album where
-    xpickle = gxpickle

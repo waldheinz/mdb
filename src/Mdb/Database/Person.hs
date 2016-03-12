@@ -13,15 +13,13 @@ module Mdb.Database.Person (
 
 import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
+import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
-import           Generics.Regular ( deriveAll, PF )
-import           Generics.Regular.XmlPickler ( gxpickle )
 import           GHC.Generics
-import           Text.XML.HXT.Arrow.Pickle ( XmlPickler(..) )
 
-type PersonId = Integer
+type PersonId = Int64
 
 data Person = Person
     { personId      :: ! PersonId
@@ -39,13 +37,3 @@ instance FromJSON Person where
 
 instance JSONSchema Person where
   schema = gSchema
-
-$(deriveAll ''Person "PFPerson")
-type instance PF Person = PFPerson
-
-instance XmlPickler Person where
-    xpickle = gxpickle
-
-----------------------
--- SQL statements
-----------------------

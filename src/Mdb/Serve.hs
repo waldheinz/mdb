@@ -10,6 +10,7 @@ import Control.Monad ( (>=>) )
 import Control.Monad.Catch ( MonadMask )
 import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
+import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import           Data.String ( fromString )
 import           Data.Text.Encoding ( encodeUtf8 )
@@ -18,7 +19,7 @@ import Network.HTTP.Types ( status200, status404 )
 import           Network.Wai ( Application, responseLBS, responseBuilder )
 import           Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
-import           Network.Wai.Session ( SessionStore, withSession )
+import           Network.Wai.Session as S
 import           Network.Wai.Session.Map ( mapStore_ )
 import           Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
 import           Heist as HEIST
@@ -29,19 +30,31 @@ import Mdb.Serve.Image
 import Mdb.Serve.Video
 import Mdb.Templates
 import Mdb.Database
+import Mdb.Database.User ( UserId )
 import Paths_mdb ( getDataDir )
 import Mdb.Serve.RestApi ( apiApp )
 
-doServe :: (MonadMask m, Functor m, MonadIO m) => MDB m ()
+doServe :: (MonadMask m, MonadIO m) => MDB m ()
 doServe = do
-    sstore <- liftIO mapStore_ :: MonadIO m => MDB m (SessionStore IO () ())
+    -- sstore <- liftIO mapStore_ :: MonadIO m => MDB m (SessionStore IO () ())
     skey <- liftIO V.newKey
+    db <- ask
 
     let
         cname = "mdb"
         setc = COOK.def
+        -- session :: Monad m => BS.ByteString -> S.Session (MDB m) () UserId
+        session sid = (getUser, setUser) where
+            getUser () = return (Just 0)
+            setUser () v = return ()
 
-    ask >>= (mkApp >=> liftIO . WARP.run 8080 . withSession sstore cname setc skey)
+        sstore :: SessionStore IO () UserId
+        sstore Nothing = do
+            newKey <- S.genSessionId
+            return (session newKey, return newKey)
+        sstore (Just sid) = return (session sid, return sid)
+
+    ask >>= (mkApp >=> liftIO . WARP.run 8080 . S.withSession sstore cname setc skey)
 
 mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
 mkApp mdb = do

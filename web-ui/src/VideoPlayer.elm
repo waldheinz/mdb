@@ -146,21 +146,26 @@ controls aa m =
                     ]
         opacity = if m.mouseMoved then 1 else 0
     in
-        Html.div [ HA.class "video-controls", HA.style [ ("opacity", toString opacity)] ]
-            [ Html.div [ HA.style [ ("position", "relative"), ("width", "95%"), ("margin", "0 auto") ] ]
-                <| List.filterMap identity
-                    [ Maybe.map (\vi -> progress vi.duration) m.videoInfo
-                    , Just <| Html.button [ playClick, HA.class "video-button" ]
-                        [ Html.span
-                            [ HA.classList
-                                [ ( "glyphicon", True)
-                                , ( "glyphicon-play", m.playState == Paused )
-                                , ( "glyphicon-pause", m.playState == Playing )
-                                ]
-                            ] []
-                        ]
-                    , Just <| Html.button [ onClick' aa GoFullscreen, HA.class "video-button" ]
-                        [ Html.span [ HA.class "glyphicon glyphicon-fullscreen" ] []
-                        ]
+        Html.div [ HA.class "embed-responsive-item" ]
+            [ Html.div [ HA.class "video-controls", HA.style [ ("opacity", toString opacity) ] ]
+                [ Html.div
+                    [ HA.class "clearfix"
+                    , HA.style [ ("position", "relative"), ("width", "95%"), ("margin", "0 auto") ]
                     ]
+                    <| List.filterMap identity
+                        [ Maybe.map (\vi -> progress vi.duration) m.videoInfo
+                        , Just <| Html.button [ playClick, HA.class "video-button" ]
+                            [ Html.span
+                                [ HA.classList
+                                    [ ( "glyphicon", True)
+                                    , ( "glyphicon-play", m.playState == Paused )
+                                    , ( "glyphicon-pause", m.playState == Playing )
+                                    ]
+                                ] []
+                            ]
+                        , Just <| Html.button [ onClick' aa GoFullscreen, HA.class "video-button pull-right" ]
+                            [ Html.span [ HA.class "glyphicon glyphicon-fullscreen" ] []
+                            ]
+                        ]
+                ]
             ]

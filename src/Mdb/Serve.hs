@@ -11,15 +11,19 @@ import Control.Monad.Catch ( MonadMask )
 import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import qualified Data.ByteString.Lazy as BSL
-import Data.String ( fromString )
+import           Data.String ( fromString )
 import           Data.Text.Encoding ( encodeUtf8 )
+import qualified Data.Vault.Lazy as V
 import Network.HTTP.Types ( status200, status404 )
-import Network.Wai ( Application, responseLBS, responseBuilder )
-import Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
+import           Network.Wai ( Application, responseLBS, responseBuilder )
+import           Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
-import Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
+import           Network.Wai.Session ( SessionStore, withSession )
+import           Network.Wai.Session.Map ( mapStore_ )
+import           Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
 import           Heist as HEIST
 import           Heist.Interpreted as HEIST
+import qualified Web.Cookie as COOK
 
 import Mdb.Serve.Image
 import Mdb.Serve.Video
@@ -29,7 +33,15 @@ import Paths_mdb ( getDataDir )
 import Mdb.Serve.RestApi ( apiApp )
 
 doServe :: (MonadMask m, Functor m, MonadIO m) => MDB m ()
-doServe = ask >>= (mkApp >=> liftIO . WARP.run 8080)
+doServe = do
+    sstore <- liftIO mapStore_ :: MonadIO m => MDB m (SessionStore IO () ())
+    skey <- liftIO V.newKey
+
+    let
+        cname = "mdb"
+        setc = COOK.def
+
+    ask >>= (mkApp >=> liftIO . WARP.run 8080 . withSession sstore cname setc skey)
 
 mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
 mkApp mdb = do

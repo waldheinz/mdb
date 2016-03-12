@@ -33,6 +33,7 @@ executable mdb
      bytestring    >= 0.10,
      conduit,
      conduit-extra,
+     cookie,
      directory     >= 1.2,
      either,
      exceptions,
@@ -54,11 +55,13 @@ executable mdb
      text          >= 0.11,
      transformers,
      unix,
+     vault,
      wai,
      wai-app-static,
      wai-extra,
      wai-predicates,
      wai-routing,
+     wai-session,
      warp
 
   hs-source-dirs:      src

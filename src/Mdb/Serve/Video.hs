@@ -18,7 +18,7 @@ import           Network.Wai.Predicate
 import           Network.Wai.Routing
 import           System.Directory ( doesFileExist, createDirectoryIfMissing )
 
-import           Database
+import           Mdb.Database
 import qualified Mdb.Database.File as DBF
 
 videoApp :: MediaDb -> Application

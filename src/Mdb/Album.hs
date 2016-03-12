@@ -9,7 +9,7 @@ import Control.Monad.IO.Class ( liftIO )
 import qualified Database.SQLite.Simple as SQL
 
 import Mdb.CmdLine ( OptAlbum(..) )
-import Database
+import Mdb.Database
 
 doAlbum :: OptAlbum -> MDB IO ()
 doAlbum (AlbumCreate name) = do

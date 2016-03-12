@@ -1,11 +1,5 @@
 
-{-# LANGUAGE
-    DeriveDataTypeable,
-    DeriveGeneric,
-    OverloadedStrings,
-    TemplateHaskell,
-    TypeFamilies
-    #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Mdb.Database.Album (
     AlbumId, Album(..)

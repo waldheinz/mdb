@@ -22,7 +22,7 @@ import System.FilePath ( (</>) )
 import System.Posix.Files ( fileSize, getFileStatus )
 
 import qualified Mdb.CmdLine  as CMD
-import Database
+import Mdb.Database
 import Mdb.Database.File ( FileId, fileMime )
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()

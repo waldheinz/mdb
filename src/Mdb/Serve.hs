@@ -1,7 +1,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Serve (
+module Mdb.Serve (
     doServe
     ) where
 
@@ -24,9 +24,9 @@ import           Heist.Interpreted as HEIST
 import Mdb.Serve.Image
 import Mdb.Serve.Video
 import Mdb.Templates
-import Database
+import Mdb.Database
 import Paths_mdb ( getDataDir )
-import RestApi ( apiApp )
+import Mdb.Serve.RestApi ( apiApp )
 
 doServe :: (MonadMask m, Functor m, MonadIO m) => MDB m ()
 doServe = ask >>= (mkApp >=> liftIO . WARP.run 8080)

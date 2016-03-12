@@ -13,7 +13,7 @@ import qualified Data.Text as T
 import           Heist as HEIST
 import           Heist.Interpreted as HEIST
 
-import Database
+import Mdb.Database
 import Mdb.Database.Person as P
 
 person :: Monad n => Person -> Splice n

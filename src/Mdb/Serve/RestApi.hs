@@ -1,7 +1,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module RestApi (
+module Mdb.Serve.RestApi (
     apiApp
     ) where
 
@@ -21,11 +21,12 @@ import           Rest
 import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/) )
 import qualified Rest.Resource as R
 
-import           Database
+import           Mdb.Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId, Person(..) )
 import           Mdb.Database.Video ( VideoId, Video(..) )
+import           Mdb.Serve.Resource.User ( userResource )
 
 apiApp :: MediaDb -> WAI.Application
 apiApp mdb = addHeaders [ ("Access-Control-Allow-Origin", "*") ] $
@@ -39,11 +40,13 @@ api010 = root
             -/ albums
             -/ files
             -/ persons
+            -/ users
             -/ videos
     where
         albums  = route albumResource
         files   = route fileResource
         persons = route personResource
+        users   = route userResource
         videos  = route videoResource
 
 -------------------------------------------------------------------------------
@@ -153,7 +156,6 @@ albumListHandler s = mkListing jsonO handler where
 ------------------------------------------------------------------------------------------------------------------------
 -- Videos / Streams
 ------------------------------------------------------------------------------------------------------------------------
-
 
 data VideoSelect
     = ByFile FileId

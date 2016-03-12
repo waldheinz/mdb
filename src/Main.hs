@@ -9,8 +9,8 @@ import           System.Directory ( getCurrentDirectory, copyFile )
 import           Graphics.ImageMagick.MagickWand ( withMagickWandGenesis )
 
 import qualified Mdb.CmdLine  as CMD
-import qualified Database as DB
-import qualified Serve    as SERVE
+import qualified Mdb.Database as DB
+import qualified Mdb.Serve as SERVE
 import           Mdb.File
 import           Mdb.Album ( doAlbum )
 

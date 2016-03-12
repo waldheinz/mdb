@@ -4,7 +4,7 @@
     OverloadedStrings
     #-}
 
-module Database (
+module Mdb.Database (
     MediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
     MDB, runMDB, runMDB', findDbAndRun, withTransaction,
 

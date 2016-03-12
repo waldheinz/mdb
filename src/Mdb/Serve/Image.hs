@@ -19,7 +19,7 @@ import           Network.Wai
 import           Network.Wai.Routing
 import           System.Directory ( doesFileExist, createDirectoryIfMissing )
 
-import           Database
+import           Mdb.Database
 import qualified Mdb.Database.File as DBF
 import           Mdb.Database.Person ( PersonId )
 

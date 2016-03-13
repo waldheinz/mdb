@@ -3,9 +3,11 @@
 
 module Mdb.Serve.Resource.File ( WithFile, fileResource ) where
 
+import           Control.Monad.Error.Class ( throwError )
 import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
+import           Control.Monad.Trans.Except
 import           Data.Monoid ( (<>) )
 import           Rest
 import qualified Rest.Resource as R
@@ -14,6 +16,7 @@ import           Mdb.Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId, File )
 import           Mdb.Database.Person ( PersonId )
+import           Mdb.Database.Video ( Video )
 import           Mdb.Serve.Auth as AUTH
 
 data FileListSelector
@@ -21,22 +24,34 @@ data FileListSelector
     | FilesInAlbum AlbumId
     | PersonNoAlbum PersonId
 
-type WithFile m = ReaderT FileListSelector (Authenticated m)
+type WithFile m = ReaderT FileId (Authenticated m)
 
 fileResource :: (Applicative m, MonadIO m) => Resource (Authenticated m) (WithFile m) FileId FileListSelector Void
-fileResource = R.Resource
+fileResource = mkResourceReader
     { R.name        = "file"
     , R.description = "Access file info"
     , R.schema      = withListing AllFiles schemas
     , R.list        = fileListHandler
-    , R.get         = Just (error "get")
-    , R.selects     = [("video", mkIdHandler jsonO $ \() fid -> return fid)]
+    , R.get         = Just (error "getFile")
+    , R.selects     = [ ( "video", getVideoInfo )]
     } where
         schemas = named
             [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
             , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
             , ( "byId"          , singleBy read)
             ]
+
+getVideoInfo :: MonadIO m => Handler (WithFile m)
+getVideoInfo = mkIdHandler jsonO handler where
+    handler :: MonadIO m => () -> FileId -> ExceptT Reason_ (WithFile m) Video
+    handler () fid = do
+         al <- lift . lift $ AUTH.query
+             "SELECT video_id, video_duration, video_format FROM video WHERE file_id=?"
+             (Only fid)
+
+         case al of
+             []  -> throwError NotFound
+             (a : _)  -> return a
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (Authenticated m)
 fileListHandler AllFiles = mkListing jsonO handler where

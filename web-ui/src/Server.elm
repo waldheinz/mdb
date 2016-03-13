@@ -93,7 +93,7 @@ fetchAlbums which =
     let
         endpoint = case which of
             AllAlbums           -> "/album"
-            PersonAlbums pid    -> "/album/withPerson/" ++ toString pid
+            PersonAlbums pid    -> "/person/byId/" ++ toString pid ++ "/albums"
     in
         defaultGetRequest endpoint
             |> Http.send Http.defaultSettings
@@ -116,7 +116,7 @@ fetchFiles which =
             |> Http.fromJson (listDecoder fileListDecoder)
 
 fetchVideoForFile : FileId -> Task Http.Error Video
-fetchVideoForFile fid = defaultGetRequest ("/video/inFile/" ++ toString fid)
+fetchVideoForFile fid = defaultGetRequest ("/file/byId/" ++ toString fid ++ "/video")
     |> Http.send Http.defaultSettings
     |> Http.fromJson videoDecoder
 

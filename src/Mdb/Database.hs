@@ -20,7 +20,7 @@ module Mdb.Database (
     getAlbumPersons,
 
     -- * albums
-    addAlbum, getAlbum,
+    addAlbum,
 
     -- * raw queries
     dbExecute, dbQuery, dbQuery_, dbLastRowId, SQL.Only(..)
@@ -39,10 +39,10 @@ import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirecto
 import System.FilePath ( (</>), makeRelative, takeDirectory )
 
 import Paths_mdb
-import Mdb.Database.Album ( Album, AlbumId )
+import Mdb.Database.Album ( AlbumId )
 import Mdb.Database.File ( File, FileId )
 import Mdb.Database.Person ( Person, PersonId )
-import Mdb.Database.Video ( Video, VideoId )
+import Mdb.Database.Video ( VideoId )
 
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
@@ -273,9 +273,3 @@ getAlbumPersons aid = dbQuery
 addAlbum :: MonadIO m => String -> MDB m AlbumId
 addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
     >> dbLastRowId >>= return . fromIntegral
-
-getAlbum :: MonadIO m => AlbumId -> MDB m Album
-getAlbum aid = dbQuery
-    (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
-    <>  "WHERE a.album_id = ?" )
-    (SQL.Only aid)  >>= return . head

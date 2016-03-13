@@ -7,24 +7,21 @@ import           Control.Monad ( liftM )
 import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
-import           Data.Monoid ( (<>) )
 import           Rest
 import qualified Rest.Resource as R
 
 import           Mdb.Database
-import           Mdb.Database.Album ( AlbumId )
-import           Mdb.Database.File ( FileId, File )
-import           Mdb.Database.Person ( PersonId )
+import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Video ( VideoId, Video )
 import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.File ( WithFile )
 
 type WithVideo m = ReaderT VideoId (WithFile m)
 
-videoResource :: MonadIO m => Resource (WithFile m) (WithVideo m) FileId Void Void
+videoResource :: MonadIO m => Resource (WithFile m) (WithVideo m) VideoId Void Void
 videoResource = mkResourceReader
     { R.name    = "video"
---    , R.schema  = noListing $ named [ ("inFile", singleBy (ByFile. read)) ]
+    , R.schema  = noListing $ named [ ]
     , R.get     = Just getVideo
     }
 

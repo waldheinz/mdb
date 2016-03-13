@@ -38,14 +38,14 @@ doServe = do
 
     let
         cname = "mdb_session"
-        setc = COOK.def
+        setc = COOK.def { COOK.setCookiePath = Just "/" }
         session sid = (getUser, setUser) where
             getUser () = do
                 xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
                 case xs of
                     []              -> return Nothing
                     (Only uid : _)  -> return (Just uid)
-                    
+
             setUser () uid = dbExecute "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, sid)
 
         sstore Nothing = do

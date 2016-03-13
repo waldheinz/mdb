@@ -11,6 +11,9 @@ module Server (
     -- * Files
     fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl,
 
+    -- * Users / Login
+    checkUser, doLogin,
+
     -- * Videos
     fetchVideoForFile
     ) where
@@ -119,6 +122,29 @@ fetchVideoForFile : FileId -> Task Http.Error Video
 fetchVideoForFile fid = defaultGetRequest ("/file/byId/" ++ toString fid ++ "/video")
     |> Http.send Http.defaultSettings
     |> Http.fromJson videoDecoder
+
+------------------------------------------------------------------------------------------------------------------------
+-- User / Login
+------------------------------------------------------------------------------------------------------------------------
+
+checkUser : Task Http.Error String
+checkUser = Http.getString <| apiBaseUrl ++ "/user/self"
+
+doLogin : { userName : String, password : String } -> Task Http.Error String
+doLogin l =
+    let
+        json    = JE.object [ ( "user", JE.string l.userName ), ("pass", JE.string l.password ) ]
+        body    = JE.encode 0 json |> Http.string
+        url     = apiBaseUrl ++ "/user/self/login"
+        decoder = JD.at ["user"] JD.string
+        req     =
+            { verb      = "POST"
+            , headers   = [ ("Content-Type", "application/json" ) ]
+            , url       = url
+            , body      = body
+            }
+    in
+        Http.send Http.defaultSettings req |> Http.fromJson decoder
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Media

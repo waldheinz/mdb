@@ -15,7 +15,7 @@ import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.Album ( albumResource, personAlbumResource )
 import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.Person ( personResource )
--- import           Mdb.Serve.Resource.User ( userResource )
+import           Mdb.Serve.Resource.User ( userResource )
 import           Mdb.Serve.Resource.Video ( videoResource )
 
 apiApp :: MediaDb -> AUTH.SessionKey IO -> WAI.Application
@@ -26,14 +26,15 @@ apiApp mdb skey req = apiToApplication (runMDB' mdb . AUTH.request skey req) api
 api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated m)
 api010 = root
             -/ albums
-            -/ persons
-                --/ route personAlbumResource
             -/ files
                 --/ video
+            -/ persons
+                --/ route personAlbumResource
+            -/ user
 
     where
         albums  = route albumResource
         files   = route fileResource
         persons = route personResource
---        users   = route userResource
+        user    = route userResource
         video   = route videoResource

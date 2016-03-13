@@ -3,18 +3,17 @@
 
 module Mdb.Serve.Resource.File ( fileResource ) where
 
-import           Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Control.Monad.Reader ( ReaderT, ask, runReaderT )
+import           Control.Monad.IO.Class ( MonadIO )
+import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
 import           Data.Monoid ( (<>) )
 import           Rest
-import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/) )
 import qualified Rest.Resource as R
 
 import           Mdb.Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId, File )
-import           Mdb.Database.Person ( PersonId, Person(..) )
+import           Mdb.Database.Person ( PersonId )
 import           Mdb.Serve.Auth as AUTH
 
 data FileListSelector
@@ -58,7 +57,6 @@ albumFiles aid = AUTH.query
     <>  "WHERE album_file.album_id = ? "
     <>  "ORDER BY f.file_name ASC" )
     (Only aid)
-
 
 -- | Get files assigned to a person but not part of an album.
 getRandomPersonFiles :: MonadIO m => PersonId -> Authenticated m [File]

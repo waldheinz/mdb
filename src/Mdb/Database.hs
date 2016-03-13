@@ -20,7 +20,7 @@ module Mdb.Database (
     getAlbumPersons,
 
     -- * albums
-    addAlbum, getAlbum, getAlbums, getPersonAlbums,
+    addAlbum, getAlbum,
 
     -- * raw queries
     dbExecute, dbQuery, dbQuery_, dbLastRowId, SQL.Only(..)
@@ -275,15 +275,6 @@ getAlbumPersons aid = dbQuery
 -- albums
 ----------------------------------------------------------
 
--- | Get all albums containing files assigned to the given person.
-getPersonAlbums :: MonadIO m => PersonId -> MDB m [Album]
-getPersonAlbums pid = dbQuery
-    (   "SELECT DISTINCT a.album_id, a.album_name, a.album_poster FROM album a "
-    <>  "NATURAL JOIN person_file "
-    <>  "NATURAL JOIN album_file "
-    <>  "WHERE person_file.person_id = ?" )
-    (SQL.Only pid)
-
 addAlbum :: MonadIO m => String -> MDB m AlbumId
 addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
     >> dbLastRowId >>= return . fromIntegral
@@ -293,9 +284,3 @@ getAlbum aid = dbQuery
     (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
     <>  "WHERE a.album_id = ?" )
     (SQL.Only aid)  >>= return . head
-
-getAlbums :: MonadIO m => Int -> Int -> MDB m [Album]
-getAlbums off cnt = dbQuery
-    (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
-    <>  "ORDER BY a.album_name LIMIT ?,?")
-    (off, cnt)

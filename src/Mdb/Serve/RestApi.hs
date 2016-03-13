@@ -26,6 +26,7 @@ import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId, Person(..) )
 import           Mdb.Database.Video ( VideoId, Video(..) )
 import           Mdb.Serve.Auth as AUTH
+import           Mdb.Serve.Resource.Album ( albumResource )
 import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.User ( userResource )
 
@@ -37,21 +38,17 @@ api = [(mkVersion 0 1 0, Some1 api010)]
 
 api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated m)
 api010 = root
---            -/ albums
+            -/ albums
             -/ files
             -/ persons
 --            -/ users
 --            -/ videos
     where
---        albums  = route albumResource
+        albums  = route albumResource
         files   = route fileResource
         persons = route personResource
 --        users   = route userResource
 --        videos  = route videoResource
-
--------------------------------------------------------------------------------
--- Files
--------------------------------------------------------------------------------
 
 -------------------------------------------------------------------------------
 -- Persons
@@ -92,39 +89,6 @@ updatePerson = mkInputHandler jsonI handler where
         lift . lift $ AUTH.unsafe $ dbExecute
             "UPDATE person SET person_name = ? WHERE person_id = ?"
             (personName p, pid)
-
--------------------------------------------------------------------------------
--- Albums
--------------------------------------------------------------------------------
-
-data AlbumSelector
-    = AllAlbums
-    | AlbumWithPerson PersonId
-
-type WithAlbum m = ReaderT AlbumId (MDB m)
-
-albumResource :: (MonadIO m) => Resource (MDB m) (WithAlbum m) AlbumId AlbumSelector Void
-albumResource = R.Resource
-    { R.name        = "album"
-    , R.description = "Access Albums"
-    , R.schema      = withListing AllAlbums $ named schemas
-    , R.get         = Just albumHandler
-    , R.list        = albumListHandler
-    }
-    where
-        schemas =
-            [ ( "withPerson"    , listingBy (AlbumWithPerson . read))
-            , ( "byId"          , singleBy read)
-            ]
-
-albumHandler :: MonadIO m => Handler (WithAlbum m)
-albumHandler = mkIdHandler jsonO $ \() aid -> lift $ lift $ getAlbum aid
-
-albumListHandler :: MonadIO m => AlbumSelector -> ListHandler (MDB m)
-albumListHandler s = mkListing jsonO handler where
-    handler r = lift $ case s of
-        AllAlbums           -> getAlbums (offset r) (count r)
-        AlbumWithPerson pid -> getPersonAlbums pid -- (offset r) (count r)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Videos / Streams

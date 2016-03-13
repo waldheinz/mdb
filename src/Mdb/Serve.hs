@@ -2,15 +2,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Serve (
-    doServe
+    SessionKey, doServe
     ) where
 
 import Control.Applicative ( (<|>) )
-import Control.Monad ( (>=>) )
 import Control.Monad.Catch ( MonadMask )
 import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
-import qualified Data.ByteString as BS
 import qualified Data.ByteString.Lazy as BSL
 import           Data.String ( fromString )
 import           Data.Text.Encoding ( encodeUtf8 )
@@ -20,17 +18,16 @@ import           Network.Wai ( Application, responseLBS, responseBuilder )
 import           Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
 import           Network.Wai.Session as S
-import           Network.Wai.Session.Map ( mapStore_ )
 import           Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
 import           Heist as HEIST
 import           Heist.Interpreted as HEIST
 import qualified Web.Cookie as COOK
 
+import Mdb.Serve.Auth ( SessionKey )
 import Mdb.Serve.Image
 import Mdb.Serve.Video
 import Mdb.Templates
 import Mdb.Database
-import Mdb.Database.User ( UserId )
 import Paths_mdb ( getDataDir )
 import Mdb.Serve.RestApi ( apiApp )
 
@@ -41,30 +38,36 @@ doServe = do
     db <- ask
 
     let
-        cname = "mdb"
+        cname = "mdb_session"
         setc = COOK.def
-        -- session :: Monad m => BS.ByteString -> S.Session (MDB m) () UserId
+        -- session :: BS.ByteString -> S.Session (MDB m) () UserId
         session sid = (getUser, setUser) where
-            getUser () = return (Just 0)
-            setUser () v = return ()
+            getUser () = do
+                xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
+                case xs of
+                    []          -> return Nothing
+                    (Only uid : _)   -> return (Just uid)
+            setUser () uid = dbExecute "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, sid)
 
-        sstore :: SessionStore IO () UserId
+        -- sstore :: MonadIO m => SessionStore (MDB m) () UserId
         sstore Nothing = do
             newKey <- S.genSessionId
             return (session newKey, return newKey)
         sstore (Just sid) = return (session sid, return sid)
+        sessMiddleware = S.withSession sstore cname setc skey
 
-    ask >>= (mkApp >=> liftIO . WARP.run 8080 . S.withSession sstore cname setc skey)
+    app <- mkApp db skey
+    liftIO $ WARP.run 8080 (sessMiddleware app)
 
-mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> m Application
-mkApp mdb = do
+mkApp :: (MonadMask m, Functor m, MonadIO m) => MediaDb -> SessionKey IO -> m Application
+mkApp mdb skey = do
     static  <- staticFiles
     heist   <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
     return $ mapUrls $
                 mount "api"     (mapUrls $
                     mount "image"   (imageApp mdb)
                 <|> mount "video"   (videoApp mdb)
-                <|> mountRoot (apiApp mdb)
+                <|> mountRoot (apiApp mdb skey)
                 )
             <|> mount "static"  static
             <|> mountRoot       (templates mdb heist)

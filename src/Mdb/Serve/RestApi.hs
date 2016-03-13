@@ -28,8 +28,8 @@ import           Mdb.Database.Video ( VideoId, Video(..) )
 import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.User ( userResource )
 
-apiApp :: MediaDb -> WAI.Application
-apiApp mdb req = apiToApplication (runMDB' mdb . AUTH.request) api req
+apiApp :: MediaDb -> AUTH.SessionKey IO -> WAI.Application
+apiApp mdb skey req = apiToApplication (runMDB' mdb . AUTH.request skey req) api req
 
 api :: (Applicative m, MonadIO m) => Api (Authenticated m)
 api = [(mkVersion 0 1 0, Some1 api010)]

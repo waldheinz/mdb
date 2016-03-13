@@ -54,12 +54,17 @@ getVideoInfo = mkIdHandler jsonO handler where
              (a : _)  -> return a
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (Authenticated m)
-fileListHandler AllFiles = mkListing jsonO handler where
-    handler r = lift $ listFiles (offset r) (count r)
-fileListHandler (FilesInAlbum aid) = mkListing jsonO handler where
-    handler _ = lift $ albumFiles aid
-fileListHandler (PersonNoAlbum pid) = mkListing jsonO handler where
-    handler _ = lift $ getRandomPersonFiles pid
+fileListHandler which = mkOrderedListing jsonO handler where
+    handler (r, o, d) = case which of
+        AllFiles            -> lift $ listFiles (offset r) (count r)
+        FilesInAlbum aid    -> lift $
+            AUTH.query
+                (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
+                <>  "NATURAL JOIN album_file "
+                <>  "WHERE album_file.album_id = ? "
+                <>  "ORDER BY f.file_name ASC" )
+                (Only aid)
+        PersonNoAlbum pid   -> lift $ getRandomPersonFiles pid
 
 listFiles
     :: MonadIO m
@@ -67,14 +72,6 @@ listFiles
     -> Int -- ^ count
     -> Authenticated m [File]
 listFiles off cnt = AUTH.query "SELECT file_id, file_name, file_size FROM file LIMIT ? OFFSET ?" (cnt, off)
-
-albumFiles :: MonadIO m => AlbumId -> Authenticated m [File]
-albumFiles aid = AUTH.query
-    (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
-    <>  "NATURAL JOIN album_file "
-    <>  "WHERE album_file.album_id = ? "
-    <>  "ORDER BY f.file_name ASC" )
-    (Only aid)
 
 -- | Get files assigned to a person but not part of an album.
 getRandomPersonFiles :: MonadIO m => PersonId -> Authenticated m [File]

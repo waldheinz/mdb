@@ -17,7 +17,7 @@ import           Network.HTTP.Types ( status200 )
 import qualified Network.Wai as WAI
 import           Rest.Driver.Wai ( apiToApplication )
 import           Rest
-import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/) )
+import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/), (--/) )
 import qualified Rest.Resource as R
 
 import           Mdb.Database
@@ -29,6 +29,7 @@ import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.Album ( albumResource )
 import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.User ( userResource )
+import           Mdb.Serve.Resource.Video ( videoResource )
 
 apiApp :: MediaDb -> AUTH.SessionKey IO -> WAI.Application
 apiApp mdb skey req = apiToApplication (runMDB' mdb . AUTH.request skey req) api req
@@ -40,15 +41,15 @@ api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated 
 api010 = root
             -/ albums
             -/ files
+                --/ videos
             -/ persons
 --            -/ users
---            -/ videos
     where
         albums  = route albumResource
         files   = route fileResource
         persons = route personResource
 --        users   = route userResource
---        videos  = route videoResource
+        videos  = route videoResource
 
 -------------------------------------------------------------------------------
 -- Persons
@@ -93,19 +94,3 @@ updatePerson = mkInputHandler jsonI handler where
 ------------------------------------------------------------------------------------------------------------------------
 -- Videos / Streams
 ------------------------------------------------------------------------------------------------------------------------
-
-data VideoSelect
-    = ByFile FileId
-
-type WithVideo m = ReaderT VideoSelect (MDB m)
-
-videoResource :: MonadIO m => Resource (MDB m) (WithVideo m) VideoSelect Void Void
-videoResource = mkResourceReader
-    { R.name    = "video"
-    , R.schema  = noListing $ named [ ("inFile", singleBy (ByFile. read)) ]
-    , R.get     = Just getVideo
-    }
-
-getVideo :: MonadIO m => Handler (WithVideo m)
-getVideo = mkIdHandler jsonO $ \() vs -> case vs of
-    ByFile fid -> lift . lift $ getVideoForFile fid

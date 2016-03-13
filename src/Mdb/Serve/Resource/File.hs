@@ -1,7 +1,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 
-module Mdb.Serve.Resource.File ( fileResource ) where
+module Mdb.Serve.Resource.File ( WithFile, fileResource ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Reader ( ReaderT )
@@ -21,7 +21,7 @@ data FileListSelector
     | FilesInAlbum AlbumId
     | PersonNoAlbum PersonId
 
-type WithFile m = ReaderT FileId m
+type WithFile m = ReaderT FileId (Authenticated m)
 
 fileResource :: (Applicative m, MonadIO m) => Resource (Authenticated m) (WithFile m) FileId FileListSelector Void
 fileResource = R.Resource
@@ -29,10 +29,12 @@ fileResource = R.Resource
     , R.description = "Access file info"
     , R.schema      = withListing AllFiles schemas
     , R.list        = fileListHandler
+    , R.get         = Just undefined
     } where
         schemas = named
             [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
             , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
+            , ( "byId"          , singleBy read)
             ]
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (Authenticated m)

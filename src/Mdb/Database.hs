@@ -13,7 +13,7 @@ module Mdb.Database (
     fileAbs, assignFileAlbum,
 
     -- * videos / streams
-    setVideoInfo, clearStreams, addStream, getVideoForFile,
+    setVideoInfo, clearStreams, addStream,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
@@ -207,11 +207,6 @@ setVideoInfo fid fmtName duration = dbExecute
     <>  " (video_id, file_id, video_duration, video_format)"
     <>  " VALUES ((SELECT video_id FROM video WHERE file_id = ?), ?, ?, ?)")
     (fid, fid, duration, fmtName) >> dbLastRowId
-
-getVideoForFile :: MonadIO m => FileId -> MDB m Video
-getVideoForFile fid = liftM head $ dbQuery
-    "SELECT video_id, video_duration, video_format FROM video WHERE file_id=?"
-    (SQL.Only fid)
 
 fileIdFromName :: MonadIO m => FilePath -> MDB m (Maybe FileId)
 fileIdFromName fn = do

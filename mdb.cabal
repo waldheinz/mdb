@@ -50,6 +50,7 @@ executable mdb
      pureMD5,
      rest-core,
      rest-wai,
+     scrypt,
      SHA           >= 1.6,
      sqlite-simple >= 0.4,
      text          >= 0.11,

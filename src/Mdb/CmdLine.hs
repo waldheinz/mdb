@@ -1,7 +1,7 @@
 
 module Mdb.CmdLine (
     MdbOptions(..),
-    Mode(..), OptAlbum(..), OptPerson(..),
+    Mode(..), OptAlbum(..), OptPerson(..), OptUser(..),
     OptFile(..), AssignTarget(..), parseCommandLine
     ) where
 
@@ -16,6 +16,7 @@ data Mode
     | ModeFile OptFile Bool [FilePath]
     | ModePerson OptPerson
     | ModeServe
+    | ModeUser OptUser
     deriving ( Show )
 
 initOptions :: Parser Mode
@@ -126,6 +127,19 @@ personOptions = ModePerson
 serveOptions :: Parser Mode
 serveOptions = pure ModeServe
 
+data OptUser
+    = AddUser String
+    deriving ( Show )
+
+userOptions :: Parser Mode
+userOptions = ModeUser
+    <$> subparser
+        (   command "add"   ( info
+                (AddUser <$> strArgument ( metavar "<USERNAME>" ))
+                ( progDesc "add a new user for the web UI, will prompt for the password" )
+            )
+        )
+
 modeParser :: Parser Mode
 modeParser = subparser
     (   command "file" (info (helper <*> fileOptions)
@@ -138,6 +152,8 @@ modeParser = subparser
             ( progDesc "Start HTTP server" ))
     <>  command "album" (info (helper <*> albumOptions)
             ( progDesc "Manage albums" ) )
+    <>  command "user" (info (helper <*> userOptions)
+            ( progDesc "Manage Users" ))
     )
 
 data MdbOptions = MdbOptions

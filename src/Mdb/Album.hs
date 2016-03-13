@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Album (
-    doAlbum, albumFiles
+    doAlbum
     ) where
 
 import Control.Monad.IO.Class ( liftIO )

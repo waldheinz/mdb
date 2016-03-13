@@ -26,6 +26,7 @@ import           Mdb.Database.File ( FileId )
 import           Mdb.Database.Person ( PersonId, Person(..) )
 import           Mdb.Database.Video ( VideoId, Video(..) )
 import           Mdb.Serve.Auth as AUTH
+import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.User ( userResource )
 
 apiApp :: MediaDb -> AUTH.SessionKey IO -> WAI.Application
@@ -37,13 +38,13 @@ api = [(mkVersion 0 1 0, Some1 api010)]
 api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated m)
 api010 = root
 --            -/ albums
---            -/ files
+            -/ files
             -/ persons
 --            -/ users
 --            -/ videos
     where
 --        albums  = route albumResource
---        files   = route fileResource
+        files   = route fileResource
         persons = route personResource
 --        users   = route userResource
 --        videos  = route videoResource
@@ -51,33 +52,6 @@ api010 = root
 -------------------------------------------------------------------------------
 -- Files
 -------------------------------------------------------------------------------
-
-data FileListSelector
-    = AllFiles
-    | FilesInAlbum AlbumId
-    | PersonNoAlbum PersonId
-
-type WithFile m = ReaderT FileId m
-
-fileResource :: (Applicative m, MonadIO m) => Resource (MDB m) (WithFile m) FileId FileListSelector Void
-fileResource = R.Resource
-    { R.name        = "file"
-    , R.description = "Access file info"
-    , R.schema      = withListing AllFiles schemas
-    , R.list        = fileListHandler
-    } where
-        schemas = named
-            [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
-            , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
-            ]
-
-fileListHandler :: MonadIO m => FileListSelector -> ListHandler (MDB m)
-fileListHandler AllFiles = mkListing jsonO handler where
-    handler r = lift $ listFiles (offset r) (count r)
-fileListHandler (FilesInAlbum aid) = mkListing jsonO handler where
-    handler _ = lift $ albumFiles aid
-fileListHandler (PersonNoAlbum pid) = mkListing jsonO handler where
-    handler _ = lift $ getRandomPersonFiles pid
 
 -------------------------------------------------------------------------------
 -- Persons

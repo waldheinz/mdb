@@ -33,23 +33,21 @@ import Mdb.Serve.RestApi ( apiApp )
 
 doServe :: (MonadMask m, MonadIO m) => MDB m ()
 doServe = do
-    -- sstore <- liftIO mapStore_ :: MonadIO m => MDB m (SessionStore IO () ())
     skey <- liftIO V.newKey
     db <- ask
 
     let
         cname = "mdb_session"
         setc = COOK.def
-        -- session :: BS.ByteString -> S.Session (MDB m) () UserId
         session sid = (getUser, setUser) where
             getUser () = do
                 xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
                 case xs of
-                    []          -> return Nothing
-                    (Only uid : _)   -> return (Just uid)
+                    []              -> return Nothing
+                    (Only uid : _)  -> return (Just uid)
+                    
             setUser () uid = dbExecute "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, sid)
 
-        -- sstore :: MonadIO m => SessionStore (MDB m) () UserId
         sstore Nothing = do
             newKey <- S.genSessionId
             return (session newKey, return newKey)

@@ -9,15 +9,15 @@ module Mdb.Database (
     MDB, runMDB, runMDB', findDbAndRun, withTransaction,
 
     -- * files
-    addFile, fileById, hasFile, listFiles, fileIdFromName, assignFilePerson,
-    fileAbs, assignFileAlbum, albumFiles,
+    addFile, fileById, hasFile, fileIdFromName, assignFilePerson,
+    fileAbs, assignFileAlbum,
 
     -- * videos / streams
     setVideoInfo, clearStreams, addStream, getVideoForFile,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
-    getRandomPersonFiles, getAlbumPersons,
+    getAlbumPersons,
 
     -- * albums
     addAlbum, getAlbum, getAlbums, getPersonAlbums,
@@ -184,16 +184,6 @@ hasFile p = do
         (SQL.Only relPath)
     return $ (SQL.fromOnly . head) r
 
-listFiles
-    :: MonadIO m
-    => Int -- ^ offset
-    -> Int -- ^ count
-    -> MDB m [File]
-listFiles off cnt = do
-    asks mdbConn >>= \c -> liftIO $ SQL.query c
-        "SELECT file_id, file_name, file_size FROM file LIMIT ? OFFSET ?"
-        (cnt, off)
-
 fileById :: MonadIO m => FileId -> MDB m File
 fileById fid = asks mdbConn >>= \c -> liftIO $ SQL.query c
         "SELECT file_id, file_name, file_size, file_mime FROM file WHERE file_id=?"
@@ -242,14 +232,6 @@ assignFileAlbum fid aid = dbExecute
     "INSERT OR IGNORE INTO album_file (album_id, file_id) VALUES (?, ?)"
     (aid, fid)
 
-albumFiles :: MonadIO m => AlbumId -> MDB m [File]
-albumFiles aid = dbQuery
-    (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
-    <>  "NATURAL JOIN album_file "
-    <>  "WHERE album_file.album_id = ? "
-    <>  "ORDER BY f.file_name ASC" )
-    (SQL.Only aid)
-
 -----------------------------------------------------------------
 -- Persons
 -----------------------------------------------------------------
@@ -279,17 +261,6 @@ getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
     <>  "NATURAL JOIN person_file "
     <>  "WHERE person_file.person_id = ?" )
     (SQL.Only pid)
-
--- | Get files assigned to a person but not part of an album.
-getRandomPersonFiles :: MonadIO m => PersonId -> MDB m [File]
-getRandomPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
-    (   "SELECT DISTINCT f.file_id, f.file_name, f.file_size, f.file_mime FROM file f "
-    <>  "NATURAL JOIN person_file "
-    <>  "WHERE person_file.person_id = ? AND NOT EXISTS ("
-    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ? AND album_file.file_id = f.file_id "
-    <>  ") LIMIT 100"
-    )
-    (pid, pid)
 
 getAlbumPersons :: MonadIO m => AlbumId -> MDB m [Person]
 getAlbumPersons aid = dbQuery

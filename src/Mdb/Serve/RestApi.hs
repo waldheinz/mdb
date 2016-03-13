@@ -17,7 +17,7 @@ import           Network.HTTP.Types ( status200 )
 import qualified Network.Wai as WAI
 import           Rest.Driver.Wai ( apiToApplication )
 import           Rest
-import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/), (--/) )
+import           Rest.Api ( Api, Router, Some1(..), route, root, mkVersion, (-/), (--/), (---/), (----/) )
 import qualified Rest.Resource as R
 
 import           Mdb.Database
@@ -39,11 +39,12 @@ api = [(mkVersion 0 1 0, Some1 api010)]
 
 api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated m)
 api010 = root
-            -/ albums
-            -/ files
-                --/ videos
             -/ persons
---            -/ users
+                --/ albums
+                    ---/ files
+                        ----/ videos
+                --/ files
+                    ---/videos
     where
         albums  = route albumResource
         files   = route fileResource

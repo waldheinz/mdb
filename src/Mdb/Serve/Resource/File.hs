@@ -21,7 +21,7 @@ data FileListSelector
     | FilesInAlbum AlbumId
     | PersonNoAlbum PersonId
 
-type WithFile m = ReaderT FileId (Authenticated m)
+type WithFile m = ReaderT FileListSelector (Authenticated m)
 
 fileResource :: (Applicative m, MonadIO m) => Resource (Authenticated m) (WithFile m) FileId FileListSelector Void
 fileResource = R.Resource
@@ -29,7 +29,8 @@ fileResource = R.Resource
     , R.description = "Access file info"
     , R.schema      = withListing AllFiles schemas
     , R.list        = fileListHandler
-    , R.get         = Just undefined
+    , R.get         = Just (error "get")
+    , R.selects     = [("video", mkIdHandler jsonO $ \() fid -> return fid)]
     } where
         schemas = named
             [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )

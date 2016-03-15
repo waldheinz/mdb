@@ -1,11 +1,5 @@
 
-{-# LANGUAGE
-    DeriveDataTypeable,
-    DeriveGeneric,
-    OverloadedStrings,
-    TemplateHaskell,
-    TypeFamilies
-    #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Mdb.Database.Person (
     PersonId, Person(..)
@@ -15,7 +9,6 @@ import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
 import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
-import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
 import           GHC.Generics
 
@@ -24,7 +17,7 @@ type PersonId = Int64
 data Person = Person
     { personId      :: ! PersonId
     , personName    :: ! String
-    } deriving ( Eq, Generic, Show, Typeable )
+    } deriving ( Generic, Show )
 
 instance FromRow Person where
     fromRow = Person <$> field <*> field

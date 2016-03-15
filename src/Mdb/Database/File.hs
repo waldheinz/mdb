@@ -1,11 +1,5 @@
 
-{-# LANGUAGE
-    DeriveDataTypeable,
-    DeriveGeneric,
-    OverloadedStrings,
-    TemplateHaskell,
-    TypeFamilies
-    #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module Mdb.Database.File (
     FileId, File(..)
@@ -16,7 +10,6 @@ import           Data.Aeson
 import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import qualified Data.Text as T
-import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
 import           GHC.Generics
 
@@ -27,7 +20,7 @@ data File = File
     , filePath  :: ! FilePath
     , fileSize  :: ! Integer
     , fileMime  :: ! T.Text
-    } deriving ( Eq, Generic, Show, Typeable )
+    } deriving ( Generic, Show )
 
 instance FromRow File where
     fromRow = File <$> field <*> field <*> field <*> field

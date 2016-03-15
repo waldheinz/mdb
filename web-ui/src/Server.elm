@@ -14,8 +14,8 @@ module Server (
     -- * Users / Login
     checkUser, doLogin,
 
-    -- * Videos
-    fetchVideoForFile
+    -- * Containers
+    fetchContainerForFile
     ) where
 
 import Http
@@ -118,10 +118,10 @@ fetchFiles which =
             |> Http.send Http.defaultSettings
             |> Http.fromJson (listDecoder fileListDecoder)
 
-fetchVideoForFile : FileId -> Task Http.Error Video
-fetchVideoForFile fid = defaultGetRequest ("/file/byId/" ++ toString fid ++ "/video")
+fetchContainerForFile : FileId -> Task Http.Error Container
+fetchContainerForFile fid = defaultGetRequest ("/file/byId/" ++ toString fid ++ "/container")
     |> Http.send Http.defaultSettings
-    |> Http.fromJson videoDecoder
+    |> Http.fromJson containerDecoder
 
 ------------------------------------------------------------------------------------------------------------------------
 -- User / Login

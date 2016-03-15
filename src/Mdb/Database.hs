@@ -13,7 +13,7 @@ module Mdb.Database (
     fileAbs, assignFileAlbum,
 
     -- * videos / streams
-    setVideoInfo, clearStreams, addStream,
+    setContainerInfo, clearStreams, addStream,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
@@ -42,7 +42,6 @@ import Paths_mdb
 import Mdb.Database.Album ( AlbumId )
 import Mdb.Database.File ( File, FileId )
 import Mdb.Database.Person ( Person, PersonId )
-import Mdb.Database.Video ( VideoId )
 
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
@@ -91,7 +90,7 @@ dbTables =
     [ "album"
     , "album_file"
     , "file"
-    , "video"
+    , "container"
     , "stream"
     , "stream_metadata"
     , "person"
@@ -185,28 +184,28 @@ hasFile p = do
     return $ (SQL.fromOnly . head) r
 
 fileById :: MonadIO m => FileId -> MDB m File
-fileById fid = asks mdbConn >>= \c -> liftIO $ SQL.query c
+fileById fid = liftM head $ dbQuery
         "SELECT file_id, file_name, file_size, file_mime FROM file WHERE file_id=?"
-        (SQL.Only fid) >>= return . head
+        (SQL.Only fid)
 
 clearStreams :: MonadIO m => FileId -> MDB m ()
 clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     "DELETE FROM stream WHERE (file_id = ?)"
     (SQL.Only fid)
 
-addStream :: MonadIO m => VideoId -> StreamId -> (String, String, Int) -> MDB m ()
-addStream vid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
+addStream :: MonadIO m => FileId -> StreamId -> (String, String, Int) -> MDB m ()
+addStream fid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     ("INSERT OR REPLACE INTO stream"
-        <> " (stream_id, video_id, stream_media_type, stream_codec, stream_bit_rate)"
+        <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate)"
         <> " VALUES (?, ?, ?, ?, ?)")
-    (sid, vid, mt, cd, br)
+    (sid, fid, mt, cd, br)
 
-setVideoInfo :: MonadIO m => FileId -> String -> Double -> MDB m VideoId
-setVideoInfo fid fmtName duration = dbExecute
-    (   "INSERT OR REPLACE INTO video"
-    <>  " (video_id, file_id, video_duration, video_format)"
-    <>  " VALUES ((SELECT video_id FROM video WHERE file_id = ?), ?, ?, ?)")
-    (fid, fid, duration, fmtName) >> dbLastRowId
+setContainerInfo :: MonadIO m => FileId -> String -> Double -> MDB m ()
+setContainerInfo fid fmtName duration = dbExecute
+    (   "INSERT OR REPLACE INTO container"
+    <>  " (file_id, container_duration, container_format)"
+    <>  " VALUES (?, ?, ?)")
+    (fid, duration, fmtName)
 
 fileIdFromName :: MonadIO m => FilePath -> MDB m (Maybe FileId)
 fileIdFromName fn = do
@@ -271,5 +270,5 @@ getAlbumPersons aid = dbQuery
 ----------------------------------------------------------
 
 addAlbum :: MonadIO m => String -> MDB m AlbumId
-addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
-    >> dbLastRowId >>= return . fromIntegral
+addAlbum name = liftM fromIntegral $ dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
+    >> dbLastRowId

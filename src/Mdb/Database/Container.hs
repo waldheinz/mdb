@@ -1,34 +1,33 @@
 
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
-module Mdb.Database.Video (
-    VideoId, Video(..)
+module Mdb.Database.Container (
+    Container(..)
     ) where
 
 import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
-import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import qualified Data.Text as T
 import           Generics.Generic.Aeson
 import           GHC.Generics
 
-type VideoId = Int64
+import           Mdb.Database.File ( FileId )
 
-data Video = Video
-    { videoId   :: VideoId
+data Container = Container
+    { fileId    :: FileId
     , duration  :: Double   -- ^ duration in seconds
     , format    :: T.Text   -- ^ container format ("avi", "mkv", ...)
     } deriving ( Generic, Show )
 
-instance FromRow Video where
-    fromRow = Video <$> field <*> field <*> field
+instance FromRow Container where
+    fromRow = Container <$> field <*> field <*> field
 
-instance ToJSON Video where
+instance ToJSON Container where
     toJSON = gtoJson
 
-instance FromJSON Video where
+instance FromJSON Container where
     parseJSON = gparseJson
 
-instance JSONSchema Video where
+instance JSONSchema Container where
     schema = gSchema

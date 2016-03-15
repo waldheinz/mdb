@@ -29,7 +29,7 @@ type alias Model =
     , playStartTime : Float
     , playState     : PlayState
     , playerId      : String
-    , videoInfo     : Maybe Video
+    , videoInfo     : Maybe Container
     , mouseMoved    : Bool
     }
 
@@ -61,7 +61,7 @@ setVideo fid m =
                     , videoBaseUrl  = Server.videoStreamUrl fid
                     , videoInfo     = Nothing
                     }
-        fx = Server.fetchVideoForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+        fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
     in
         ( m', fx )
 
@@ -71,7 +71,7 @@ type Action
     | PlayTimeChanged Float
     | Play
     | Pause
-    | FetchedVideoInfo (Result Http.Error Video)
+    | FetchedVideoInfo (Result Http.Error Container)
     | SeekTo Float
     | MouseMoved Bool
     | GoFullscreen

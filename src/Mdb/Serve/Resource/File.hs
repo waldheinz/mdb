@@ -3,11 +3,10 @@
 
 module Mdb.Serve.Resource.File ( WithFile, fileResource ) where
 
-import           Control.Monad.Error.Class ( throwError )
 import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
-import           Control.Monad.Trans.Except
+import           Control.Monad.Trans.Except ( ExceptT(..) )
 import           Data.Monoid ( (<>) )
 import           Rest
 import qualified Rest.Resource as R
@@ -16,7 +15,7 @@ import           Mdb.Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId, File )
 import           Mdb.Database.Person ( PersonId )
-import           Mdb.Database.Video ( Video )
+import           Mdb.Database.Container ( Container )
 import           Mdb.Serve.Auth as AUTH
 
 data FileListSelector
@@ -32,8 +31,8 @@ fileResource = mkResourceReader
     , R.description = "Access file info"
     , R.schema      = withListing AllFiles schemas
     , R.list        = fileListHandler
-    , R.get         = Just (error "getFile")
-    , R.selects     = [ ( "video", getVideoInfo )]
+    , R.get         = Nothing
+    , R.selects     = [ ( "container", getContainerInfo )]
     } where
         schemas = named
             [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
@@ -41,17 +40,12 @@ fileResource = mkResourceReader
             , ( "byId"          , singleBy read)
             ]
 
-getVideoInfo :: MonadIO m => Handler (WithFile m)
-getVideoInfo = mkIdHandler jsonO handler where
-    handler :: MonadIO m => () -> FileId -> ExceptT Reason_ (WithFile m) Video
-    handler () fid = do
-         al <- lift . lift $ AUTH.query
-             "SELECT video_id, video_duration, video_format FROM video WHERE file_id=?"
-             (Only fid)
-
-         case al of
-             []  -> throwError NotFound
-             (a : _)  -> return a
+getContainerInfo :: MonadIO m => Handler (WithFile m)
+getContainerInfo = mkIdHandler jsonO handler where
+    handler :: MonadIO m => () -> FileId -> ExceptT Reason_ (WithFile m) Container
+    handler () fid = ExceptT $ lift $ AUTH.queryOne
+        "SELECT file_id, container_duration, container_format FROM container WHERE file_id=?"
+        (Only fid)
 
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (Authenticated m)
 fileListHandler which = mkOrderedListing jsonO handler where

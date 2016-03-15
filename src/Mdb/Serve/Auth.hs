@@ -2,13 +2,11 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 module Mdb.Serve.Auth (
-    Authenticated, query, unsafe, Mdb.Serve.Auth.userId,
+    Authenticated, query, queryOne, unsafe, Mdb.Serve.Auth.userId,
     SessionKey, request, checkLogin
 ) where
 
-import           Control.Monad ( when )
-import           Control.Monad.IO.Class ( MonadIO )
-import           Control.Monad.Trans.Class ( lift )
+import           Control.Monad.Except
 import           Control.Monad.Trans.Reader ( ReaderT, asks, runReaderT )
 import qualified Crypto.Scrypt as SCRYPT
 import           Data.ByteString ( ByteString )
@@ -16,6 +14,7 @@ import qualified Data.Vault.Lazy as V
 import qualified Database.SQLite.Simple as SQL
 import qualified Network.Wai as WAI
 import qualified Network.Wai.Session as S
+import           Rest ( Reason(NotAllowed, NotFound) )
 
 import Mdb.Database
 import Mdb.Database.User
@@ -41,6 +40,13 @@ query :: (MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authentica
 query q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth      -> fail "not authorized"
     UserAuth _  -> lift $ dbQuery q p
+
+queryOne :: (SQL.FromRow b, SQL.ToRow q, MonadIO m) => SQL.Query -> q -> Authenticated m (Either (Reason a) b)
+queryOne q p = Authenticated $ asks snd >>= \mauth -> case mauth of
+    NoAuth      -> return $ Left NotAllowed
+    UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $ case xs of
+                        []      -> Left NotFound
+                        (a : _) -> Right a
 
 unsafe :: Monad m => MDB m a -> Authenticated m a
 unsafe f = Authenticated $ asks snd >>= \mauth -> case mauth of

@@ -13,7 +13,7 @@ module Mdb.Database (
     fileAbs, assignFileAlbum,
 
     -- * videos / streams
-    setContainerInfo, clearStreams,
+    setContainerInfo,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
@@ -157,8 +157,6 @@ withTransaction f = ask >>= \mdb -> liftIO (SQL.withTransaction (mdbConn mdb) (r
 -- Files
 -----------------------------------------------------------------
 
-type StreamId = Integer
-
 relFile :: MonadIO m => FilePath -> MDB m FilePath
 relFile absPath = do
     rp <- liftIO $ canonicalizePath absPath
@@ -187,11 +185,6 @@ fileById :: MonadIO m => FileId -> MDB m File
 fileById fid = liftM head $ dbQuery
         "SELECT file_id, file_name, file_size, file_mime FROM file WHERE file_id=?"
         (SQL.Only fid)
-
-clearStreams :: MonadIO m => FileId -> MDB m ()
-clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
-    "DELETE FROM stream WHERE (file_id = ?)"
-    (SQL.Only fid)
 
 setContainerInfo :: MonadIO m => FileId -> String -> Double -> MDB m ()
 setContainerInfo fid fmtName duration = dbExecute

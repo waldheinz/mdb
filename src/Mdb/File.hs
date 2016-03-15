@@ -11,6 +11,7 @@ import Control.Monad ( forM_, unless, foldM, when, liftM )
 import Control.Monad.Catch ( MonadMask, catchIOError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
+import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import Data.Text.Encoding ( decodeUtf8 )
 import qualified Data.ByteString.Lazy as BSL
@@ -101,6 +102,8 @@ addVideoInfo fn fid = FFM.withAvFile fn $ do
 
     lift $ setContainerInfo fid fmtName durationSeconds
 
+    lift $ dbExecute "DELETE FROM stream WHERE (file_id = ?)" (Only fid)
+
     ns <- FFM.nbStreams
     forM_ [0..(ns-1)] $ \sid -> FFM.withStream sid $ do
         mcctx <- FFM.codecContext
@@ -110,6 +113,11 @@ addVideoInfo fn fid = FFM.withAvFile fn $ do
                 tn <- FFM.codecMediaTypeName cctx
                 cn <- FFM.codecName cctx
                 br <- FFM.streamBitrate cctx
-                (lift . lift) $ addStream fid (fromIntegral sid) (tn, cn, br)
+                (sw, sh) <- FFM.streamImageSize cctx
+                (lift . lift) $ dbExecute
+                    ("INSERT INTO stream"
+                    <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate, stream_width, stream_height)"
+                    <> " VALUES (?, ?, ?, ?, ?, ?, ?)")
+                        (sid, fid, tn, cn, br, sw, sh)
 
     liftIO $ print $ fn ++ ": " ++ show ns ++ " streams, " ++ show (round durationSeconds :: Int) ++ " seconds"

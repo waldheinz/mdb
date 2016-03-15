@@ -13,7 +13,7 @@ module Mdb.Database (
     fileAbs, assignFileAlbum,
 
     -- * videos / streams
-    setContainerInfo, clearStreams, addStream,
+    setContainerInfo, clearStreams,
 
     -- * persons
     addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
@@ -192,13 +192,6 @@ clearStreams :: MonadIO m => FileId -> MDB m ()
 clearStreams fid = asks mdbConn >>= \c -> liftIO $ SQL.execute c
     "DELETE FROM stream WHERE (file_id = ?)"
     (SQL.Only fid)
-
-addStream :: MonadIO m => FileId -> StreamId -> (String, String, Int) -> MDB m ()
-addStream fid sid (mt, cd, br) = asks mdbConn >>= \c -> liftIO $ SQL.execute c
-    ("INSERT OR REPLACE INTO stream"
-        <> " (stream_id, file_id, stream_media_type, stream_codec, stream_bit_rate)"
-        <> " VALUES (?, ?, ?, ?, ?)")
-    (sid, fid, mt, cd, br)
 
 setContainerInfo :: MonadIO m => FileId -> String -> Double -> MDB m ()
 setContainerInfo fid fmtName duration = dbExecute

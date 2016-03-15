@@ -24,8 +24,8 @@ import qualified Mdb.Database.File as DBF
 videoApp :: MediaDb -> Application
 videoApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
     root = prepare $ do
-        get "/:id/frame"        (continue frame)        $ capture "id" .&. query "ts"
-        get "/:id/stream"       (continue stream)       $ capture "id" .&. query "t"
+        get "/:id/frame"        (continue frame)        $ capture "id" .&. def 0 (query "ts")
+        get "/:id/stream"       (continue stream)       $ capture "id" .&. def 0 (query "t") .&. def 720 (query "rv")
         get "/:id/streamDirect" (continue streamDirect) $ capture "id"
 
 roundTimeToMs :: Double -> Integer
@@ -49,15 +49,15 @@ frame (fid ::: ts) = do
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return $ responseFile status200 [] outFile Nothing
 
-stream :: MonadIO m => (DBF.FileId ::: Double) -> MDB m Response
-stream (fid ::: ts) = do
+stream :: MonadIO m => (DBF.FileId ::: Double ::: Int) -> MDB m Response
+stream (fid ::: ts ::: rv) = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f
 
     let
         cmd = "ffmpeg -ss " ++ show ts ++
             " -i \"" ++ p ++ "\"" ++
---            " -vf scale=-2:240" ++
+            " -vf scale=-2:" ++ show rv ++
             " -c:v libx264 -preset veryfast" ++
             " -f matroska" ++
 --            " /tmp/out.mkv 2>&1"

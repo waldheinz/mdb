@@ -13,7 +13,6 @@ import           Rest.Api ( Router, Some1(..), route, root, mkVersion, (-/), (--
 import           Mdb.Database
 import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.Album ( albumResource, personAlbumResource )
-import           Mdb.Serve.Resource.Container ( containerResource )
 import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.Person ( personResource )
 import           Mdb.Serve.Resource.User ( userResource )
@@ -27,7 +26,6 @@ api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated 
 api010 = root
             -/ albums
             -/ files
-                --/ container
             -/ persons
                 --/ route personAlbumResource
             -/ user
@@ -37,4 +35,3 @@ api010 = root
         files       = route fileResource
         persons     = route personResource
         user        = route userResource
-        container   = route containerResource

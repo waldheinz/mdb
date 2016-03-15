@@ -1,13 +1,19 @@
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
-module Mdb.Serve.Resource.File ( WithFile, fileResource ) where
+module Mdb.Serve.Resource.File ( WithFile, fileResource, Container(..), Stream(..) ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
-import           Control.Monad.Trans.Except ( ExceptT(..) )
+import           Control.Monad.Trans.Except -- ( ExceptT(..) )
+import           Database.SQLite.Simple ( FromRow(..), field )
+import           Data.Aeson
+import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import           Data.Monoid ( (<>) )
+import qualified Data.Text as T
+import           Generics.Generic.Aeson
+import           GHC.Generics
 import           Rest
 import qualified Rest.Resource as R
 
@@ -15,7 +21,6 @@ import           Mdb.Database
 import           Mdb.Database.Album ( AlbumId )
 import           Mdb.Database.File ( FileId, File )
 import           Mdb.Database.Person ( PersonId )
-import           Mdb.Database.Container ( Container )
 import           Mdb.Serve.Auth as AUTH
 
 data FileListSelector
@@ -39,14 +44,6 @@ fileResource = mkResourceReader
             , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
             , ( "byId"          , singleBy read)
             ]
-
-getContainerInfo :: MonadIO m => Handler (WithFile m)
-getContainerInfo = mkIdHandler jsonO handler where
-    handler :: MonadIO m => () -> FileId -> ExceptT Reason_ (WithFile m) Container
-    handler () fid = ExceptT $ lift $ AUTH.queryOne
-        "SELECT file_id, container_duration, container_format FROM container WHERE file_id=?"
-        (Only fid)
-
 fileListHandler :: MonadIO m => FileListSelector -> ListHandler (Authenticated m)
 fileListHandler which = mkOrderedListing jsonO handler where
     handler (r, o, d) = case which of
@@ -77,3 +74,50 @@ getRandomPersonFiles pid = AUTH.query
     <>  ") LIMIT 100"
     )
     (pid, pid)
+
+------------------------------------------------------------------------------------------------------------------------
+-- Containers
+------------------------------------------------------------------------------------------------------------------------
+
+data Stream = Stream
+    { streamId          :: Int
+    , streamMediaType   :: T.Text
+    , streamCodec       :: T.Text
+    , streamBitRate     :: Int
+    , streamWidth       :: Int
+    , streamHeight      :: Int
+    } deriving ( Generic, Show )
+
+instance ToJSON Stream where
+    toJSON = gtoJson
+
+instance JSONSchema Stream where
+    schema = gSchema
+
+instance FromRow Stream where
+    fromRow = Stream <$> field <*> field <*> field <*> field <*> field <*> field
+
+data Container = Container
+    { duration  :: Double   -- ^ duration in seconds
+    , format    :: T.Text   -- ^ container format ("avi", "mkv", ...)
+    , streams   :: [Stream]
+    } deriving ( Generic, Show )
+
+instance ToJSON Container where
+    toJSON = gtoJson
+
+instance JSONSchema Container where
+    schema = gSchema
+
+getContainerInfo :: MonadIO m => Handler (WithFile m)
+getContainerInfo = mkIdHandler jsonO handler where
+    handler :: MonadIO m => () -> FileId -> ExceptT Reason_ (WithFile m) Container
+    handler () fid = do
+        (d, fmt) <- ExceptT $ lift $ AUTH.queryOne
+            "SELECT container_duration, container_format FROM container WHERE file_id=?" (Only fid)
+
+        ss <- lift . lift $ AUTH.query
+            ("SELECT stream_id, stream_media_type, stream_codec, stream_bit_rate, stream_width, stream_height " <>
+            "FROM stream WHERE file_id=?") (Only fid)
+
+        return $ Container d fmt ss

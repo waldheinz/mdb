@@ -12,6 +12,7 @@ import StartApp
 import TransitRouter exposing ( WithRoute, getTransition )
 import TransitStyle
 
+import Navbar
 import Page.Album
 import Page.Home
 import Page.Person
@@ -173,8 +174,11 @@ view aa m =
                 Html.div [ HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ] [ routedContent ]
 
     in
-        Html.div [ HA.class "container" ]
-            [ mainContent ]
+        Html.div []
+            [ Navbar.view m.userName <| TransitRouter.getRoute m
+            , Html.div [ HA.class "container" ] [ mainContent ]
+            ]
+
 
 init : (Model, Effects Action)
 init =

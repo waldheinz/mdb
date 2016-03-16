@@ -66,7 +66,7 @@ stream (fid ::: ts ::: rv) = do
             void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
             flush
 
-    return $ responseStream status200 [] str
+    return $ responseStream status200 [ ("Content-Type", "video/x-matroska") ] str
 
 streamDirect :: MonadIO m => DBF.FileId -> MDB m Response
 streamDirect fid = do

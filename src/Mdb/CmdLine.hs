@@ -1,7 +1,7 @@
 
 module Mdb.CmdLine (
     MdbOptions(..),
-    Mode(..), OptAlbum(..), OptPerson(..), OptUser(..),
+    Mode(..), OptAlbum(..), OptPerson(..), OptUser(..), OptTvShow(..),
     OptFile(..), AssignTarget(..), parseCommandLine
     ) where
 
@@ -16,12 +16,25 @@ data Mode
     | ModeFile OptFile Bool [FilePath]
     | ModePerson OptPerson
     | ModeServe
+    | ModeTvShow OptTvShow
     | ModeUser OptUser
     deriving ( Show )
 
 initOptions :: Parser Mode
 initOptions = pure ModeInit
 
+data OptTvShow = OptTvShow
+    { tvShowLanguage    :: String
+    , tvShowFolders     :: [FilePath]
+    } deriving ( Show )
+
+tvShowOptions :: Parser Mode
+tvShowOptions = ModeTvShow
+    <$> (   OptTvShow
+        <$> strArgument ( metavar "LANG" <> help "Language to use" )
+        <*> some (strArgument ( metavar "NAME" <> help "Specify TV show folders" ))
+        )
+        
 data OptAlbum
     = AlbumCreate String
     deriving ( Show )
@@ -148,6 +161,8 @@ modeParser = subparser
             ( progDesc "Initialize database" ))
     <>  command "person" (info (helper <*> personOptions)
             ( progDesc "Manage persons in the database" ))
+    <>  command "tvshow" (info (helper <*> tvShowOptions)
+            ( progDesc "Fetch TV Show information from TheTVDB"))
     <>  command "serve" (info (helper <*> serveOptions)
             ( progDesc "Start HTTP server" ))
     <>  command "album" (info (helper <*> albumOptions)

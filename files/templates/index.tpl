@@ -50,6 +50,11 @@
                 cursor: pointer;
             }
 
+            .video-playtime {
+                color: white;
+                padding: 5px;
+            }
+
             .video-button {
                 background-color: transparent;
                 border: none;

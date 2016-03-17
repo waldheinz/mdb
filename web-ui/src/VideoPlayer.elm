@@ -12,6 +12,7 @@ import Html.Events as HE
 import Http
 import Mouse
 import Signal exposing ( Address, Signal )
+import String
 import Task exposing ( Task )
 import Time
 
@@ -141,6 +142,7 @@ controls : Address Action -> Model -> Html
 controls aa m =
     let
         playClick = onClick' aa (if m.playState == Paused then Play else Pause)
+        opacity = if wantControls m then 1 else 0
         progress duration =
             let
                 clickLocation : JD.Decoder (Int, Int) -- x and width
@@ -156,7 +158,31 @@ controls aa m =
                         [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
                         []
                     ]
-        opacity = if wantControls m then 1 else 0
+
+        showTime duration =
+            let
+                go unit t = if t > unit
+                    then
+                        let
+                            x = floor <| t / unit
+                            ts = toString x
+                        in
+                            (t - unit * toFloat x, if String.length ts < 2 then "0" ++ ts else ts)
+                    else
+                        (t, "00")
+
+                fmt t =
+                    let
+                        (t' , hs) = go Time.hour <| Debug.log "hours" (t * Time.second)
+                        (t'', ms) = go Time.minute <| Debug.log "minutes" t'
+                        (_  , ss) = go Time.second <| Debug.log "seconds" t''
+                    in
+                        (hs ++ ":" ++ ms ++ ":" ++ ss)
+
+            in
+                Html.span [ HA.class "video-playtime" ]
+                    [ Html.text <| fmt (currentTime m) ++ " / " ++ fmt duration ]
+
     in
         Html.div [ HA.class "embed-responsive-item" ]
             [ Html.div
@@ -180,6 +206,7 @@ controls aa m =
                                     ]
                                 ] []
                             ]
+                        , Maybe.map (\vi -> showTime vi.duration) m.videoInfo
                         , Just <| Html.button [ onClick' aa GoFullscreen, HA.class "video-button pull-right" ]
                             [ Html.span [ HA.class "glyphicon glyphicon-fullscreen" ] []
                             ]

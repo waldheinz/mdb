@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings, TypeOperators #-}
 
 module Mdb.Serve.Video (
-    videoApp
+    videoApp, ensureFrame
     ) where
 
 import           Blaze.ByteString.Builder ( fromByteString )
@@ -31,8 +31,8 @@ videoApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
 roundTimeToMs :: Double -> Integer
 roundTimeToMs ts = round ts `div` 30 * 30000
 
-frame :: MonadIO m => (DBF.FileId ::: Double) -> MDB m Response
-frame (fid ::: ts) = do
+ensureFrame :: MonadIO m => DBF.FileId -> Double -> MDB m FilePath
+ensureFrame fid ts = do
     dbDir <- asks mdbDbDir
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f
@@ -47,7 +47,10 @@ frame (fid ::: ts) = do
 
     exists <- liftIO $ doesFileExist outFile
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
-    return $ responseFile status200 [] outFile Nothing
+    return outFile
+
+frame :: MonadIO m => (DBF.FileId ::: Double) -> MDB m Response
+frame (fid ::: ts) = ensureFrame fid ts >>= \outFile -> return $ responseFile status200 [] outFile Nothing
 
 stream :: MonadIO m => (DBF.FileId ::: Double ::: Int) -> MDB m Response
 stream (fid ::: ts ::: rv) = do

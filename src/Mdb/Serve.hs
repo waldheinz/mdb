@@ -25,6 +25,7 @@ import qualified Web.Cookie as COOK
 
 import Mdb.Serve.Auth ( SessionKey )
 import Mdb.Serve.Image
+import Mdb.Serve.Thumbs ( thumbApp )
 import Mdb.Serve.Video
 import Mdb.Templates
 import Mdb.Database
@@ -64,6 +65,7 @@ mkApp mdb skey = do
     return $ mapUrls $
                 mount "api"     (mapUrls $
                     mount "image"   (imageApp mdb)
+                <|> mount "thumb"   (thumbApp mdb)
                 <|> mount "video"   (videoApp mdb)
                 <|> mountRoot (apiApp mdb skey)
                 )

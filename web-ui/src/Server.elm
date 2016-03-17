@@ -151,7 +151,7 @@ doLogin l =
 ------------------------------------------------------------------------------------------------------------------------
 
 fileThumbUrl : FileId -> String
-fileThumbUrl fid = serverBaseUrl ++ "/api/image/thumbnail/" ++ toString fid
+fileThumbUrl fid = serverBaseUrl ++ "/api/thumb/medium/" ++ toString fid
 
 imageUrl : FileId -> String
 imageUrl fid = serverBaseUrl ++ "/api/image/image/" ++ toString fid

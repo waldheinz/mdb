@@ -31,6 +31,7 @@ type alias Model =
     , playerId      : String
     , videoInfo     : Maybe Container
     , mouseMoved    : Bool
+    , doSeek        : Bool              -- ^ if there is a seek operation pending (so we have to set src again)
     }
 
 initialModel : String -> Model
@@ -43,6 +44,7 @@ initialModel playerId =
     , playerId      = playerId
     , videoInfo     = Nothing
     , mouseMoved    = True
+    , doSeek        = True
     }
 
 input : Signal Action
@@ -73,6 +75,7 @@ type Action
     | Pause
     | FetchedVideoInfo (Result Http.Error Container)
     | SeekTo Float
+    | SeekDone
     | MouseMoved Bool
     | GoFullscreen
 
@@ -85,17 +88,18 @@ currentTime m = case m.playState of
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     NoOp                -> ( m, Effects.none )
-    Play                -> ( m, setPlay m True |> Effects.task )
+    Play                -> ( { m | doSeek = False }, setPlay m True |> Effects.task )
     Pause               -> ( { m | playStartTime = currentTime m }, setPlay m False |> Effects.task )
     PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
     PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
     FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
     MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
-    GoFullscreen    -> (m, goFullscreen m |> Effects.task)
+    GoFullscreen        -> (m, goFullscreen m |> Effects.task)
+    SeekDone            -> ( { m | doSeek = False }, Effects.none )
     SeekTo t            ->
         let
-            m' = { m | playStartTime = t, playState = Seeking }
+            m' = { m | playStartTime = t, playState = Seeking, doSeek = True }
         in
             (m' , setPlay m' True |> Effects.task )
 

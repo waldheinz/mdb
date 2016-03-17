@@ -16,13 +16,16 @@ Elm.Native.VideoPlayer.make = function(elm) {
             var elem = document.getElementById(model.playerId);
 
             if (play) {
-                elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
+                if (model.doSeek) {
+                    elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
+                }
+
                 elem.play();
             } else {
                 elem.pause();
             }
 
-            return callback(Task.succeed(noOp));
+            return callback(Task.succeed({ ctor : "SeekDone" }));
         });
     }
 

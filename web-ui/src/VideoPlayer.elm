@@ -110,7 +110,7 @@ view aa m =
     let
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
     in
-        Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
+        Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive" ]
             [ Html.div [ HA.id <| m.playerId ++ "-container" ]
                 [ Html.video
                     [ HA.type' "video/webm"

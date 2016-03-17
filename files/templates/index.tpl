@@ -30,6 +30,10 @@
                 height: 128px;
             }
 
+            .video-responsive {
+                background-color: black;
+            }
+
             .video-controls {
                 position: absolute;
                 bottom: 0;
@@ -60,7 +64,6 @@
     </body>
     <script type="text/javascript">
         Elm.fullscreen(Elm.Main, {
-//            randomSeed: [ Math.floor(Math.random() * 0xFFFFFFFF),  Math.floor(Math.random() * 0xFFFFFFFF) ],
             initialPath: window.location.pathname
         });
     </script>

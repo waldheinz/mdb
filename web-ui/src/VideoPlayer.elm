@@ -31,6 +31,7 @@ type alias Model =
     , playerId      : String
     , videoInfo     : Maybe Container
     , mouseMoved    : Bool
+    , overControls  : Bool              -- ^ does the mouse cursor hover over the control panel?
     , doSeek        : Bool              -- ^ if there is a seek operation pending (so we have to set src again)
     }
 
@@ -44,6 +45,7 @@ initialModel playerId =
     , playerId      = playerId
     , videoInfo     = Nothing
     , mouseMoved    = True
+    , overControls  = False
     , doSeek        = True
     }
 
@@ -77,6 +79,7 @@ type Action
     | SeekTo Float
     | SeekDone
     | MouseMoved Bool
+    | OverControls Bool
     | GoFullscreen
 
 currentTime : Model -> Float
@@ -95,6 +98,7 @@ update a m = case a of
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
     FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
     MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
+    OverControls o      -> ( { m | overControls = o }, Effects.none)
     GoFullscreen        -> (m, goFullscreen m |> Effects.task)
     SeekDone            -> ( { m | doSeek = False }, Effects.none )
     SeekTo t            ->
@@ -109,11 +113,14 @@ setPlay m play = Native.VideoPlayer.setPlay m play
 goFullscreen : Model -> Task Effects.Never Action
 goFullscreen m = Native.VideoPlayer.goFullscreen m
 
+wantControls : Model -> Bool
+wantControls m = m.mouseMoved || m.overControls
+
 view : Address Action -> Model -> Html
 view aa m =
     let
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
-        cursorStyle = ( "cursor", if m.mouseMoved then "auto" else "none" )
+        cursorStyle = ( "cursor", if wantControls m then "auto" else "none" )
     in
         Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive", HA.style [ cursorStyle ] ]
             [ Html.div [ HA.id <| m.playerId ++ "-container" ]
@@ -149,10 +156,15 @@ controls aa m =
                         [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
                         []
                     ]
-        opacity = if m.mouseMoved then 1 else 0
+        opacity = if wantControls m then 1 else 0
     in
         Html.div [ HA.class "embed-responsive-item" ]
-            [ Html.div [ HA.class "video-controls", HA.style [ ("opacity", toString opacity) ] ]
+            [ Html.div
+                [ HA.class "video-controls"
+                , HA.style [ ("opacity", toString opacity) ]
+                , HE.onMouseOver aa (OverControls True)
+                , HE.onMouseLeave aa (OverControls False)
+                ]
                 [ Html.div
                     [ HA.class "clearfix"
                     , HA.style [ ("position", "relative"), ("width", "95%"), ("margin", "0 auto") ]

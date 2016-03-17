@@ -113,8 +113,9 @@ view : Address Action -> Model -> Html
 view aa m =
     let
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
+        cursorStyle = ( "cursor", if m.mouseMoved then "auto" else "none" )
     in
-        Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive" ]
+        Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive", HA.style [ cursorStyle ] ]
             [ Html.div [ HA.id <| m.playerId ++ "-container" ]
                 [ Html.video
                     [ HA.type' "video/webm"

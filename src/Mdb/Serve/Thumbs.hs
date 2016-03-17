@@ -33,32 +33,28 @@ fileThumb :: MonadIO m => DBF.FileId -> MDB m Response
 fileThumb fid = do
     file <- fileById fid
     srcFile <- case T.takeWhile ( /= '/') (DBF.fileMime file) of
-        "image" -> return $ DBF.filePath file
+        "image" -> fileAbs $ DBF.filePath file
         "video" -> V.ensureFrame fid 180
         _       -> fail "fileThumb unknown type"
 
-
     thumbFile <- ensureThumb srcFile
-    liftIO $ putStrLn thumbFile
-
+    
     return $ responseFile status200
         [ ("Cache-Control", "max-age=3600")
         , ("Content-Type", "image/jpeg")
         ] thumbFile Nothing
 
 ensureThumb :: MonadIO m => FilePath -> MDB m FilePath
-ensureThumb relPath = do
-    liftIO $ putStrLn relPath
+ensureThumb src = do
     dbDir <- asks mdbDbDir
 
     let
         thumbDir    = dbDir ++ "/thumbs/normal/"
-        thumbFile   = thumbDir ++ show (md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack relPath) ++ ".jpg"
+        thumbFile   = thumbDir ++ show (md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack src) ++ ".jpg"
 
     exists <- liftIO $ doesFileExist thumbFile
     unless exists $ do
-        src <- fileAbs relPath
-        liftIO $ putStrLn src
+
         liftIO $ createDirectoryIfMissing True thumbDir
         liftIO $ IM.localGenesis $ do
             (_,wand) <- IM.magickWand

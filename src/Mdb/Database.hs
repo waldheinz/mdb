@@ -35,7 +35,7 @@ import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
-import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory, canonicalizePath, makeAbsolute )
+import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory, canonicalizePath )
 import System.FilePath ( (</>), makeRelative, takeDirectory )
 
 import Paths_mdb
@@ -162,9 +162,8 @@ relFile absPath = do
     rp <- liftIO $ canonicalizePath absPath
     asks mdbBasePath >>= \bp -> return $ makeRelative bp rp
 
-fileAbs :: MonadIO m => FilePath -> MDB m FilePath
-fileAbs relPath = liftIO $ makeAbsolute relPath
--- fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath
+fileAbs :: Monad m => FilePath -> MDB m FilePath
+fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath
 
 addFile :: MonadIO m => (FilePath, Integer, T.Text) -> MDB m FileId
 addFile (absPath, fs, mime) = do

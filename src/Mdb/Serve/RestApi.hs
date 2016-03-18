@@ -15,6 +15,7 @@ import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.Album ( albumResource, personAlbumResource )
 import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.Person ( personResource )
+import           Mdb.Serve.Resource.Serial ( serialResource )
 import           Mdb.Serve.Resource.User ( userResource )
 
 apiApp :: MediaDb -> AUTH.SessionKey IO -> WAI.Application
@@ -28,10 +29,12 @@ api010 = root
             -/ files
             -/ persons
                 --/ route personAlbumResource
+            -/ serial
             -/ user
 
     where
         albums      = route albumResource
         files       = route fileResource
         persons     = route personResource
+        serial      = route serialResource
         user        = route userResource

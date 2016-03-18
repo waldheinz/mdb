@@ -173,9 +173,9 @@ controls aa m =
 
                 fmt t =
                     let
-                        (t' , hs) = go Time.hour <| Debug.log "hours" (t * Time.second)
-                        (t'', ms) = go Time.minute <| Debug.log "minutes" t'
-                        (_  , ss) = go Time.second <| Debug.log "seconds" t''
+                        (t' , hs) = go Time.hour (t * Time.second)
+                        (t'', ms) = go Time.minute t'
+                        (_  , ss) = go Time.second t''
                     in
                         (hs ++ ":" ++ ms ++ ":" ++ ss)
 

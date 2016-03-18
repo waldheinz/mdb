@@ -16,6 +16,7 @@ import Navbar
 import Page.Album
 import Page.Home
 import Page.Person
+import Page.Series exposing ( WithSeries )
 import Page.Video
 import Route exposing ( Route(..) )
 import Server
@@ -32,13 +33,13 @@ type alias LoginModel =
 initialLoginModel : LoginModel
 initialLoginModel = { userName = "", password = "" }
 
-type alias Model = WithRoute Route
+type alias Model = WithSeries (WithRoute Route
     { homePageModel     : Page.Home.Model
     , personPageModel   : Page.Person.Model
     , videoPageModel    : Page.Video.Model
     , userName          : Maybe String
     , loginModel        : LoginModel
-    }
+    })
 
 initialModel : Model
 initialModel =
@@ -48,12 +49,14 @@ initialModel =
   , videoPageModel  = Page.Video.initialModel
   , userName        = Nothing
   , loginModel      = initialLoginModel
+  , pageSeriesModel = Page.Series.initialModel
   }
 
 type Action
     = RouterAction (TransitRouter.Action Route)
     | PageHomeAction Page.Home.Action
     | PagePersonAction Page.Person.Action
+    | PageSeriesAction Page.Series.Action
     | PageVideoAction Page.Video.Action
     | GotUser (Result Http.Error String)
     | SetLoginUser String
@@ -88,6 +91,12 @@ mountRoute prevRoute route m = case route of
         in
             ( { m | personPageModel = ppm' }, Effects.map (Page.Person.AlbumAction >> PagePersonAction) apfx)
 
+    Route.Series ->
+        let
+            (m', psfx)  = Page.Series.onMount m
+        in
+            (m', Effects.map PageSeriesAction psfx)
+
     Route.Video fid ->
         let
             (vp', pvfx) = Page.Video.onMount fid m.videoPageModel
@@ -112,6 +121,7 @@ update a m = case a of
         in
             ({ m | personPageModel = pp' }, Effects.map PagePersonAction ppfx )
 
+    PageSeriesAction sa     -> Page.Series.update sa m |> \(m', psfx) -> (m', Effects.map PageSeriesAction psfx)
     PageVideoAction va      ->
         let
             (vp', vpfx) = Page.Video.update va m.videoPageModel
@@ -166,6 +176,7 @@ view aa m =
             Home                -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
             Person pid          -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
             PersonAlbum pid aid -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
+            Series              -> Page.Series.view (Signal.forwardTo aa PageSeriesAction) m
             Video _             -> Page.Video.view (Signal.forwardTo aa PageVideoAction) m.videoPageModel
 
         mainContent = case m.userName of

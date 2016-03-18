@@ -6,12 +6,16 @@ module Navbar (
 import Html exposing ( Html )
 import Html.Attributes as HA
 
-import Route exposing ( Route )
+import Route exposing ( Route(..), clickRoute )
 
 view : Maybe String -> Route -> Html
 view muser r =
     let
-        userName = Maybe.withDefault "(not logged in)" muser
+        userName            = Maybe.withDefault "(not logged in)" muser
+        pageLink pa pr pn   =
+            Html.li [ HA.classList [ ( "active", pa ) ] ]
+                [ Html.a (clickRoute pr) [ Html.text pn ] ]
+
     in
         Html.div [ HA.class "navbar navbar-default" ]
             [ Html.div [ HA.class "container-fluid" ]
@@ -30,7 +34,8 @@ view muser r =
                     ]
                 , Html.div [ HA.class "collapse navbar-collapse", HA.id "mdb-navbar" ]
                     [ Html.ul [ HA.class "nav navbar-nav" ]
-                        [ Html.li [] [ Html.a [ HA.href "#" ] [ Html.text "Home" ] ]
+                        [ pageLink (r == Home)      Home    "Home"
+                        , pageLink (r == Series)    Series  "Series"
                         ]
                     , Html.ul [ HA.class "nav navbar-nav navbar-right" ]
                         [ Html.li [ HA.class "dropdown" ]

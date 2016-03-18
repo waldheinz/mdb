@@ -34,7 +34,8 @@ type alias Model =
     , videoInfo     : Maybe Container
     , mouseMoved    : Bool
     , overControls  : Bool              -- ^ does the mouse cursor hover over the control panel?
-    , doSeek        : Bool              -- ^ if there is a seek operation pending (so we have to set src again)
+    , doSeek        : Bool              -- ^ if there is a seek operation pending
+    , wantPlay      : Bool              -- ^ if we should continue playback after the seek completes
     }
 
 initialModel : String -> Model
@@ -49,10 +50,11 @@ initialModel playerId =
     , mouseMoved    = True
     , overControls  = False
     , doSeek        = True
+    , wantPlay      = False
     }
 
 input : Signal Action
-input = Time.since (3 * Time.second) (Mouse.position) |> Signal.map MouseMoved
+input = Time.since (3 * Time.second) (Mouse.position) |> Signal.dropRepeats |> Signal.map MouseMoved
 
 setVideo : FileId -> Model -> (Model, Effects Action)
 setVideo fid m =
@@ -66,6 +68,8 @@ setVideo fid m =
                     , playStartTime = 0
                     , videoBaseUrl  = Server.videoStreamUrl fid
                     , videoInfo     = Nothing
+                    , playState     = Paused
+                    , wantPlay      = False
                     }
         fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
     in
@@ -91,10 +95,10 @@ currentTime m = case m.playState of
     Seeking -> m.playStartTime
 
 update : Action -> Model -> (Model, Effects Action)
-update a m = case a of
+update a m = case Debug.log "mediaevent" a of
     NoOp                -> ( m, Effects.none )
-    Play                -> ( { m | doSeek = False }, setPlay m True |> Effects.task )
-    Pause               -> ( { m | playStartTime = currentTime m }, setPlay m False |> Effects.task )
+    Play                -> ( { m | wantPlay = True }, setPlay m True |> Effects.task )
+    Pause               -> ( { m | playStartTime = currentTime m, wantPlay = False }, setPlay m False |> Effects.task )
     PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
     PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
@@ -102,12 +106,12 @@ update a m = case a of
     MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
     OverControls o      -> ( { m | overControls = o }, Effects.none)
     GoFullscreen        -> (m, goFullscreen m |> Effects.task)
-    SeekDone            -> ( { m | doSeek = False }, Effects.none )
+    SeekDone            -> ( { m | doSeek = False }, if m.wantPlay then ( setPlay m True |> Effects.task) else Effects.none )
     SeekTo t            ->
         let
-            m' = { m | playStartTime = t, playState = Seeking, doSeek = True }
+            m' = { m | playStartTime = t, playState = Seeking, doSeek = True, wantPlay = True }
         in
-            (m' , setPlay m' True |> Effects.task )
+            (m' , Effects.none )
 
 setPlay : Model -> Bool -> Task Effects.Never Action
 setPlay m play = Native.VideoPlayer.setPlay m play
@@ -130,7 +134,8 @@ videoTag (playerId, fileId, aa, srcUrl) =
             , HA.src srcUrl
             , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
             , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+            , HE.on "canplay" (JD.succeed ()) (\() -> Signal.message aa SeekDone)
+--            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
             ]
             [ Html.text "Kein Video hier?" ]
 
@@ -196,7 +201,7 @@ controls aa m =
             [ Html.div
                 [ HA.class "video-controls"
                 , HA.style [ ("opacity", toString opacity) ]
-                , HE.onMouseOver aa (OverControls True)
+                , HE.onMouseEnter aa (OverControls True)
                 , HE.onMouseLeave aa (OverControls False)
                 ]
                 [ Html.div

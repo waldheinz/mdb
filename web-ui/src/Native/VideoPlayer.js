@@ -27,7 +27,7 @@ Elm.Native.VideoPlayer.make = function(elm) {
         } catch (ex) {
             console.log("playing video failed: " + ex);
         } finally {
-            return Task.succeed({ ctor : "SeekDone" });
+            return Task.succeed(noOp);
         }
     }
 

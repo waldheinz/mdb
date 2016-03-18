@@ -66,10 +66,7 @@ albumHandler = mkIdHandler jsonO handler where
 
 listAlbums :: MonadIO m => ListHandler (Authenticated m)
 listAlbums = mkListing jsonO handler where
-    handler r = lift $ getAlbums (offset r) (count r)
-
-getAlbums :: MonadIO m => Int -> Int -> Authenticated m [Album]
-getAlbums off cnt = AUTH.query
-    (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
-    <>  "ORDER BY a.album_name LIMIT ?,?")
-    (off, cnt)
+    handler :: MonadIO m => Range -> ExceptT Reason_ (Authenticated m) [Album]
+    handler r = lift $ AUTH.query
+        (   "SELECT a.album_id, a.album_name, a.album_poster FROM album a "
+        <>  "ORDER BY a.album_name LIMIT ?,?") (offset r, count r)

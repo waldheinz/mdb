@@ -14,17 +14,21 @@ Elm.Native.VideoPlayer.make = function(elm) {
     function doSetPlay(model, play) {
         var elem = document.getElementById(model.playerId);
 
-        if (play) {
-            if (model.doSeek) {
-                elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
+        try {
+            if (play) {
+                if (model.doSeek) {
+                    elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
+                }
+
+                elem.play();
+            } else {
+                elem.pause();
             }
-
-            elem.play();
-        } else {
-            elem.pause();
+        } catch (ex) {
+            console.log("playing video failed: " ++ ex);
+        } finally {
+            return Task.succeed({ ctor : "SeekDone" });
         }
-
-        Task.succeed({ ctor : "SeekDone" });
     }
 
     function doGoFullscreen(model) {

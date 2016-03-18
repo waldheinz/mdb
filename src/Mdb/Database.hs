@@ -10,7 +10,7 @@ module Mdb.Database (
 
     -- * files
     addFile, fileById, hasFile, fileIdFromName, assignFilePerson,
-    fileAbs, assignFileAlbum,
+    fileAbs, relFile, assignFileAlbum,
 
     -- * videos / streams
     setContainerInfo,

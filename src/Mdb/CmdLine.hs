@@ -23,18 +23,24 @@ data Mode
 initOptions :: Parser Mode
 initOptions = pure ModeInit
 
-data OptTvShow = OptTvShow
-    { tvShowLanguage    :: String
-    , tvShowFolders     :: [FilePath]
-    } deriving ( Show )
+data OptTvShow
+    = AssignTvShow
+        { tvShowLanguage    :: String
+        , tvShowFolders     :: [FilePath]
+        } deriving ( Show )
 
 tvShowOptions :: Parser Mode
 tvShowOptions = ModeTvShow
-    <$> (   OptTvShow
-        <$> strArgument ( metavar "LANG" <> help "Language to use" )
-        <*> some (strArgument ( metavar "NAME" <> help "Specify TV show folders" ))
+    <$> subparser
+        ( command "assign"
+            ( info
+                ( AssignTvShow
+                    <$> strArgument ( metavar "LANG" <> help "Language to use" )
+                    <*> some (strArgument ( metavar "NAME" <> help "Specify TV show folders" ))
+                ) ( progDesc "assign TV shows to folders" )
+            )
         )
-        
+
 data OptAlbum
     = AlbumCreate String
     deriving ( Show )

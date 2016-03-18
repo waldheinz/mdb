@@ -12,21 +12,19 @@ Elm.Native.VideoPlayer.make = function(elm) {
     var noOp = { ctor : "NoOp" };
 
     function doSetPlay(model, play) {
-        return Task.asyncFunction(function(callback) {
-            var elem = document.getElementById(model.playerId);
+        var elem = document.getElementById(model.playerId);
 
-            if (play) {
-                if (model.doSeek) {
-                    elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
-                }
-
-                elem.play();
-            } else {
-                elem.pause();
+        if (play) {
+            if (model.doSeek) {
+                elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
             }
 
-            return callback(Task.succeed({ ctor : "SeekDone" }));
-        });
+            elem.play();
+        } else {
+            elem.pause();
+        }
+
+        Task.succeed({ ctor : "SeekDone" });
     }
 
     function doGoFullscreen(model) {

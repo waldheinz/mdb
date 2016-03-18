@@ -17,7 +17,7 @@ Elm.Native.VideoPlayer.make = function(elm) {
         try {
             if (play) {
                 if (model.doSeek) {
-                    // elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
+                    elem.src = model.videoBaseUrl + "?t=" + model.playStartTime;
                 }
 
                 elem.play();

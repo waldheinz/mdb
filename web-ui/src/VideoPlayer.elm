@@ -9,7 +9,6 @@ import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Html.Events as HE
-import Html.Lazy as HL
 import Http
 import Mouse
 import Signal exposing ( Address, Signal )
@@ -118,30 +117,23 @@ goFullscreen m = Native.VideoPlayer.goFullscreen m
 wantControls : Model -> Bool
 wantControls m = m.mouseMoved || m.overControls
 
-videoTag : ( String, FileId, Address Action, String ) -> Html
-videoTag (playerId, fileId, aa, srcUrl) =
-    let
-        targetCurrentTime = JD.at ["target", "currentTime"] JD.float
-    in
-        Html.video
-            [ HA.type' "video/webm"
-            , HA.id playerId
-            , HA.poster <| Server.videoFrameUrl fileId 200
-            , HA.src srcUrl
-            , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-            , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
-            ]
-            [ Html.text "Kein Video hier?" ]
-
 view : Address Action -> Model -> Html
 view aa m =
     let
+        targetCurrentTime = JD.at ["target", "currentTime"] JD.float
         cursorStyle = ( "cursor", if wantControls m then "auto" else "none" )
     in
         Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive", HA.style [ cursorStyle ] ]
             [ Html.div [ HA.id <| m.playerId ++ "-container" ]
-                [ HL.lazy videoTag (m.playerId, m.fileId, aa, m.videoBaseUrl ++ "?t=" ++ toString m.playStartTime)
+                [ Html.video
+                    [ HA.type' "video/webm"
+                    , HA.id m.playerId
+                    , HA.poster <| Server.videoFrameUrl m.fileId 200
+                    , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
+                    , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
+                    , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+                    ]
+                    [ Html.text "Kein Video hier?" ]
                 , controls aa m
                 ]
             ]

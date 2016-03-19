@@ -10,7 +10,6 @@ import Task
 import Signal
 import StartApp
 import TransitRouter exposing ( WithRoute, getTransition )
-import TransitStyle
 
 import Navbar
 import Page.Album
@@ -181,8 +180,7 @@ view aa m =
 
         mainContent = case m.userName of
             Nothing -> loginPage aa m.loginModel
-            Just _  ->
-                Html.div [ HA.style <| TransitStyle.fadeSlideLeft 100 <| getTransition m ] [ routedContent ]
+            Just _  -> Html.div [ ] [ routedContent ]
 
     in
         Html.div []

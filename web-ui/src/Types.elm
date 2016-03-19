@@ -1,22 +1,40 @@
 
 module Types (
+    -- * Api Lists
+    ApiList, listDecoder,
+
     -- * Persons
     PersonId, Person, PersonFilter(..), personDecoder, personListDecoder,
     encodePerson,
 
     -- * Albums
-    AlbumId, Album,
+    AlbumId, Album, WhichAlbums(..),
 
     -- * Files
     FileId, File, fileDecoder, fileListDecoder,
     WhichFiles(..),
 
     -- * Containers
-    Container, containerDecoder
+    Container, containerDecoder,
+
+    -- * Serials
+    SerialId, Serial, serialDecoder, serialListDecoder, SerialFilter(..)
     ) where
 
 import Json.Decode as JD exposing ( (:=) )
 import Json.Encode as JE
+
+type alias ApiList a =
+    { offset    : Int
+    , count     : Int
+    , items     : List a
+    }
+
+listDecoder : JD.Decoder a -> JD.Decoder (ApiList a)
+listDecoder dec = JD.object3 ApiList
+    ( "offset"  := JD.int )
+    ( "count"   := JD.int )
+    ( "items"   := JD.list dec )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
@@ -48,6 +66,10 @@ encodePerson pid p = JE.object
 -- Albums
 ------------------------------------------------------------------------------------------------------------------------
 
+type WhichAlbums
+    = AllAlbums
+    | PersonAlbums PersonId
+
 type alias AlbumId = Int
 
 type alias Album =
@@ -58,6 +80,9 @@ type alias Album =
 ------------------------------------------------------------------------------------------------------------------------
 
 type alias FileId = Int
+
+fileIdDecoder : JD.Decoder FileId
+fileIdDecoder = JD.int
 
 type alias File =
     { path      : String
@@ -72,7 +97,7 @@ fileDecoder = JD.object3 File
     ( "fileMime"    := JD.string )
 
 fileListDecoder : JD.Decoder (FileId, File)
-fileListDecoder = JD.object2 (,) ( "fileId" := JD.int ) fileDecoder
+fileListDecoder = JD.object2 (,) ( "fileId" := fileIdDecoder ) fileDecoder
 
 type WhichFiles
     = AllFiles
@@ -92,3 +117,27 @@ containerDecoder : JD.Decoder Container
 containerDecoder = JD.object2 Container
     ( "duration"    := JD.float )
     ( "format"      := JD.string )
+
+------------------------------------------------------------------------------------------------------------------------
+-- Serials
+------------------------------------------------------------------------------------------------------------------------
+
+type alias SerialId = Int
+
+serialIdDecoder : JD.Decoder SerialId
+serialIdDecoder = JD.int
+
+type alias Serial =
+    { serialName    : String
+    , serialPoster  : Maybe FileId
+    }
+
+serialDecoder : JD.Decoder Serial
+serialDecoder = JD.object2 Serial
+    ( "serialName"      := JD.string )
+    ( "serialPoster"    := fileIdDecoder |> JD.maybe )
+
+serialListDecoder : JD.Decoder (SerialId, Serial)
+serialListDecoder = JD.object2 (,) ( "serialId" := serialIdDecoder ) serialDecoder
+
+type SerialFilter = AllSerials

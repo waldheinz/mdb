@@ -34,7 +34,7 @@ mkListModel which =
 type ListAction
     = ImageSelected FileId
     | VideoSelected FileId
-    | FilesLoaded (Result Http.Error (Server.ApiList (FileId, File)))
+    | FilesLoaded (Result Http.Error (ApiList (FileId, File)))
 
 setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
 setListFilter which m =

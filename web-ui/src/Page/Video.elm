@@ -6,6 +6,7 @@ module Page.Video (
 
 import Effects exposing ( Effects )
 import Html exposing ( Html )
+import Html.Attributes as HA
 import Signal exposing ( Address )
 
 import Types exposing (..)
@@ -23,7 +24,10 @@ initialModel =
     }
 
 view : Address Action -> Model -> Html
-view aa m = V.view (Signal.forwardTo aa PlayerAction) m.videoModel
+view aa m =
+    Html.div [ HA.class "container" ]
+        [ V.view (Signal.forwardTo aa PlayerAction) m.videoModel
+        ]
 
 type Action
     = NoOp

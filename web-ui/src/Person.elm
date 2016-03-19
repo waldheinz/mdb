@@ -6,7 +6,7 @@ module Person (
 
     -- * Editing
     updatePerson
-    
+
     ) where
 
 import Effects exposing ( Effects )
@@ -17,7 +17,7 @@ import Signal exposing ( Address )
 import Task
 
 import Route exposing ( clickRoute )
-import Server exposing ( ApiList )
+import Server
 import Types exposing ( .. )
 
 ------------------------------------------------------------------------------------------------------------------------

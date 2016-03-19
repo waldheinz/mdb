@@ -16,7 +16,7 @@ import File
 import Page.Album
 import Person
 import Route
-import Server exposing ( ApiList, WhichAlbums(..) )
+import Server
 import Types exposing ( .. )
 import Utils
 
@@ -70,8 +70,8 @@ view aa m =
             Nothing -> "Person #" ++ toString m.personId
             Just p  -> p.name
     in
-        Html.div []
-            [ Html.h1 [ HA.class "page-lead" ] [ Utils.editable (Signal.forwardTo aa ChangeName) pname ]
+        Html.div [ HA.class "container" ]
+            [ Html.h1 [ HA.class "page-header" ] [ Utils.editable (Signal.forwardTo aa ChangeName) pname ]
             , Html.h2 [] [ Html.text "Albums" ]
             , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
             , Html.h2 [] [ Html.text "Random Files" ]
@@ -88,7 +88,7 @@ update a m = case a of
                 (p', pfx) = Person.updatePerson (\p -> { p | name = n }) m.personId p
             in
                 ( { m | person = Just p' }, noOp pfx)
-                
+
     AlbumsLoaded (Err err)              -> Debug.log "loading albums failed" err |> \_ -> (m, Effects.none)
     AlbumsLoaded (Ok al)                -> ( { m | albums = Dict.fromList al.items }, Effects.none )
     PersonLoaded (Err err)              -> Debug.log "loading person failed" err |> \_ -> (m, Effects.none)

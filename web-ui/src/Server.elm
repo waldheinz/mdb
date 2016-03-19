@@ -1,12 +1,10 @@
 
 module Server (
-    ApiList,
-
     -- * Persons
     fetchPerson, fetchPersons, putPerson,
 
     -- * Albums
-    WhichAlbums(..), fetchAlbums,
+    fetchAlbums,
 
     -- * Files
     fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl,
@@ -15,7 +13,10 @@ module Server (
     checkUser, doLogin,
 
     -- * Containers
-    fetchContainerForFile
+    fetchContainerForFile,
+
+    -- * Serials
+    fetchSerials
     ) where
 
 import Http
@@ -32,18 +33,6 @@ serverBaseUrl = "" -- ^ yes, we want that relative for now
 apiBaseUrl : String
 apiBaseUrl = serverBaseUrl ++ "/api/0.1.0"
 
-type alias ApiList a =
-    { offset    : Int
-    , count     : Int
-    , items     : List a
-    }
-
-listDecoder : JD.Decoder a -> JD.Decoder (ApiList a)
-listDecoder dec = JD.object3 ApiList
-    ( "offset"  := JD.int )
-    ( "count"   := JD.int )
-    ( "items"   := JD.list dec )
-
 defaultRequest : List (String, String) -> String -> Http.Body -> String -> Http.Request
 defaultRequest headers verb body endpoint =
     { verb      = verb
@@ -59,6 +48,9 @@ defaultPutRequest : JE.Value -> String -> Http.Request
 defaultPutRequest value = JE.encode 0 value |> Http.string
     |> defaultRequest [ ( "Content-Type", "application/json" ) ] "PUT"
 
+getJson : String -> JD.Decoder a -> Task Http.Error a
+getJson ep dec = defaultGetRequest ep |> Http.send Http.defaultSettings |> Http.fromJson dec
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
 ------------------------------------------------------------------------------------------------------------------------
@@ -70,14 +62,10 @@ fetchPersons which =
             AllPersons          -> "/person"
             AlbumPersons aid    -> "/person/inAlbum/" ++ toString aid
     in
-        defaultGetRequest endpoint
-            |> Http.send Http.defaultSettings
-            |> Http.fromJson (listDecoder personListDecoder)
+        getJson endpoint (listDecoder personListDecoder)
 
 fetchPerson : PersonId -> Task Http.Error Person
-fetchPerson pid = defaultGetRequest ("/person/byId/" ++ toString pid)
-    |> Http.send Http.defaultSettings
-    |> Http.fromJson personDecoder
+fetchPerson pid = getJson ("/person/byId/" ++ toString pid) personDecoder
 
 putPerson : PersonId -> Person -> Task Http.RawError Http.Response
 putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toString pid)
@@ -87,10 +75,6 @@ putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toS
 -- Albums
 ------------------------------------------------------------------------------------------------------------------------
 
-type WhichAlbums
-    = AllAlbums
-    | PersonAlbums PersonId
-
 fetchAlbums : WhichAlbums -> Task Http.Error (ApiList (AlbumId, Album))
 fetchAlbums which =
     let
@@ -98,9 +82,7 @@ fetchAlbums which =
             AllAlbums           -> "/album"
             PersonAlbums pid    -> "/person/byId/" ++ toString pid ++ "/albums"
     in
-        defaultGetRequest endpoint
-            |> Http.send Http.defaultSettings
-            |> Http.fromJson (listDecoder albumListDecoder)
+        getJson endpoint (listDecoder albumListDecoder)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Files
@@ -114,14 +96,22 @@ fetchFiles which =
             AlbumFiles aid  -> "/file/inAlbum/" ++ toString aid
             PersonNoAlbum pid   -> "/file/personNoAlbum/" ++ toString pid
     in
-        defaultGetRequest endpoint
-            |> Http.send Http.defaultSettings
-            |> Http.fromJson (listDecoder fileListDecoder)
+        getJson endpoint (listDecoder fileListDecoder)
 
 fetchContainerForFile : FileId -> Task Http.Error Container
-fetchContainerForFile fid = defaultGetRequest ("/file/byId/" ++ toString fid ++ "/container")
-    |> Http.send Http.defaultSettings
-    |> Http.fromJson containerDecoder
+fetchContainerForFile fid = getJson ("/file/byId/" ++ toString fid ++ "/container") containerDecoder
+
+------------------------------------------------------------------------------------------------------------------------
+-- Serials
+------------------------------------------------------------------------------------------------------------------------
+
+fetchSerials : SerialFilter -> Task never (Result Http.Error (ApiList (SerialId, Serial)))
+fetchSerials  flt =
+    let
+        ep = case flt of
+            AllSerials  -> "/serial"
+    in
+        getJson ep (listDecoder serialListDecoder) |> Task.toResult
 
 ------------------------------------------------------------------------------------------------------------------------
 -- User / Login

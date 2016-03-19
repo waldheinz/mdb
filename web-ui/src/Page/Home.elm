@@ -32,7 +32,7 @@ onMount m =
 
 view : Signal.Address Action -> Model -> Html
 view aa m =
-    Html.div []
+    Html.div [ HA.class "container" ]
         [ Html.h1 [ HA.class "page-lead" ] [ Html.text "Persons" ]
         , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
         ]

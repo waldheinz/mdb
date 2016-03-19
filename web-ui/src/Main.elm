@@ -187,7 +187,7 @@ view aa m =
     in
         Html.div []
             [ Navbar.view m.userName <| TransitRouter.getRoute m
-            , Html.div [ HA.class "container" ] [ mainContent ]
+            , mainContent
             ]
 
 

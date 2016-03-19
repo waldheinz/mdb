@@ -11,6 +11,7 @@ import Http
 import Signal exposing ( Address )
 import Task
 
+import Route exposing ( Route(..), clickRoute )
 import Server
 import Types exposing (..)
 
@@ -42,8 +43,10 @@ view aa wm =
         m = wm.pageSeriesModel
         oneSeries (sid, s) =
             Html.div [ HA.class "col-md-2" ]
-                [ fileThumb (Maybe.withDefault 1 s.serialPoster)
-                , Html.text s.serialName
+                [ Html.a ( HA.class "thumbnail" :: (clickRoute <| SeriesSeasons sid))
+                    [ fileThumb (Maybe.withDefault 1 s.serialPoster)
+                    , Html.text s.serialName
+                    ]
                 ]
     in
         Html.div [ HA.class "container" ]

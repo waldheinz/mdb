@@ -16,6 +16,7 @@ import Page.Album
 import Page.Home
 import Page.Person
 import Page.Series exposing ( WithSeries )
+import Page.SeriesSeasons exposing ( WithSeasons )
 import Page.Video
 import Route exposing ( Route(..) )
 import Server
@@ -32,23 +33,24 @@ type alias LoginModel =
 initialLoginModel : LoginModel
 initialLoginModel = { userName = "", password = "" }
 
-type alias Model = WithSeries (WithRoute Route
+type alias Model = WithSeasons (WithSeries (WithRoute Route
     { homePageModel     : Page.Home.Model
     , personPageModel   : Page.Person.Model
     , videoPageModel    : Page.Video.Model
     , userName          : Maybe String
     , loginModel        : LoginModel
-    })
+    }))
 
 initialModel : Model
 initialModel =
-  { transitRouter   = TransitRouter.empty Home
-  , homePageModel   = Page.Home.initialModel
-  , personPageModel = Page.Person.initialModel
-  , videoPageModel  = Page.Video.initialModel
-  , userName        = Nothing
-  , loginModel      = initialLoginModel
-  , pageSeriesModel = Page.Series.initialModel
+  { transitRouter       = TransitRouter.empty Home
+  , homePageModel       = Page.Home.initialModel
+  , personPageModel     = Page.Person.initialModel
+  , videoPageModel      = Page.Video.initialModel
+  , userName            = Nothing
+  , loginModel          = initialLoginModel
+  , pageSeriesModel     = Page.Series.initialModel
+  , pageSeasonsModel    = Page.SeriesSeasons.initialModel
   }
 
 type Action
@@ -56,6 +58,7 @@ type Action
     | PageHomeAction Page.Home.Action
     | PagePersonAction Page.Person.Action
     | PageSeriesAction Page.Series.Action
+    | PageSeasonsAction Page.SeriesSeasons.Action
     | PageVideoAction Page.Video.Action
     | GotUser (Result Http.Error String)
     | SetLoginUser String
@@ -96,6 +99,8 @@ mountRoute prevRoute route m = case route of
         in
             (m', Effects.map PageSeriesAction psfx)
 
+    Route.SeriesSeasons serid -> Page.SeriesSeasons.onMount m |> \(m', fx) -> (m', Effects.map PageSeasonsAction fx)
+
     Route.Video fid ->
         let
             (vp', pvfx) = Page.Video.onMount fid m.videoPageModel
@@ -121,6 +126,7 @@ update a m = case a of
             ({ m | personPageModel = pp' }, Effects.map PagePersonAction ppfx )
 
     PageSeriesAction sa     -> Page.Series.update sa m |> \(m', psfx) -> (m', Effects.map PageSeriesAction psfx)
+    PageSeasonsAction sa    -> Page.SeriesSeasons.update sa m |> \(m', psfx) -> (m', Effects.map PageSeasonsAction psfx)
     PageVideoAction va      ->
         let
             (vp', vpfx) = Page.Video.update va m.videoPageModel
@@ -172,11 +178,12 @@ view : Signal.Address Action -> Model -> Html
 view aa m =
     let
         routedContent = case TransitRouter.getRoute m of
-            Home                -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
-            Person pid          -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
-            PersonAlbum pid aid -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
-            Series              -> Page.Series.view (Signal.forwardTo aa PageSeriesAction) m
-            Video _             -> Page.Video.view (Signal.forwardTo aa PageVideoAction) m.videoPageModel
+            Home            -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
+            Person _        -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
+            PersonAlbum _ _ -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
+            Series          -> Page.Series.view (Signal.forwardTo aa PageSeriesAction) m
+            SeriesSeasons _ -> Page.SeriesSeasons.view (Signal.forwardTo aa PageSeasonsAction) m
+            Video _         -> Page.Video.view (Signal.forwardTo aa PageVideoAction) m.videoPageModel
 
         mainContent = case m.userName of
             Nothing -> loginPage aa m.loginModel

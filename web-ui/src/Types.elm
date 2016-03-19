@@ -18,7 +18,8 @@ module Types (
     Container, containerDecoder,
 
     -- * Serials
-    SerialId, Serial, serialDecoder, serialListDecoder, SerialFilter(..)
+    SerialId, Serial, serialDecoder, serialListDecoder, SerialFilter(..),
+    SeasonId, Season, seasonDecoder
     ) where
 
 import Json.Decode as JD exposing ( (:=) )
@@ -141,3 +142,22 @@ serialListDecoder : JD.Decoder (SerialId, Serial)
 serialListDecoder = JD.object2 (,) ( "serialId" := serialIdDecoder ) serialDecoder
 
 type SerialFilter = AllSerials
+
+-- seasons below
+
+type alias SeasonId = Int
+
+seasonIdDecoder : JD.Decoder SeasonId
+seasonIdDecoder = JD.int
+
+type alias Season =
+    { seasonId      : SeasonId
+    , seasonSerial  : SerialId
+    , seasonPoster  : Maybe FileId
+    }
+
+seasonDecoder : JD.Decoder Season
+seasonDecoder = JD.object3 Season
+    ( "seasonId"        := seasonIdDecoder )
+    ( "seasonSerialId"  := serialIdDecoder )
+    ( "seasonPoster"    := fileIdDecoder |> JD.maybe )

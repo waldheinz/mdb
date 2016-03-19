@@ -21,15 +21,17 @@ type Route
     | Person PersonId
     | PersonAlbum PersonId AlbumId
     | Series                        -- ^ series listing
+    | SeriesSeasons SerialId        -- ^ individual serial
     | Video FileId
 
 routeParsers : List (Matcher Route)
 routeParsers =
-    [ static    Home        "/"
-    , dyn1      Person      "/person/"  int ""
-    , dyn2      PersonAlbum "/person/"  int "/album/" int ""
-    , static    Series      "/series"
-    , dyn1      Video       "/video/"   int ""
+    [ static    Home            "/"
+    , dyn1      Person          "/person/"  int ""
+    , dyn2      PersonAlbum     "/person/"  int "/album/" int ""
+    , static    Series          "/series"
+    , dyn1      SeriesSeasons   "/series/"  int ""
+    , dyn1      Video           "/video/"   int ""
     ]
 
 decode : String -> Route
@@ -41,6 +43,7 @@ encode route = case route of
     Person pid          -> "/person/" ++ toString pid
     PersonAlbum pid aid -> "/person/" ++ toString pid ++ "/album/" ++ toString aid
     Series              -> "/series"
+    SeriesSeasons sid   -> "/series/" ++ toString sid
     Video fid           -> "/video/" ++ toString fid
 
 ------------------------------------------------------------------------------------------------------------------------

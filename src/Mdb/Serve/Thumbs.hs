@@ -38,7 +38,7 @@ fileThumb fid = do
         _       -> fail "fileThumb unknown type"
 
     thumbFile <- ensureThumb srcFile
-    
+
     return $ responseFile status200
         [ ("Cache-Control", "max-age=3600")
         , ("Content-Type", "image/jpeg")
@@ -59,7 +59,6 @@ ensureThumb src = do
         liftIO $ IM.localGenesis $ do
             (_,wand) <- IM.magickWand
             IM.readImage wand $ fromString src
-            liftIO $ putStrLn "gelesen"
             w <- IM.getImageWidth wand
             h <- IM.getImageHeight wand
 

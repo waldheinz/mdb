@@ -11,6 +11,7 @@ import Http
 import Signal exposing ( Address )
 import Task
 
+import File
 import Route exposing ( Route(..), clickRoute )
 import Server
 import Types exposing (..)
@@ -30,13 +31,6 @@ type Action
     = NoOp
     | GotList (Result Http.Error (ApiList (SerialId, Serial)))
 
-fileThumb : FileId -> Html
-fileThumb fid =
-    Html.div [ HA.class "file-thumb-container" ]
-        [ Html.div [ HA.class "file-thumb", HA.style [("background-image", "url(" ++ Server.fileThumbUrl fid ++ ")") ] ]
-            [  ]
-        ]
-
 view : Address Action -> WithSeries a -> Html
 view aa wm =
     let
@@ -44,7 +38,7 @@ view aa wm =
         oneSeries (sid, s) =
             Html.div [ HA.class "col-md-2" ]
                 [ Html.a ( HA.class "thumbnail" :: (clickRoute <| SeriesSeasons sid))
-                    [ fileThumb (Maybe.withDefault 1 s.serialPoster)
+                    [ File.thumb (Maybe.withDefault 1 s.serialPoster)
                     , Html.text s.serialName
                     ]
                 ]

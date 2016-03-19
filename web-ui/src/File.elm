@@ -1,5 +1,8 @@
 
 module File (
+    -- * Files
+    thumb,
+
     -- * File Listings
     ListModel, mkListModel, ListAction(ImageSelected, VideoSelected), viewList, updateListModel, setListFilter
     ) where
@@ -15,6 +18,17 @@ import Task
 import Server
 import Types exposing (..)
 import Utils
+
+------------------------------------------------------------------------------------------------------------------------
+-- Individual Files
+------------------------------------------------------------------------------------------------------------------------
+
+thumb : FileId -> Html
+thumb fid =
+    Html.div [ HA.class "file-thumb-container" ]
+        [ Html.div [ HA.class "file-thumb", HA.style [("background-image", "url(" ++ Server.fileThumbUrl fid ++ ")") ] ]
+            [  ]
+        ]
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Listings
@@ -55,12 +69,12 @@ viewList aa m =
                     else VideoSelected fid
 
             in
-                Html.div [ HA.class "file-thumb" ]
-                    [ Html.a [ HA.class "", Utils.onClick' aa clickWhat, HA.href <| Server.imageUrl fid ]
-                        [ Html.img [ HA.src (Server.fileThumbUrl fid)  ] [] ]
+                Html.div [ HA.class "col-xs-4 col-md-2" ]
+                    [ Html.a [ HA.class "thumbnail", Utils.onClick' aa clickWhat, HA.href <| Server.imageUrl fid ]
+                        [ thumb fid ]
                     ]
     in
-        List.map oneFile m.files |> Html.div [ HA.class "thumb-container" ]
+        List.map oneFile m.files |> Html.div [ HA.class "row" ]
 
 updateListModel : ListAction -> ListModel -> ListModel
 updateListModel a m = case a of

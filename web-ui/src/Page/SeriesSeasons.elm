@@ -12,6 +12,7 @@ import Http
 import Signal exposing ( Address )
 import Task
 
+import File
 import Server
 import Types exposing (..)
 
@@ -34,20 +35,13 @@ type Action
     = NoOp
     | GotList (Result Http.Error (ApiList Season))
 
-fileThumb : FileId -> Html
-fileThumb fid =
-    Html.div [ HA.class "file-thumb-container" ]
-        [ Html.div [ HA.class "file-thumb", HA.style [("background-image", "url(" ++ Server.fileThumbUrl fid ++ ")") ] ]
-            [  ]
-        ]
-
 view : Address Action -> WithSeasons a -> Html
 view aa wm =
     let
         m = wm.pageSeasonsModel
         oneSeason s =
-            Html.div [ HA.class "col-md-2" ]
-                [ fileThumb (Maybe.withDefault 1 s.seasonPoster)
+            Html.div [ HA.class "col-xs-4 col-md-2" ]
+                [ File.thumb (Maybe.withDefault 1 s.seasonPoster)
                 , Html.text <| toString s.seasonId
                 ]
     in

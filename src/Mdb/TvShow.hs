@@ -3,26 +3,26 @@
 
 module Mdb.TvShow ( doMode ) where
 
-import           Control.Monad               ( forM_ )
+import           Control.Monad               (forM_)
 import           Control.Monad.Catch         (MonadCatch, try)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
 import           Control.Monad.Reader.Class  (asks)
 import           Control.Monad.Trans.Class   (lift)
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Reader  (ReaderT)
-import qualified Data.ByteString.Lazy as BSL
-import           Data.Foldable (traverse_)
-import Data.Int ( Int64 )
+import qualified Data.ByteString.Lazy        as BSL
+import           Data.Int                    (Int64)
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import           Data.Text.Encoding          (decodeUtf8)
-import           Network.HTTP.Conduit        ( HttpException )
-import           Network.HTTP.Client.Conduit (Manager, Response, httpLbs, parseUrl,
-                                              responseBody, withManager)
+import           Network.HTTP.Client.Conduit (Manager, Response, httpLbs,
+                                              parseUrl, responseBody,
+                                              withManager)
+import           Network.HTTP.Conduit        (HttpException)
 import           System.Directory            (createDirectoryIfMissing)
-import           System.FilePath             (splitDirectories, takeExtension, takeDirectory)
+import           System.FilePath             (splitDirectories, takeDirectory,
+                                              takeExtension)
 import qualified Text.XML.Light              as XML
-import qualified Text.XML.Light.Proc         as XML
 
 import           Mdb.CmdLine                 (OptTvShow (..))
 import           Mdb.Database
@@ -137,15 +137,21 @@ updateSeries showId = do
 
 
     forM_ (XML.findChildren (eName "Episode") fullXml) $ \exml -> do
-        liftIO $ putStrLn (XML.showTopElement exml)
-        seasonId    <- readChild "seasonid" exml
-        lift . lift $ dbExecute "INSERT OR IGNORE INTO series_season (series_id, series_season_number) VALUES (?, ?)"
-            (showId, seasonId :: Int64)
+        seasonNum   <- readChild "SeasonNumber" exml
+        episodeNum  <- readChild "EpisodeNumber" exml
+        desc        <- textChild "Overview" exml
+        title       <- textChild "EpisodeName" exml
 
+        lift . lift $ do
+            dbExecute "INSERT OR IGNORE INTO series_season (series_id, series_season_number) VALUES (?, ?)"
+                (showId, seasonNum :: Int64)
 
-
-
-        return ()
+            dbExecute
+                (   "INSERT OR REPLACE INTO series_episode "
+                <>  "(series_id, series_season_number, series_episode_number, "
+                <>      "series_episode_title, series_episode_description) "
+                <>  "VALUES (?, ?, ?, ?, ?)"
+                ) (showId, seasonNum, episodeNum :: Int64, title, desc)
 
 updateImage :: (MonadCatch m, MonadIO m) => FilePath -> String -> ReaderT Manager (MDB m) (Either T.Text FileId)
 updateImage destFile banner = runEitherT $ do

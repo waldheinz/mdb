@@ -69,7 +69,7 @@ viewList aa m =
                     else VideoSelected fid
 
             in
-                Html.div [ HA.class "col-xs-4 col-md-2" ]
+                Html.div [ HA.class "col-xs-3 col-md-2" ]
                     [ Html.a [ HA.class "thumbnail", Utils.onClick' aa clickWhat, HA.href <| Server.imageUrl fid ]
                         [ thumb fid ]
                     ]

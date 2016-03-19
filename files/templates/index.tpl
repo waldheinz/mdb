@@ -45,6 +45,15 @@
                 background-position: center;
             }
 
+            .thumbnail .series-name {
+                color: black;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                overflow: hidden;
+                width: 100%;
+                display: block;
+            }
+
             .video-responsive {
                 background-color: black;
             }

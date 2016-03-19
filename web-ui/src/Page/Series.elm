@@ -36,10 +36,11 @@ view aa wm =
     let
         m = wm.pageSeriesModel
         oneSeries (sid, s) =
-            Html.div [ HA.class "col-md-2" ]
+            Html.div [ HA.class "col-xs-3 col-md-2" ]
                 [ Html.a ( HA.class "thumbnail" :: (clickRoute <| SeriesSeasons sid))
                     [ File.thumb (Maybe.withDefault 1 s.serialPoster)
-                    , Html.text s.serialName
+                    , Html.span [ HA.class "series-name" ]
+                        [ Html.text s.serialName ]
                     ]
                 ]
     in

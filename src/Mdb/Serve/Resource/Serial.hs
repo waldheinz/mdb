@@ -117,17 +117,18 @@ seasonResource = mkResourceReader
     { R.name        = "season"
     , R.description = "Access TV serial seasons"
     , R.schema      = withListing () $ named []
-    , R.list        = episodeList
+    , R.list        = seasonList
     }
 
-episodeList :: MonadIO m => () -> ListHandler (WithSerial m)
-episodeList () = mkOrderedListing jsonO handler where
+seasonList :: MonadIO m => () -> ListHandler (WithSerial m)
+seasonList () = mkOrderedListing jsonO handler where
     handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSerial m) [Season]
     handler (r, o, d) = lift $ do
         serId  <- ask
         xs <- lift $ AUTH.query
             (   "SELECT series_season_number, series_season_poster FROM series_season "
+            <>  "WHERE series_id = ? "
             <>  "ORDER BY " <> seasonOrder o <> " " <> sortDir d <> " "
-            <>  "LIMIT ? OFFSET ?" ) (count r, offset r)
+            <>  "LIMIT ? OFFSET ?" ) (serId, count r, offset r)
 
         return $ map (uncurry (Season serId)) xs

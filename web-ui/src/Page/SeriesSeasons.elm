@@ -55,8 +55,9 @@ onMount : SerialId -> WithSeasons a -> (WithSeasons a, Effects Action)
 onMount sid wm =
     let
         m = wm.pageSeasonsModel
-        m' = { m | serialId = sid }
-        fx = Server.fetchSeasons wm.pageSeasonsModel.serialId |> Task.map GotList |> Effects.task
+        l' = if sid == m.serialId then m.seasonList else []
+        m' = { m | serialId = sid, seasonList = l' }
+        fx = Server.fetchSeasons sid |> Task.map GotList |> Effects.task
     in
         ( { wm | pageSeasonsModel = m' }, fx)
 

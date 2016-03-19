@@ -3,7 +3,6 @@
 
 module Mdb.TvShow ( doMode ) where
 
-import           Control.Monad               (forM_)
 import           Control.Monad.Catch         (MonadCatch, try)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
 import           Control.Monad.Reader.Class  (asks)
@@ -12,6 +11,8 @@ import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Reader  (ReaderT)
 import qualified Data.ByteString.Lazy        as BSL
 import           Data.Int                    (Int64)
+import           Data.List                   (nub, sort)
+import           Data.Maybe                  (mapMaybe)
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import           Data.Text.Encoding          (decodeUtf8)
@@ -135,23 +136,49 @@ updateSeries showId = do
         Left _      -> liftIO $ putStrLn "fetching poster image failed"
         Right fid   -> lift . lift $ dbExecute "UPDATE series SET series_poster = ? WHERE series_id = ?" (fid, showId)
 
+    let
+        oneEpisode exml = do
+            seasonNum   <- readChild "SeasonNumber" exml
+            episodeNum  <- readChild "EpisodeNumber" exml
+            desc        <- textChild "Overview" exml
+            title       <- textChild "EpisodeName" exml
 
-    forM_ (XML.findChildren (eName "Episode") fullXml) $ \exml -> do
-        seasonNum   <- readChild "SeasonNumber" exml
-        episodeNum  <- readChild "EpisodeNumber" exml
-        desc        <- textChild "Overview" exml
-        title       <- textChild "EpisodeName" exml
+            lift . lift $ do
+                dbExecute "INSERT OR IGNORE INTO series_season (series_id, series_season_number) VALUES (?, ?)"
+                    (showId, seasonNum :: Int64)
 
-        lift . lift $ do
-            dbExecute "INSERT OR IGNORE INTO series_season (series_id, series_season_number) VALUES (?, ?)"
-                (showId, seasonNum :: Int64)
+                dbExecute
+                    (   "INSERT OR REPLACE INTO series_episode "
+                    <>  "(series_id, series_season_number, series_episode_number, "
+                    <>      "series_episode_title, series_episode_description) "
+                    <>  "VALUES (?, ?, ?, ?, ?)"
+                    ) (showId, seasonNum, episodeNum :: Int64, title, desc)
 
-            dbExecute
-                (   "INSERT OR REPLACE INTO series_episode "
-                <>  "(series_id, series_season_number, series_episode_number, "
-                <>      "series_episode_title, series_episode_description) "
-                <>  "VALUES (?, ?, ?, ?, ?)"
-                ) (showId, seasonNum, episodeNum :: Int64, title, desc)
+            return seasonNum
+
+        onePoster banners seasonId = do
+            let
+                flt b = case b of
+                    SeasonPoster _ sid _    -> seasonId == sid
+
+            case sort $ filter flt banners of
+                []  -> return ()
+                xs  -> do
+                    let
+                        (SeasonPoster _ _ path) = last xs
+
+                    pid <- lift $ updateImage ("posters/" ++ show showId ++ "-" ++ show seasonId) path
+                    case pid of
+                        Left _      -> liftIO $ putStrLn "fetching poster image failed"
+                        Right fid   -> lift . lift $ dbExecute
+                            (   "UPDATE series_season SET series_season_poster = ? "
+                            <>  "WHERE series_id = ? AND series_season_number = ?") (fid, showId, seasonId)
+
+    seasonIds <- mapM oneEpisode $ XML.findChildren (eName "Episode") fullXml
+    bannersXml <- parseUrl (authBase ++ "series/" ++ show tvDbId ++ "/banners.xml")
+                >>= httpLbs >>= xmlBody
+
+    mapM_ (onePoster $ parseBanners bannersXml) (nub seasonIds)
 
 updateImage :: (MonadCatch m, MonadIO m) => FilePath -> String -> ReaderT Manager (MDB m) (Either T.Text FileId)
 updateImage destFile banner = runEitherT $ do
@@ -175,3 +202,38 @@ updateImage destFile banner = runEitherT $ do
         Left he     -> left (T.pack $ show (he :: HttpException))
 
     EitherT $ lift $ checkFile dstFile
+
+------------------------------------------------------------------------------------------------------------------------
+-- dealing with banners.xml
+------------------------------------------------------------------------------------------------------------------------
+
+data Banner
+    = SeasonPoster !Double !Int64 !String   -- ^ rating , season_id, path
+    deriving ( Eq, Show )
+
+instance Ord Banner where
+    compare b1 b2 = compare (bannerRating b1) (bannerRating b2)
+
+bannerRating :: Banner -> Double
+bannerRating (SeasonPoster r _ _) = r
+
+extractBanner :: XML.Element -> Maybe Banner
+extractBanner xml =
+    let
+        tp      = XML.strContent <$> XML.findChild (eName "BannerType") xml
+        tp2     = XML.strContent <$> XML.findChild (eName "BannerType2") xml
+        path    = XML.strContent <$> XML.findChild (eName "BannerPath") xml
+        rating  = XML.findChild (eName "Rating") xml >>= pread
+        season  = XML.findChild (eName "Season") xml >>= pread
+        pread x = case reads (XML.strContent x) of
+            []          -> Nothing
+            [(r, _)]    -> Just r
+            _           -> Nothing
+    in
+        do
+            "season"    <- tp
+            "season"    <- tp2
+            SeasonPoster <$> rating <*> season <*> path
+
+parseBanners :: XML.Element -> [Banner]
+parseBanners xml = mapMaybe extractBanner $ XML.findChildren (eName "Banner") xml

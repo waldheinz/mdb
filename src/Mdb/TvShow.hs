@@ -97,7 +97,6 @@ assignShowFromXml lang showDir xml = runEitherT $ do
 
             liftIO $ putStrLn $ "inserted as \"" ++ name ++ "\" with ID " ++ show showId
             updateSeries showId
-            -- traverse_ (updatePoster showId) $ XML.strContent <$> XML.findChild (eName "banner") xml
 
 childElem :: Monad m => T.Text -> XML.Element -> EitherT T.Text m XML.Element
 childElem name xml = case XML.findChild (eName $ T.unpack name) xml of
@@ -106,6 +105,12 @@ childElem name xml = case XML.findChild (eName $ T.unpack name) xml of
 
 textChild :: Monad m => T.Text -> XML.Element -> EitherT T.Text m String
 textChild name xml = XML.strContent <$> childElem name xml
+
+readChild :: (Monad m, Read a) => T.Text -> XML.Element -> EitherT T.Text m a
+readChild name xml = textChild name xml >>= \str -> case reads str of
+    []          -> left $ "could not parse \"" <> T.pack str <> "\" (" <> name <> ")"
+    [(a, _)]    -> right a
+    _           -> left $ "there are multiple parses for \"" <> T.pack str <> "\" (" <> name <> ")"
 
 updateSeries :: (MonadIO m, MonadCatch m) => Int64 ->  EitherT T.Text (ReaderT Manager (MDB m)) ()
 updateSeries showId = do
@@ -131,9 +136,15 @@ updateSeries showId = do
         Right fid   -> lift . lift $ dbExecute "UPDATE series SET series_poster = ? WHERE series_id = ?" (fid, showId)
 
 
-    forM_ (XML.findChildren (eName "Episode") fullXml) $ \xml -> do
+    forM_ (XML.findChildren (eName "Episode") fullXml) $ \exml -> do
+        liftIO $ putStrLn (XML.showTopElement exml)
+        seasonId    <- readChild "seasonid" exml
+        lift . lift $ dbExecute "INSERT OR IGNORE INTO series_season (series_id, series_season_number) VALUES (?, ?)"
+            (showId, seasonId :: Int64)
 
-        --liftIO $ putStrLn (XML.showTopElement xml)
+
+
+
         return ()
 
 updateImage :: (MonadCatch m, MonadIO m) => FilePath -> String -> ReaderT Manager (MDB m) (Either T.Text FileId)

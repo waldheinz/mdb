@@ -36,7 +36,7 @@ tvShowOptions = ModeTvShow
             ( info
                 ( AssignTvShow
                     <$> strArgument ( metavar "LANG" <> help "Language to use" )
-                    <*> some (strArgument ( metavar "NAME" <> help "Specify TV show folders" ))
+                    <*> some (strArgument ( metavar "FOLDERS..." <> help "Specify TV show folders" ))
                 ) ( progDesc "assign TV shows to folders" )
             )
         )

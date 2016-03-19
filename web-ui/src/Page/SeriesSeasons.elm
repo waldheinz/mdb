@@ -51,8 +51,14 @@ view aa wm =
                 List.map oneSeason m.seasonList
             ]
 
-onMount : WithSeasons a -> (WithSeasons a, Effects Action)
-onMount wm = ( wm, Server.fetchSeasons wm.pageSeasonsModel.serialId |> Task.map GotList |> Effects.task )
+onMount : SerialId -> WithSeasons a -> (WithSeasons a, Effects Action)
+onMount sid wm =
+    let
+        m = wm.pageSeasonsModel
+        m' = { m | serialId = sid }
+        fx = Server.fetchSeasons wm.pageSeasonsModel.serialId |> Task.map GotList |> Effects.task
+    in
+        ( { wm | pageSeasonsModel = m' }, fx)
 
 update : Action -> WithSeasons a -> (WithSeasons a, Effects Action)
 update a wm =

@@ -99,7 +99,7 @@ mountRoute prevRoute route m = case route of
         in
             (m', Effects.map PageSeriesAction psfx)
 
-    Route.SeriesSeasons serid -> Page.SeriesSeasons.onMount m |> \(m', fx) -> (m', Effects.map PageSeasonsAction fx)
+    Route.SeriesSeasons sid -> Page.SeriesSeasons.onMount sid m |> \(m', fx) -> (m', Effects.map PageSeasonsAction fx)
 
     Route.Video fid ->
         let

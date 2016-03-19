@@ -64,17 +64,14 @@ scanShow lang showDir = runEitherT $ do
 
     liftIO $ putStrLn $ "fetching info for \"" ++ last dirs ++ "\""
 
-    resp <- parseUrl (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang) >>= httpLbs
-    xml <- xmlBody resp
+    xml <- parseUrl (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
+        >>= httpLbs >>= xmlBody
 
-    let
-        found = XML.findChildren (eName "Series") xml
-
-    case found of
+    case XML.findChildren (eName "Series") xml of
         []  -> left "no candidate found"
         [x] -> EitherT $ assignShowFromXml lang showDir x
         _   -> left "multiple matches"
-
+        
 assignShowFromXml :: String -> FilePath -> XML.Element -> ReaderT Manager (MDB IO) (Either T.Text ())
 assignShowFromXml lang showDir xml = runEitherT $ do
 

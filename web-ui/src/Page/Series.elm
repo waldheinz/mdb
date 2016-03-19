@@ -29,13 +29,22 @@ type Action
     = NoOp
     | GotList (Result Http.Error (ApiList (SerialId, Serial)))
 
+fileThumb : FileId -> Html
+fileThumb fid =
+    Html.div [ HA.class "file-thumb-container" ]
+        [ Html.div [ HA.class "file-thumb", HA.style [("background-image", "url(" ++ Server.fileThumbUrl fid ++ ")") ] ]
+            [  ]
+        ]
+
 view : Address Action -> WithSeries a -> Html
 view aa wm =
     let
         m = wm.pageSeriesModel
         oneSeries (sid, s) =
             Html.div [ HA.class "col-md-2" ]
-                [ Html.text s.serialName ]
+                [ fileThumb (Maybe.withDefault 1 s.serialPoster)
+                , Html.text s.serialName
+                ]
     in
         Html.div [ HA.class "container" ]
             [ Html.h1 [ HA.class "page-header" ] [ Html.text "Series" ]

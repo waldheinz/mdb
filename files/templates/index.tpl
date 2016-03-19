@@ -22,12 +22,27 @@
                 flex: auto;
             }
 
-            .file-thumb {
-                margin: 1px 1px;
+            .file-thumb-container {
+                position: relative;
+                display: inline-block;
+                width: 100%;
             }
 
-            .file-thumb  img {
-                height: 128px;
+            .file-thumb-container:after {
+                padding-top: 133.33%;
+                /* 16:9 ratio */
+                display: block;
+                content: '';
+            }
+
+            .file-thumb {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-size: cover;
+                background-position: center;
             }
 
             .video-responsive {

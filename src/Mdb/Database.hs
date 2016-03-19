@@ -9,7 +9,7 @@ module Mdb.Database (
     MDB, runMDB, runMDB', findDbAndRun, withTransaction,
 
     -- * files
-    addFile, fileById, hasFile, fileIdFromName, assignFilePerson,
+    fileById, hasFile, fileIdFromName, assignFilePerson,
     fileAbs, relFile, assignFileAlbum,
 
     -- * videos / streams
@@ -23,7 +23,7 @@ module Mdb.Database (
     addAlbum,
 
     -- * raw queries
-    dbExecute, dbQuery, dbQuery_, dbLastRowId, SQL.Only(..)
+    dbExecute, dbQuery, dbQueryOne, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
 
 import Control.Monad ( forM_, liftM )
@@ -144,6 +144,12 @@ dbExecute q r = asks mdbConn >>= \c -> liftIO $ SQL.execute c q r
 dbQuery :: (MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m [r]
 dbQuery q r = asks mdbConn >>= \c -> liftIO $ SQL.query c q r
 
+dbQueryOne :: (MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m (Either T.Text r)
+dbQueryOne q p = dbQuery q p >>= \ xs -> return $ case xs of
+        []  -> Left "query returned no result but one was expected"
+        [a] -> Right a
+        _   -> Left "query returned multiple results but only one was expected"
+
 dbQuery_ :: (MonadIO m, SQL.FromRow r) => SQL.Query -> MDB m [r]
 dbQuery_ q = asks mdbConn >>= \c -> liftIO $ SQL.query_ c q
 
@@ -164,14 +170,6 @@ relFile absPath = do
 
 fileAbs :: Monad m => FilePath -> MDB m FilePath
 fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath
-
-addFile :: MonadIO m => (FilePath, Integer, T.Text) -> MDB m FileId
-addFile (absPath, fs, mime) = do
-    relPath <- relFile absPath
-    dbExecute
-        "INSERT INTO file (file_name, file_size, file_mime) VALUES (?, ?, ?)"
-        (relPath, fs, mime)
-    dbLastRowId
 
 hasFile :: MonadIO m => FilePath -> MDB m Bool
 hasFile p = do

@@ -2,13 +2,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.File (
-  doFile
+  doFile, checkFile
   ) where
 
 import qualified Codec.FFmpeg.Probe as FFM
 import Control.Exception.Base ( IOException )
 import Control.Monad ( forM_, unless, foldM, when, liftM )
-import Control.Monad.Catch ( MonadMask, catchIOError )
+import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
 import Control.Monad.Trans.Class ( lift )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import           Data.Monoid ( (<>) )
@@ -47,7 +47,10 @@ doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
     mapM_ (withFiles (go pids aids) rec) fs
 
 doFile CMD.FileAdd rec fs = withTransaction $ mapM_ (withFiles go rec) fs where
-    go fn = hasFile fn >>= \known -> unless known $ checkFile fn
+    go fn = hasFile fn >>= \known -> unless known $ checkFile fn >>= \efid ->
+        case efid of
+            Left e      -> liftIO $ putStrLn $ fn ++ ": " ++ T.unpack e
+            Right fid   -> liftIO $ putStrLn $ fn ++ ": " ++ show fid
 
 doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles go rec) fs where
     go fn = withTransaction $ do
@@ -65,6 +68,16 @@ doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles go rec) fs where
 
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"
+
+addFile :: MonadIO m => (FilePath, Integer, T.Text) -> MDB m FileId
+addFile (absPath, fs, mime) = do
+    relPath <- relFile absPath
+    dbExecute
+        (   "INSERT OR REPLACE INTO file (file_id, file_name, file_size, file_mime) "
+        <>  "VALUES ((SELECT file_id FROM file WHERE file_name = ?), ?, ?, ?)"
+        )
+        (relPath, relPath, fs, mime)
+    dbLastRowId
 
 filteredContents :: MonadIO m => FilePath -> m [FilePath]
 filteredContents fp = do
@@ -84,15 +97,12 @@ withFiles f rec fp = unless (ignoreFile fp) $ do
                 then f fp
                 else liftIO $ putStrLn $ "neither file nor directory: " ++ fp
 
-checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m ()
-checkFile fn = do
-    liftIO $ putStrLn fn
-    flip catchIOError
-        (\e -> (\x -> liftIO $ putStrLn $ "caught: " ++ show x) (e :: IOException))
-        $ do
-            sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
-            _ <- addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
-            return ()
+checkFile :: (MonadCatch m, MonadIO m) => FilePath -> MDB m (Either T.Text FileId)
+checkFile fn = flip catchIOError
+    (\e -> (\x -> return $ Left $ T.pack $ "caught: " ++ show x) (e :: IOException))
+    $ do
+        sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
+        Right <$> addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
 
 addVideoInfo :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
 addVideoInfo fn fid = FFM.withAvFile fn $ do

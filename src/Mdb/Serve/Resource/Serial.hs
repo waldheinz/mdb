@@ -62,10 +62,10 @@ serialResource = mkResourceReader
     }
 
 serialOrder :: Maybe String -> Query
-serialOrder Nothing     = "tv_show_name"
+serialOrder Nothing     = "series_name"
 serialOrder (Just o)    = case o of
-    "name"  -> "tv_show_name"
-    _       -> "tv_show_name"
+    "name"  -> "series_name"
+    _       -> "series_name"
 
 sortDir :: Maybe String -> Query
 sortDir (Just "DESC")   = "DESC"
@@ -77,6 +77,6 @@ serialList which = mkOrderedListing jsonO handler where
     handler (r, o, d) = case which of
         AllSerials  -> lift $
             AUTH.query
-                (   "SELECT tv_show_id, tv_show_name, tv_show_poster FROM tv_show "
+                (   "SELECT series_id, series_name, series_poster FROM series "
                 <>  "ORDER BY " <> serialOrder o <> " " <> sortDir d <> " "
                 <>  "LIMIT ? OFFSET ?" ) (count r, offset r)

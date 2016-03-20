@@ -8,14 +8,14 @@ module Mdb.Serve.RestApi (
 import           Control.Monad.IO.Class ( MonadIO )
 import qualified Network.Wai as WAI
 import           Rest.Driver.Wai ( apiToApplication )
-import           Rest.Api ( Router, Some1(..), route, root, mkVersion, (-/), (--/) )
+import           Rest.Api ( Router, Some1(..), route, root, mkVersion, (-/), (--/), (---/) )
 
 import           Mdb.Database
 import           Mdb.Serve.Auth as AUTH
 import           Mdb.Serve.Resource.Album ( albumResource, personAlbumResource )
 import           Mdb.Serve.Resource.File ( fileResource )
 import           Mdb.Serve.Resource.Person ( personResource )
-import           Mdb.Serve.Resource.Serial ( serialResource, seasonResource )
+import           Mdb.Serve.Resource.Serial ( serialResource, seasonResource, episodeResource )
 import           Mdb.Serve.Resource.User ( userResource )
 
 apiApp :: MediaDb -> AUTH.SessionKey IO -> WAI.Application
@@ -31,6 +31,7 @@ api010 = root
                 --/ route personAlbumResource
             -/ serial
                 --/ route seasonResource
+                    ---/ route episodeResource
             -/ user
 
     where

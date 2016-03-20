@@ -2,8 +2,8 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Mdb.Serve.Resource.Serial (
-    Serial(..), Season(..),
-    serialResource, seasonResource
+    Serial(..), Season(..), Episode(..),
+    serialResource, seasonResource, episodeResource
     ) where
 
 import           Control.Monad.IO.Class ( MonadIO )
@@ -26,7 +26,7 @@ import           Mdb.Database.File ( FileId )
 import           Mdb.Serve.Auth as AUTH
 
 ------------------------------------------------------------------------------------------------------------------------
--- types
+-- serials
 ------------------------------------------------------------------------------------------------------------------------
 
 type SerialId = Int64
@@ -49,10 +49,6 @@ instance ToJSON Serial where
 
 instance JSONSchema Serial where
   schema = gSchema
-
-------------------------------------------------------------------------------------------------------------------------
--- serials
-------------------------------------------------------------------------------------------------------------------------
 
 serialResource :: MonadIO m => Resource (Authenticated m) (WithSerial m) SerialId SerialFilter Void
 serialResource = mkResourceReader
@@ -116,8 +112,9 @@ seasonResource :: MonadIO m => Resource (WithSerial m) (WithSeason m) SeasonId (
 seasonResource = mkResourceReader
     { R.name        = "season"
     , R.description = "Access TV serial seasons"
-    , R.schema      = withListing () $ named []
+    , R.schema      = withListing () $ unnamedSingle read
     , R.list        = seasonList
+    , R.get         = Just getSeason
     }
 
 seasonList :: MonadIO m => () -> ListHandler (WithSerial m)
@@ -132,3 +129,60 @@ seasonList () = mkOrderedListing jsonO handler where
             <>  "LIMIT ? OFFSET ?" ) (serId, count r, offset r)
 
         return $ map (uncurry (Season serId)) xs
+
+getSeason :: MonadIO m => Handler (WithSeason m)
+getSeason = mkIdHandler jsonO handler where
+    handler :: MonadIO m => () -> SerialId -> ExceptT Reason_ (WithSeason m) Season
+    handler () seaId = do
+        serId <- lift . lift $ ask
+
+        (Only p) <- ExceptT $ lift . lift $ AUTH.queryOne
+            "SELECT series_season_poster FROM series_season WHERE series_id = ? AND series_season_number = ?"
+            (serId, seaId)
+
+        return $ Season serId seaId p
+
+------------------------------------------------------------------------------------------------------------------------
+-- episodes
+------------------------------------------------------------------------------------------------------------------------
+
+type EpisodeId = Int64
+
+data Episode = Episode
+    { episodeSerialId   :: SerialId
+    , episodeSeasonId   :: SeasonId
+    , episodeId         :: EpisodeId
+    , episodeTitle      :: T.Text
+    , episodeFile       :: Maybe FileId
+    } deriving ( Generic, Show )
+
+instance ToJSON Episode where
+  toJSON = gtoJson
+
+instance JSONSchema Episode where
+  schema = gSchema
+
+episodeOrder :: Maybe String -> Query
+episodeOrder _     = "series_episode_number"
+
+episodeResource :: MonadIO m => Resource (WithSeason m) (WithSeason m) SeasonId () Void
+episodeResource = mkResourceId
+    { R.name        = "episode"
+    , R.description = "Access TV serial episodes"
+    , R.schema      = withListing () $ named []
+    , R.list        = episodeList
+    }
+
+episodeList :: MonadIO m => () -> ListHandler (WithSeason m)
+episodeList () = mkOrderedListing jsonO handler where
+    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSeason m) [Episode]
+    handler (r, o, d) = lift $ do
+        serId    <- lift ask
+        seaId    <- ask
+        xs <- lift . lift $ AUTH.query
+            (   "SELECT series_episode_number, series_episode_title, file_id FROM series_episode "
+            <>  "WHERE series_id = ? AND series_season_number = ?"
+            <>  "ORDER BY " <> episodeOrder o <> " " <> sortDir d <> " "
+            <>  "LIMIT ? OFFSET ?" ) (serId, seaId, count r, offset r)
+
+        return $ map (\(n, t, f) -> Episode serId seaId n t f) xs

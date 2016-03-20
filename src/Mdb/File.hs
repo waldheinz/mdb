@@ -8,9 +8,9 @@ module Mdb.File (
 import qualified Codec.FFmpeg.Probe          as FFM
 import           Control.Exception.Base      (IOException)
 import           Control.Monad               (foldM, forM_, liftM, unless, when)
-import           Control.Monad.Catch         (MonadCatch, MonadMask,
-                                              catchIOError)
+import           Control.Monad.Catch         (MonadCatch, catchIOError)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
+import Control.Monad.Reader.Class (ask)
 import           Control.Monad.Trans.Class   (lift)
 import qualified Data.ByteString.Base16.Lazy as HEX
 import qualified Data.ByteString.Lazy        as BSL
@@ -61,7 +61,7 @@ doFile CMD.FileAdd rec fs = mapM_ (withFiles go rec) fs where
 doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles (scanFile sha) rec) fs
 
 scanFile :: MonadIO m => Bool -> FilePath -> MDB m ()
-scanFile sha fn = withTransaction $ do
+scanFile sha fn = do
     mfid <- fileIdFromName fn
     case mfid of
         Nothing    -> liftIO $ putStrLn $ "unregistered file: " ++ fn
@@ -75,7 +75,10 @@ scanFile sha fn = withTransaction $ do
 
             when ("video" `T.isPrefixOf` fileMime f) $ do
                 assignSeriesEpisode fn fid
-                addVideoInfo fn fid
+                mdb <- ask
+                liftIO $ catchIOError
+                    (runMDB' mdb $ addVideoInfo fn fid)
+                    (\ex -> putStrLn $ "failed scanning file: " ++ show ex)
 
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"
@@ -115,7 +118,7 @@ checkFile fn = flip catchIOError
         sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
         Right <$> addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
 
-assignSeriesEpisode :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
+assignSeriesEpisode :: MonadIO m => FilePath -> FileId -> MDB m ()
 assignSeriesEpisode fn fid = do
     rel <- relFile fn
 
@@ -140,7 +143,7 @@ assignSeriesEpisode fn fid = do
                 _   -> noParse
             _  -> noParse
 
-addVideoInfo :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
+addVideoInfo :: FilePath -> FileId -> MDB IO ()
 addVideoInfo fn fid = FFM.withAvFile fn $ do
     (fmtName, duration) <- (,) <$> FFM.formatName <*> FFM.duration
     let

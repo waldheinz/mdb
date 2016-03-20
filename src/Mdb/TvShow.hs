@@ -29,6 +29,7 @@ import           Mdb.CmdLine                 (OptTvShow (..))
 import           Mdb.Database
 import           Mdb.Database.File           (FileId)
 import           Mdb.File                    (checkFile)
+import           Mdb.Types
 
 tvDbApiKey :: String
 tvDbApiKey = "2FA137A801CEDA74"
@@ -46,7 +47,7 @@ doMode :: OptTvShow -> MDB IO ()
 doMode (AssignTvShow lang folders) = withManager $ mapM_ go folders where
     go folder = scanShow lang folder >>= \x -> case x of
         Left msg    -> liftIO $ putStrLn $ T.unpack $ "error: " <> msg
-        Right ()    -> liftIO $ putStrLn "ok"
+        Right ()    -> return ()
 
 eName :: String -> XML.QName
 eName n = XML.QName n Nothing Nothing
@@ -62,18 +63,27 @@ scanShow lang showDir = runEitherT $ do
         dirs = splitDirectories showDir
         dirName = last dirs
 
-    liftIO $ putStrLn $ "fetching info for \"" ++ last dirs ++ "\""
+    esid <- lift . lift $ do
+        rel <- relFile showDir
+        dbQueryOne "SELECT series_id, series_name FROM series WHERE ? LIKE (series_root || '%')" (Only rel)
 
-    xml <- parseUrl (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
-        >>= httpLbs >>= xmlBody
+    case esid of
+        Right (serId, name) -> liftIO $ putStrLn $ showDir ++ ": already assigned to \""
+                                                ++ name ++ "\" (" ++ show (serId :: SerialId) ++ ")"
 
-    case XML.findChildren (eName "Series") xml of
-        []  -> left "no candidate found"
-        [x] -> EitherT $ assignShowFromXml lang showDir x
-        _   -> left "multiple matches"
-        
-assignShowFromXml :: String -> FilePath -> XML.Element -> ReaderT Manager (MDB IO) (Either T.Text ())
-assignShowFromXml lang showDir xml = runEitherT $ do
+        Left _              -> do
+            liftIO $ putStrLn $ "fetching info for \"" ++ last dirs ++ "\""
+
+            xml <- parseUrl (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
+                >>= httpLbs >>= xmlBody
+
+            case XML.findChildren (eName "Series") xml of
+                []  -> left "no candidate found"
+                [x] -> assign lang showDir x
+                _   -> left "multiple matches"
+
+assign :: (MonadCatch m, MonadIO m) => String -> FilePath -> XML.Element -> EitherT T.Text (ReaderT Manager (MDB m)) ()
+assign lang showDir xml = do
 
     let
         mdata = do
@@ -128,7 +138,7 @@ updateSeries showId = do
         (seriesName, seriesDesc, showId)
 
 
-    mposterId <- lift $ updateImage ("posters/" ++ show showId) seriesPoster
+    mposterId <- lift $ runEitherT $ updateImage ("posters/" ++ show showId) seriesPoster
     case mposterId of
         Left _      -> liftIO $ putStrLn "fetching poster image failed"
         Right fid   -> lift . lift $ dbExecute "UPDATE series SET series_poster = ? WHERE series_id = ?" (fid, showId)
@@ -164,7 +174,7 @@ updateSeries showId = do
                     let
                         (SeasonPoster _ _ path) = last xs
 
-                    pid <- lift $ updateImage ("posters/" ++ show showId ++ "-" ++ show seasonId) path
+                    pid <- lift $ runEitherT $ updateImage ("posters/" ++ show showId ++ "-" ++ show seasonId) path
                     case pid of
                         Left _      -> liftIO $ putStrLn "fetching poster image failed"
                         Right fid   -> lift . lift $ dbExecute
@@ -177,8 +187,8 @@ updateSeries showId = do
 
     mapM_ (onePoster $ parseBanners bannersXml) (nub seasonIds)
 
-updateImage :: (MonadCatch m, MonadIO m) => FilePath -> String -> ReaderT Manager (MDB m) (Either T.Text FileId)
-updateImage destFile banner = runEitherT $ do
+updateImage :: (MonadCatch m, MonadIO m) => FilePath -> String -> EitherT T.Text (ReaderT Manager (MDB m)) FileId
+updateImage destFile banner = do
     dbDir <- lift . lift $ asks mdbDbDir
 
     let

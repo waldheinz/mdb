@@ -97,9 +97,9 @@ pick els dirName lang = do
         exactName       = filter (\((n, _, _), _) -> lCase dirName == lCase n) langMatch
 
     case exactName of
-        []  -> left $ "no plausible candidates left, started with: " <> T.pack (show wrapped)
+        []  -> left $ "no plausible candidates left, started with: " <> T.pack (show $ map fst wrapped)
         [x] -> return $ snd x
-        _   -> left $ "still multiple candidates left: " <> T.pack (show wrapped)
+        _   -> left $ "still multiple candidates left: " <> T.pack (show $ map fst exactName)
 
 assign :: (MonadCatch m, MonadIO m) => String -> FilePath -> XML.Element -> EitherT T.Text (ReaderT Manager (MDB m)) ()
 assign lang showDir xml = do

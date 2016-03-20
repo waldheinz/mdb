@@ -94,8 +94,6 @@ update a m = case a of
     PersonLoaded (Err err)              -> Debug.log "loading person failed" err |> \_ -> (m, Effects.none)
     PersonLoaded (Ok p)                 -> ( { m | person = Just p}, Effects.none )
     AlbumListAction (AlbumSelected aid) -> ( m, Route.goRoute (Route.PersonAlbum m.personId aid) |> noOp )
-    FileListAction (File.VideoSelected fid) ->
-        (m, Route.goRoute (Route.Video fid) |> noOp)
     FileListAction fla                  -> ( { m | randomFiles = File.updateListModel fla m.randomFiles }, Effects.none)
     AlbumAction aa                      ->
         let

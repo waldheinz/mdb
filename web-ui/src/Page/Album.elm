@@ -58,7 +58,5 @@ view aa m =
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     NoOp                                -> (m, Effects.none)
-    FileListAction (File.VideoSelected fid) ->
-        (m, Route.goRoute (Route.Video fid) |> noOp)
     FileListAction la                   -> ({ m | files = File.updateListModel la m.files }, Effects.none)
     PersonListAction pla                -> ({ m | persons = Person.updateListModel pla m.persons }, Effects.none)

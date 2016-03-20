@@ -4,7 +4,7 @@ module File (
     thumb,
 
     -- * File Listings
-    ListModel, mkListModel, ListAction(ImageSelected, VideoSelected), viewList, updateListModel, setListFilter
+    ListModel, mkListModel, ListAction, viewList, updateListModel, setListFilter
     ) where
 
 import Effects exposing ( Effects )
@@ -15,9 +15,9 @@ import Signal exposing ( Address )
 import String
 import Task
 
+import Route exposing ( clickRoute )
 import Server
 import Types exposing (..)
-import Utils
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Individual Files
@@ -46,9 +46,7 @@ mkListModel which =
     }
 
 type ListAction
-    = ImageSelected FileId
-    | VideoSelected FileId
-    | FilesLoaded (Result Http.Error (ApiList (FileId, File)))
+    = FilesLoaded (Result Http.Error (ApiList (FileId, File)))
 
 setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
 setListFilter which m =
@@ -65,12 +63,12 @@ viewList aa m =
         oneFile (fid, f) =
             let
                 clickWhat = if String.startsWith "image/" f.mimeType
-                    then ImageSelected fid
-                    else VideoSelected fid
+                    then [ HA.href <| Server.imageUrl fid ]
+                    else clickRoute (Route.Video fid)
 
             in
                 Html.div [ HA.class "col-xs-3 col-md-2" ]
-                    [ Html.a [ HA.class "thumbnail", Utils.onClick' aa clickWhat, HA.href <| Server.imageUrl fid ]
+                    [ Html.a ( HA.class "thumbnail" :: clickWhat )
                         [ thumb fid ]
                     ]
     in
@@ -78,7 +76,5 @@ viewList aa m =
 
 updateListModel : ListAction -> ListModel -> ListModel
 updateListModel a m = case a of
-    ImageSelected _      -> m
-    VideoSelected _      -> m
     FilesLoaded (Err x) -> Debug.log "failed loading files" x |> \_ -> m
     FilesLoaded (Ok l)  -> { m | files = l.items }

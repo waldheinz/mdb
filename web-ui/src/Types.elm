@@ -45,7 +45,8 @@ listDecoder dec = JD.object3 ApiList
 type alias PersonId = Int
 
 type alias Person =
-    { name : String
+    { name      : String
+    , portrait  : Maybe FileId
     }
 
 type PersonFilter
@@ -53,7 +54,9 @@ type PersonFilter
     | AlbumPersons AlbumId  -- ^ persons in that album
 
 personDecoder : JD.Decoder Person
-personDecoder = JD.object1 Person ( "personName" := JD.string )
+personDecoder = JD.object2 Person
+    ( "personName"      := JD.string )
+    ( "personPortrait"  := fileIdDecoder |> JD.maybe )
 
 personListDecoder : JD.Decoder (PersonId, Person)
 personListDecoder = JD.object2 (,) ( "personId" := JD.int ) personDecoder

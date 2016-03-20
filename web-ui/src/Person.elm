@@ -16,6 +16,7 @@ import Http
 import Signal exposing ( Address )
 import Task
 
+import File
 import Route exposing ( clickRoute )
 import Server
 import Types exposing ( .. )
@@ -53,9 +54,11 @@ viewList : Address ListAction -> ListModel -> Html
 viewList aa m =
     let
         onePerson (pid, p) =
-            Html.div [ HA.class "col-xs-2" ]
+            Html.div [ HA.class "col-xs-3 col-md-2" ]
                 [ Html.a (HA.class "thumbnail" :: clickRoute (Route.Person pid))
-                    [ Html.text p.name ]
+                    [ Maybe.withDefault 0 p.portrait |> File.thumb
+                    , Html.span [ HA.class "item-name" ] [ Html.text p.name ]
+                    ]
                 ]
     in
         List.map onePerson m.persons |> Html.div [ HA.class "row" ]

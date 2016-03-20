@@ -11,7 +11,6 @@ import Signal exposing ( Address )
 
 import File
 import Person
-import Route
 import Types exposing (..)
 
 type alias Model =
@@ -51,8 +50,9 @@ view : Address Action -> Model -> Html
 view aa m =
     Html.div [ HA.class "container" ]
         [ Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Album " ++ toString m.albumId ]
-        , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
         , File.viewList (Signal.forwardTo aa FileListAction) m.files
+        , Html.h2 [] [ Html.text "Persons in this Album" ]
+        , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
         ]
 
 update : Action -> Model -> (Model, Effects Action)

@@ -4,7 +4,6 @@ module Page.SeriesSeasons (
     Action, view, update, onMount
     ) where
 
-
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
@@ -15,6 +14,7 @@ import Task
 import File
 import Server
 import Types exposing (..)
+import Route exposing ( clickRoute )
 
 type alias Model =
     { seasonList    : List Season
@@ -41,8 +41,11 @@ view aa wm =
         m = wm.pageSeasonsModel
         oneSeason s =
             Html.div [ HA.class "col-xs-4 col-md-2" ]
-                [ File.thumb (Maybe.withDefault 1 s.seasonPoster)
-                , Html.text <| toString s.seasonId
+                [ Html.a ( HA.class "thumbnail" :: (clickRoute <| Route.SeriesEpisodes s.seasonSerial s.seasonId))
+                    [ File.thumb (Maybe.withDefault 1 s.seasonPoster)
+                    , Html.span [ HA.class "item-name" ]
+                        [ Html.text <| toString s.seasonId ]
+                    ]
                 ]
     in
         Html.div [ HA.class "container" ]

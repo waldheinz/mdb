@@ -16,7 +16,7 @@ import           Mdb.Types
 data Person = Person
     { personId       :: ! PersonId
     , personName     :: ! String
-    , personProtrait :: Maybe FileId
+    , personPortrait :: Maybe FileId
     } deriving ( Generic, Show )
 
 instance FromRow Person where

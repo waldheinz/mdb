@@ -60,6 +60,9 @@ doAddUser name = do
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
 doPerson (CMD.AddPerson n) = DB.addPerson n >>= \pid ->
     liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
+doPerson (CMD.SetPersonPortrait pid fid) = DB.dbExecute
+    "UPDATE person SET person_portrait = ? WHERE person_id = ?"
+    (fid, pid)
 
 doInit :: Maybe FilePath -> IO ()
 doInit mp = do

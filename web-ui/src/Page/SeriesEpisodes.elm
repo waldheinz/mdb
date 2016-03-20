@@ -12,6 +12,7 @@ import Signal exposing ( Address )
 import Task
 
 import File
+import Route exposing ( clickRoute )
 import Server
 import Types exposing (..)
 
@@ -41,13 +42,16 @@ view aa wm =
     let
         m = wm.pageEpisodesModel
         oneEpisode ep =
-            Html.div [ HA.class "col-xs-4 col-md-2" ]
-                [ Html.a [ HA.class "thumbnail" ]
-                    [ File.thumb (Maybe.withDefault 1 ep.fileId)
-                    , Html.span [ HA.class "item-name" ]
-                        [ Html.text ep.title ]
+            let
+                onClick = Maybe.map (Route.Video >> clickRoute) ep.fileId |>  Maybe.withDefault []
+            in
+                Html.div [ HA.class "col-xs-4 col-md-2" ]
+                    [ Html.a (HA.class "thumbnail" :: onClick )
+                        [ File.thumb (Maybe.withDefault 0 ep.fileId)
+                        , Html.span [ HA.class "item-name" ]
+                            [ Html.text ep.title ]
+                        ]
                     ]
-                ]
     in
         Html.div [ HA.class "container" ]
             [ Html.h1 [ HA.class "page-header" ] [ Html.text "Episodes for ..." ]

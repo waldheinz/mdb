@@ -37,7 +37,7 @@ posterQuery =
     "COALESCE(" <>
         "a.album_poster," <>
             "(SELECT file_id FROM file WHERE file_name = " <>
-                "(SELECT MIN(file.file_name) FROM album_file af NATURAL JOIN file WHERE af.album_id = 45))" <>
+                "(SELECT MIN(file.file_name) FROM album_file af NATURAL JOIN file WHERE af.album_id = a.album_id))" <>
     ")"
 
 listPersonAlbums :: MonadIO m => ListHandler (WithPerson m)

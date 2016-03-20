@@ -42,7 +42,7 @@ view aa wm =
         oneSeason s =
             Html.div [ HA.class "col-xs-4 col-md-2" ]
                 [ Html.a ( HA.class "thumbnail" :: (clickRoute <| Route.SeriesEpisodes s.seasonSerial s.seasonId))
-                    [ File.thumb (Maybe.withDefault 1 s.seasonPoster)
+                    [ File.thumb (Maybe.withDefault 0 s.seasonPoster)
                     , Html.span [ HA.class "item-name" ]
                         [ Html.text <| toString s.seasonId ]
                     ]

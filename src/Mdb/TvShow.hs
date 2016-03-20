@@ -10,6 +10,7 @@ import           Control.Monad.Trans.Class   (lift)
 import           Control.Monad.Trans.Either
 import           Control.Monad.Trans.Reader  (ReaderT)
 import qualified Data.ByteString.Lazy        as BSL
+import           Data.Char ( toLower )
 import           Data.Int                    (Int64)
 import           Data.List                   (nub, sort)
 import           Data.Maybe                  (mapMaybe)
@@ -80,7 +81,25 @@ scanShow lang showDir = runEitherT $ do
             case XML.findChildren (eName "Series") xml of
                 []  -> left "no candidate found"
                 [x] -> assign lang showDir x
-                _   -> left "multiple matches"
+                xs  -> pick xs dirName lang >>= assign lang showDir
+
+pick :: [XML.Element] -> String -> String -> EitherT T.Text (ReaderT Manager (MDB IO)) XML.Element
+pick els dirName lang = do
+    let
+        lCase           = map toLower
+        field name xml  = XML.strContent <$> XML.findChild (eName name) xml
+        wrap xml        =
+            (,)
+                <$> ((,,) <$> field "SeriesName" xml <*> field "FirstAired" xml <*> field "language" xml)
+                <*> pure xml
+        wrapped         = mapMaybe wrap els
+        langMatch       = filter (\((_, _, l), _) -> lCase lang == lCase l) wrapped
+        exactName       = filter (\((n, _, _), _) -> lCase dirName == lCase n) langMatch
+
+    case exactName of
+        []  -> left $ "no plausible candidates left, started with: " <> T.pack (show wrapped)
+        [x] -> return $ snd x
+        _   -> left $ "still multiple candidates left: " <> T.pack (show wrapped)
 
 assign :: (MonadCatch m, MonadIO m) => String -> FilePath -> XML.Element -> EitherT T.Text (ReaderT Manager (MDB m)) ()
 assign lang showDir xml = do

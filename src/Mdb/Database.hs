@@ -35,8 +35,8 @@ import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import qualified Database.SQLite.Simple as SQL
-import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory, canonicalizePath )
-import System.FilePath ( (</>), makeRelative, takeDirectory )
+import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory )
+import System.FilePath ( (</>), makeRelative, takeDirectory, isRelative )
 
 import Paths_mdb
 import Mdb.Database.Album ( AlbumId )
@@ -73,9 +73,14 @@ runMDB' db f = runReaderT (unMDB f) db
 findDbAndRun :: (MonadMask m, MonadIO m) => Maybe FilePath -> MDB m a -> m a
 findDbAndRun mp act = do
     let
-        goCheck p = liftIO (doesDirectoryExist $ dbDir p) >>= \ok -> if ok
-            then runMDB (dbDir p) act
-            else fail $ "no db directory found at \"" ++ p ++ "\", maybe try \"mdb init\"?"
+        goCheck p = do
+            x <- if isRelative p
+                then liftIO getCurrentDirectory >>= \here -> return $ here </> p
+                else return p
+
+            liftIO (doesDirectoryExist $ dbDir x) >>= \ok -> if ok
+                then runMDB (dbDir x) act
+                else fail $ "no db directory found at \"" ++ p ++ "\", maybe try \"mdb init\"?"
 
         goFind = liftIO findDbFolder >>= \x -> case x of
             Nothing  -> liftIO $ fail "no db directory found, maybe try \"mdb init\"?"
@@ -166,7 +171,11 @@ withTransaction f = ask >>= \mdb -> liftIO (SQL.withTransaction (mdbConn mdb) (r
 relFile :: MonadIO m => FilePath -> MDB m FilePath
 relFile absPath = do
     -- rp <- liftIO $ canonicalizePath absPath
-    asks mdbBasePath >>= \bp -> return $ makeRelative bp absPath
+    x <- if isRelative absPath
+        then liftIO getCurrentDirectory >>= \here -> return $ here </> absPath
+        else return absPath
+
+    asks mdbBasePath >>= \bp -> return $ makeRelative bp x
 
 fileAbs :: Monad m => FilePath -> MDB m FilePath
 fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath

@@ -5,29 +5,30 @@ module Mdb.File (
   doFile, checkFile
   ) where
 
-import qualified Codec.FFmpeg.Probe as FFM
-import Control.Exception.Base ( IOException )
-import Control.Monad ( forM_, unless, foldM, when, liftM )
-import Control.Monad.Catch ( MonadMask, MonadCatch, catchIOError )
-import Control.Monad.Reader.Class (asks)
-import Control.Monad.Trans.Class ( lift )
-import Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Data.Monoid ( (<>) )
-import qualified Data.Text as T
-import Data.Text.Encoding ( decodeUtf8 )
-import qualified Data.ByteString.Lazy as BSL
+import qualified Codec.FFmpeg.Probe          as FFM
+import           Control.Exception.Base      (IOException)
+import           Control.Monad               (foldM, forM_, liftM, unless, when)
+import           Control.Monad.Catch         (MonadCatch, MonadMask,
+                                              catchIOError)
+import           Control.Monad.IO.Class      (MonadIO, liftIO)
+import           Control.Monad.Trans.Class   (lift)
 import qualified Data.ByteString.Base16.Lazy as HEX
-import Data.Digest.Pure.SHA ( bytestringDigest, sha1 )
-import Network.Mime ( defaultMimeLookup )
-import System.Directory ( doesDirectoryExist, doesFileExist, getDirectoryContents )
-import System.FilePath ( (</>) )
-import System.Posix.Files ( fileSize, getFileStatus )
-import Text.Regex.Posix
+import qualified Data.ByteString.Lazy        as BSL
+import           Data.Digest.Pure.SHA        (bytestringDigest, sha1)
+import           Data.Monoid                 ((<>))
+import qualified Data.Text                   as T
+import           Data.Text.Encoding          (decodeUtf8)
+import           Network.Mime                (defaultMimeLookup)
+import           System.Directory            (doesDirectoryExist, doesFileExist,
+                                              getDirectoryContents)
+import           System.FilePath             ((</>))
+import           System.Posix.Files          (fileSize, getFileStatus)
+import           Text.Regex.Posix
 
-import qualified Mdb.CmdLine  as CMD
-import Mdb.Database
-import Mdb.Database.File ( FileId, fileMime )
-import Mdb.Types
+import qualified Mdb.CmdLine                 as CMD
+import           Mdb.Database
+import           Mdb.Database.File           (FileId, fileMime)
+import           Mdb.Types
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
 doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do

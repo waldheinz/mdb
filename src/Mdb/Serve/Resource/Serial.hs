@@ -12,7 +12,6 @@ import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except
 import           Database.SQLite.Simple ( FromRow(..), field, Query )
 import           Data.Aeson
-import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import           Data.Monoid ( (<>) )
 import qualified Data.Text as T

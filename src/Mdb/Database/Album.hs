@@ -2,21 +2,18 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Mdb.Database.Album (
-    AlbumId, Album(..)
+    Album(..)
     ) where
 
 import           Database.SQLite.Simple ( FromRow(..), field )
 import           Data.Aeson
-import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
 import qualified Data.Text as T
 import           Data.Typeable ( Typeable )
 import           Generics.Generic.Aeson
 import           GHC.Generics
 
-import           Mdb.Database.File ( FileId )
-
-type AlbumId = Int64
+import           Mdb.Types
 
 data Album = Album
     { albumId       :: ! AlbumId

@@ -1,8 +1,6 @@
 
-{-# LANGUAGE
-    GeneralizedNewtypeDeriving,
-    OverloadedStrings
-    #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE OverloadedStrings          #-}
 
 module Mdb.Database (
     MediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
@@ -26,30 +24,34 @@ module Mdb.Database (
     dbExecute, dbQuery, dbQueryOne, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
 
-import Control.Monad ( forM_, liftM )
-import Control.Monad.Catch ( MonadCatch, MonadMask, MonadThrow, bracket )
-import Control.Monad.IO.Class ( MonadIO, liftIO )
-import Control.Monad.Reader ( MonadReader, ReaderT, ask, asks, runReaderT )
-import           Data.Int ( Int64 )
-import           Data.Monoid ( (<>) )
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+import           Control.Monad          (forM_, liftM)
+import           Control.Monad.Catch    (MonadCatch, MonadMask, MonadThrow,
+                                         bracket)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Reader   (MonadReader, ReaderT, ask, asks,
+                                         runReaderT)
+import           Data.Int               (Int64)
+import           Data.Monoid            ((<>))
+import qualified Data.Text              as T
+import qualified Data.Text.IO           as TIO
 import qualified Database.SQLite.Simple as SQL
-import System.Directory ( createDirectory, doesDirectoryExist, getCurrentDirectory )
-import System.FilePath ( (</>), makeRelative, takeDirectory, isRelative )
+import           System.Directory       (createDirectory, doesDirectoryExist,
+                                         getCurrentDirectory)
+import           System.FilePath        (isRelative, makeRelative,
+                                         takeDirectory, (</>))
 
-import Paths_mdb
-import Mdb.Database.Album ( AlbumId )
-import Mdb.Database.File ( File, FileId )
-import Mdb.Database.Person ( Person, PersonId )
+import           Mdb.Database.File      (File)
+import           Mdb.Database.Person    (Person)
+import           Mdb.Types
+import           Paths_mdb
 
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
 
 data MediaDb = MediaDb
-    { mdbConn       :: ! SQL.Connection
-    , mdbBasePath   :: ! FilePath
-    , mdbDbDir      :: ! FilePath
+    { mdbConn     :: ! SQL.Connection
+    , mdbBasePath :: ! FilePath
+    , mdbDbDir    :: ! FilePath
     }
 
 newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }

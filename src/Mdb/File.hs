@@ -27,7 +27,7 @@ import           Text.Regex.Posix
 
 import qualified Mdb.CmdLine                 as CMD
 import           Mdb.Database
-import           Mdb.Database.File           (FileId, fileMime)
+import           Mdb.Database.File           (fileMime)
 import           Mdb.Types
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()

@@ -23,13 +23,14 @@ import           System.Directory ( doesFileExist, createDirectoryIfMissing )
 import           Mdb.Database
 import qualified Mdb.Database.File as DBF
 import qualified Mdb.Serve.Video as V
+import           Mdb.Types
 
 thumbApp :: MediaDb -> Application
 thumbApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
     root = prepare $
         get "/medium/:fid"        (continue fileThumb)        $ capture "fid"
 
-fileThumb :: MonadIO m => DBF.FileId -> MDB m Response
+fileThumb :: MonadIO m => FileId -> MDB m Response
 fileThumb fid = do
     file <- fileById fid
     srcFile <- case T.takeWhile ( /= '/') (DBF.fileMime file) of

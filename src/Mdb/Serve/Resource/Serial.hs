@@ -21,7 +21,6 @@ import           Rest
 import qualified Rest.Resource as R
 
 import           Mdb.Database
-import           Mdb.Database.File ( FileId )
 import           Mdb.Serve.Auth as AUTH
 import           Mdb.Types
 

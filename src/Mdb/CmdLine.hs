@@ -5,10 +5,9 @@ module Mdb.CmdLine (
     OptFile(..), AssignTarget(..), parseCommandLine
     ) where
 
-import Options.Applicative
+import           Options.Applicative
 
-import Mdb.Database.Album ( AlbumId )
-import Mdb.Database.Person ( PersonId )
+import           Mdb.Types
 
 data Mode
     = ModeInit
@@ -25,8 +24,8 @@ initOptions = pure ModeInit
 
 data OptTvShow
     = AssignTvShow
-        { tvShowLanguage    :: String
-        , tvShowFolders     :: [FilePath]
+        { tvShowLanguage :: String
+        , tvShowFolders  :: [FilePath]
         } deriving ( Show )
 
 tvShowOptions :: Parser Mode

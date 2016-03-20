@@ -1,27 +1,27 @@
 
-{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Serve.Resource.File ( WithFile, fileResource, Container(..), Stream(..) ) where
 
-import           Control.Monad.IO.Class ( MonadIO )
-import           Control.Monad.Reader ( ReaderT )
-import           Control.Monad.Trans.Class ( lift )
-import           Control.Monad.Trans.Except -- ( ExceptT(..) )
-import           Database.SQLite.Simple ( FromRow(..), field )
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.Reader       (ReaderT)
+import           Control.Monad.Trans.Class  (lift)
+import           Control.Monad.Trans.Except
 import           Data.Aeson
-import           Data.JSON.Schema ( JSONSchema(..), gSchema )
-import           Data.Monoid ( (<>) )
-import qualified Data.Text as T
+import           Data.JSON.Schema           (JSONSchema (..), gSchema)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T
+import           Database.SQLite.Simple     (FromRow (..), field)
 import           Generics.Generic.Aeson
 import           GHC.Generics
 import           Rest
-import qualified Rest.Resource as R
+import qualified Rest.Resource              as R
 
 import           Mdb.Database
-import           Mdb.Database.Album ( AlbumId )
-import           Mdb.Database.File ( FileId, File )
-import           Mdb.Database.Person ( PersonId )
-import           Mdb.Serve.Auth as AUTH
+import           Mdb.Database.File          (File)
+import           Mdb.Serve.Auth             as AUTH
+import           Mdb.Types
 
 data FileListSelector
     = AllFiles
@@ -80,12 +80,12 @@ getRandomPersonFiles pid = AUTH.query
 ------------------------------------------------------------------------------------------------------------------------
 
 data Stream = Stream
-    { streamId          :: Int
-    , streamMediaType   :: T.Text
-    , streamCodec       :: T.Text
-    , streamBitRate     :: Int
-    , streamWidth       :: Int
-    , streamHeight      :: Int
+    { streamId        :: Int
+    , streamMediaType :: T.Text
+    , streamCodec     :: T.Text
+    , streamBitRate   :: Int
+    , streamWidth     :: Int
+    , streamHeight    :: Int
     } deriving ( Generic, Show )
 
 instance ToJSON Stream where
@@ -98,9 +98,9 @@ instance FromRow Stream where
     fromRow = Stream <$> field <*> field <*> field <*> field <*> field <*> field
 
 data Container = Container
-    { duration  :: Double   -- ^ duration in seconds
-    , format    :: T.Text   -- ^ container format ("avi", "mkv", ...)
-    , streams   :: [Stream]
+    { duration :: Double   -- ^ duration in seconds
+    , format   :: T.Text   -- ^ container format ("avi", "mkv", ...)
+    , streams  :: [Stream]
     } deriving ( Generic, Show )
 
 instance ToJSON Container where

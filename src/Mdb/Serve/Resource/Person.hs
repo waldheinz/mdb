@@ -5,16 +5,16 @@ module Mdb.Serve.Resource.Person (
     WithPerson, personResource
     ) where
 
-import           Control.Monad.IO.Class ( MonadIO )
-import           Control.Monad.Reader ( ReaderT, ask )
-import           Control.Monad.Trans.Class ( lift )
+import           Control.Monad.IO.Class    (MonadIO)
+import           Control.Monad.Reader      (ReaderT, ask)
+import           Control.Monad.Trans.Class (lift)
 import           Rest
-import qualified Rest.Resource as R
+import qualified Rest.Resource             as R
 
 import           Mdb.Database
-import           Mdb.Database.Album ( AlbumId )
-import           Mdb.Database.Person ( PersonId, Person(..) )
-import           Mdb.Serve.Auth as AUTH
+import           Mdb.Database.Person       (Person (..))
+import           Mdb.Serve.Auth            as AUTH
+import           Mdb.Types
 
 data PersonSelector
     = AllPersons

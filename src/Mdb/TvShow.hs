@@ -28,7 +28,6 @@ import qualified Text.XML.Light              as XML
 
 import           Mdb.CmdLine                 (OptTvShow (..))
 import           Mdb.Database
-import           Mdb.Database.File           (FileId)
 import           Mdb.File                    (checkFile)
 import           Mdb.Types
 

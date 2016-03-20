@@ -1,25 +1,28 @@
 
-{-# LANGUAGE OverloadedStrings, TypeOperators #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeOperators     #-}
 
 module Mdb.Serve.Video (
     videoApp, ensureFrame
     ) where
 
-import           Blaze.ByteString.Builder ( fromByteString )
-import           Control.Monad ( unless, void )
-import           Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Control.Monad.Reader.Class ( asks )
-import           Control.Monad.Trans.Class ( lift )
+import           Blaze.ByteString.Builder   (fromByteString)
+import           Control.Monad              (unless, void)
+import           Control.Monad.IO.Class     (MonadIO, liftIO)
+import           Control.Monad.Reader.Class (asks)
+import           Control.Monad.Trans.Class  (lift)
 import           Data.Conduit
 import           Data.Conduit.Process
-import           Network.HTTP.Types ( status200 )
+import           Network.HTTP.Types         (status200)
 import           Network.Wai
 import           Network.Wai.Predicate
 import           Network.Wai.Routing
-import           System.Directory ( doesFileExist, createDirectoryIfMissing )
+import           System.Directory           (createDirectoryIfMissing,
+                                             doesFileExist)
 
 import           Mdb.Database
-import qualified Mdb.Database.File as DBF
+import           Mdb.Database.File          as DBF
+import           Mdb.Types
 
 videoApp :: MediaDb -> Application
 videoApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
@@ -31,7 +34,7 @@ videoApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
 roundTimeToMs :: Double -> Integer
 roundTimeToMs ts = round ts `div` 30 * 30000
 
-ensureFrame :: MonadIO m => DBF.FileId -> Double -> MDB m FilePath
+ensureFrame :: MonadIO m => FileId -> Double -> MDB m FilePath
 ensureFrame fid ts = do
     dbDir <- asks mdbDbDir
     f <- fileById fid
@@ -49,10 +52,10 @@ ensureFrame fid ts = do
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return outFile
 
-frame :: MonadIO m => (DBF.FileId ::: Double) -> MDB m Response
+frame :: MonadIO m => (FileId ::: Double) -> MDB m Response
 frame (fid ::: ts) = ensureFrame fid ts >>= \outFile -> return $ responseFile status200 [] outFile Nothing
 
-stream :: MonadIO m => (DBF.FileId ::: Double ::: Int) -> MDB m Response
+stream :: MonadIO m => (FileId ::: Double ::: Int) -> MDB m Response
 stream (fid ::: ts ::: rv) = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f
@@ -71,7 +74,7 @@ stream (fid ::: ts ::: rv) = do
 
     return $ responseStream status200 [ ("Content-Type", "video/x-matroska") ] str
 
-streamDirect :: MonadIO m => DBF.FileId -> MDB m Response
+streamDirect :: MonadIO m => FileId -> MDB m Response
 streamDirect fid = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f

@@ -3,20 +3,21 @@
 
 module Mdb.Serve.Resource.Album ( albumResource, personAlbumResource ) where
 
-import           Control.Monad.Error.Class ( throwError )
-import           Control.Monad.IO.Class ( MonadIO )
-import           Control.Monad.Reader ( ReaderT, ask, runReaderT )
-import           Control.Monad.Trans.Class ( lift )
+import           Control.Monad.Error.Class  (throwError)
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.Reader       (ReaderT, ask, runReaderT)
+import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Except
-import           Database.SQLite.Simple (Query)
-import           Data.Monoid ( (<>) )
+import           Data.Monoid                ((<>))
+import           Database.SQLite.Simple     (Query)
 import           Rest
-import qualified Rest.Resource as R
+import qualified Rest.Resource              as R
 
 import           Mdb.Database
-import           Mdb.Database.Album ( AlbumId, Album )
-import           Mdb.Serve.Auth as AUTH
-import           Mdb.Serve.Resource.Person ( WithPerson )
+import           Mdb.Database.Album         (Album)
+import           Mdb.Serve.Auth             as AUTH
+import           Mdb.Serve.Resource.Person  (WithPerson)
+import           Mdb.Types
 
 type WithAlbum m = ReaderT AlbumId (Authenticated m)
 

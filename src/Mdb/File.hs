@@ -50,11 +50,13 @@ doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
     (pids, aids) <- foldM prepare ([], []) tgts
     mapM_ (withFiles (go pids aids) rec) fs
 
-doFile CMD.FileAdd rec fs = withTransaction $ mapM_ (withFiles go rec) fs where
+doFile CMD.FileAdd rec fs = mapM_ (withFiles go rec) fs where
     go fn = hasFile fn >>= \known -> unless known $ checkFile fn >>= \efid ->
         case efid of
             Left e      -> liftIO $ putStrLn $ fn ++ ": " ++ T.unpack e
-            Right fid   -> liftIO $ putStrLn $ fn ++ ": " ++ show fid
+            Right fid   -> do
+                liftIO $ putStrLn $ fn ++ ": " ++ show fid
+                scanFile False fn
 
 doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles (scanFile sha) rec) fs
 

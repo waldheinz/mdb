@@ -165,8 +165,8 @@ withTransaction f = ask >>= \mdb -> liftIO (SQL.withTransaction (mdbConn mdb) (r
 
 relFile :: MonadIO m => FilePath -> MDB m FilePath
 relFile absPath = do
-    rp <- liftIO $ canonicalizePath absPath
-    asks mdbBasePath >>= \bp -> return $ makeRelative bp rp
+    -- rp <- liftIO $ canonicalizePath absPath
+    asks mdbBasePath >>= \bp -> return $ makeRelative bp absPath
 
 fileAbs :: Monad m => FilePath -> MDB m FilePath
 fileAbs relPath = asks mdbBasePath >>= \base -> return $ base </> relPath

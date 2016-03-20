@@ -49,6 +49,7 @@ executable mdb
      mtl,
      optparse-applicative,
      pureMD5,
+     regex-posix,
      rest-core,
      rest-wai,
      scrypt,

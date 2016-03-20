@@ -24,12 +24,11 @@ import qualified Rest.Resource as R
 import           Mdb.Database
 import           Mdb.Database.File ( FileId )
 import           Mdb.Serve.Auth as AUTH
+import           Mdb.Types
 
 ------------------------------------------------------------------------------------------------------------------------
 -- serials
 ------------------------------------------------------------------------------------------------------------------------
-
-type SerialId = Int64
 
 type WithSerial m = ReaderT SerialId (Authenticated m)
 
@@ -89,8 +88,6 @@ getSerial = mkIdHandler jsonO handler where
 -- seasons
 ------------------------------------------------------------------------------------------------------------------------
 
-type SeasonId = Int64
-
 type WithSeason m = ReaderT SeasonId (WithSerial m)
 
 data Season = Season
@@ -145,8 +142,6 @@ getSeason = mkIdHandler jsonO handler where
 ------------------------------------------------------------------------------------------------------------------------
 -- episodes
 ------------------------------------------------------------------------------------------------------------------------
-
-type EpisodeId = Int64
 
 data Episode = Episode
     { episodeSerialId   :: SerialId

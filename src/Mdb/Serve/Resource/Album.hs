@@ -33,7 +33,12 @@ personAlbumResource = (mkResource enter)
     }
 
 posterQuery :: Query
-posterQuery = "COALESCE(a.album_poster, (SELECT af.file_id FROM album_file af WHERE af.album_id = a.album_id LIMIT 1))"
+posterQuery =
+    "COALESCE(" <>
+        "a.album_poster," <>
+        "(SELECT af.file_id FROM album_file af NATURAL JOIN file " <>
+            "WHERE af.album_id = a.album_id ORDER BY file.file_name LIMIT 1)" <>
+    ")"
 
 listPersonAlbums :: MonadIO m => ListHandler (WithPerson m)
 listPersonAlbums = mkListing jsonO handler

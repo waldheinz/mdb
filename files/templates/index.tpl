@@ -45,7 +45,7 @@
                 background-position: center;
             }
 
-            .thumbnail .series-name {
+            .thumbnail .item-name {
                 color: black;
                 text-overflow: ellipsis;
                 white-space: nowrap;

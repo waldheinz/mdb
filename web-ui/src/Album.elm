@@ -1,24 +1,16 @@
 
 module Album (
-    albumDecoder, albumListDecoder,
     ListAction(AlbumSelected), viewList
     ) where
 
 import Dict exposing ( Dict )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Json.Decode as JD exposing ( (:=) )
 import Signal exposing ( Address )
 
+import File
 import Types exposing ( AlbumId, Album )
 import Utils exposing ( onClick' )
-
-albumDecoder : JD.Decoder Album
-albumDecoder = JD.object1 Album
-    ( "albumName" := JD.string )
-
-albumListDecoder : JD.Decoder (AlbumId, Album)
-albumListDecoder = JD.object2 (,) ("albumId" := JD.int) albumDecoder
 
 type ListAction
     = AlbumSelected AlbumId
@@ -29,7 +21,9 @@ viewList aa d =
         oneAlbum (aid, a) =
             Html.div [ HA.class "col-xs-2" ]
                 [ Html.a [ HA.class "thumbnail", onClick' aa (AlbumSelected aid), HA.href "#" ]
-                    [ Html.text a.name ]
+                    [ Maybe.withDefault 0 a.albumPoster |> File.thumb
+                    , Html.span [ HA.class "item-name" ] [ Html.text a.name ]
+                    ]
                 ]
     in
         Dict.toList d |> List.map oneAlbum |> Html.div [ HA.class "row" ]

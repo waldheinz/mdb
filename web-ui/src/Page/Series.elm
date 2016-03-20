@@ -39,7 +39,7 @@ view aa wm =
             Html.div [ HA.class "col-xs-3 col-md-2" ]
                 [ Html.a ( HA.class "thumbnail" :: (clickRoute <| SeriesSeasons sid))
                     [ File.thumb (Maybe.withDefault 1 s.serialPoster)
-                    , Html.span [ HA.class "series-name" ]
+                    , Html.span [ HA.class "item-name" ]
                         [ Html.text s.serialName ]
                     ]
                 ]

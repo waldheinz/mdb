@@ -24,7 +24,6 @@ import Json.Decode as JD exposing ( (:=) )
 import Json.Encode as JE
 import Task exposing ( Task )
 
-import Album exposing ( albumListDecoder )
 import Types exposing (..)
 
 serverBaseUrl : String

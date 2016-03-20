@@ -79,7 +79,7 @@ scanShow lang showDir = runEitherT $ do
                 >>= httpLbs >>= xmlBody
 
             case XML.findChildren (eName "Series") xml of
-                []  -> left "no candidate found"
+                []  -> left $ "no candidate found for \"" <> T.pack dirName <> "\""
                 [x] -> assign lang showDir x
                 xs  -> pick xs dirName lang >>= assign lang showDir
 

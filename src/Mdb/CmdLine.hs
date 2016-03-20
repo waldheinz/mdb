@@ -122,7 +122,6 @@ fileAssign = FileAssign <$> some (p <|> np <|> a <|> na) where
 
 data OptPerson
     = AddPerson String
-    | SetPersonImage PersonId FilePath
     deriving ( Show )
 
 personOptions :: Parser Mode
@@ -131,14 +130,6 @@ personOptions = ModePerson
         (   command "add"   ( info
                 ( AddPerson <$> strArgument ( metavar "NAME" ) )
                 ( progDesc "add person" )
-            )
-
-        <>  command "setimage"   ( info
-                ( SetPersonImage
-                    <$> argument auto ( metavar "PID" )
-                    <*> strArgument ( metavar "FILE" )
-                )
-                ( progDesc "set image" )
             )
         )
 

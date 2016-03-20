@@ -10,7 +10,7 @@ import           Control.Exception ( bracket_ )
 import           Control.Monad.IO.Class ( liftIO )
 import qualified Crypto.Scrypt as SCRYPT
 import qualified Data.ByteString as BS
-import           System.Directory ( getCurrentDirectory, copyFile )
+import           System.Directory ( getCurrentDirectory )
 import           Graphics.ImageMagick.MagickWand ( withMagickWandGenesis )
 import           System.IO
 
@@ -60,7 +60,6 @@ doAddUser name = do
 doPerson :: CMD.OptPerson -> DB.MDB IO ()
 doPerson (CMD.AddPerson n) = DB.addPerson n >>= \pid ->
     liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
-doPerson (CMD.SetPersonImage pid file) = DB.personImageFile pid >>= (liftIO . copyFile file)
 
 doInit :: Maybe FilePath -> IO ()
 doInit mp = do

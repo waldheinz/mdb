@@ -5,15 +5,19 @@ module Mdb.Serve.Resource.Person (
     WithPerson, personResource
     ) where
 
-import           Control.Monad.IO.Class    (MonadIO)
-import           Control.Monad.Reader      (ReaderT, ask)
-import           Control.Monad.Trans.Class (lift)
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.Reader       (ReaderT, ask)
+import           Control.Monad.Trans.Class  (lift)
+import           Control.Monad.Trans.Except
+import           Data.Monoid                ((<>))
+import           Database.SQLite.Simple     (Query)
 import           Rest
-import qualified Rest.Resource             as R
+import qualified Rest.Resource              as R
 
 import           Mdb.Database
-import           Mdb.Database.Person       (Person (..))
-import           Mdb.Serve.Auth            as AUTH
+import           Mdb.Database.Person        (Person (..))
+import           Mdb.Serve.Auth             as AUTH
+import           Mdb.Serve.Resource.Utils   (sortDir)
 import           Mdb.Types
 
 data PersonSelector
@@ -28,7 +32,7 @@ personResource = mkResourceReader
     , R.description = "Access persons"
     , R.schema      = withListing AllPersons schemas
     , R.list        = personListHandler
-    , R.get         = Just $ mkConstHandler jsonO $ lift ask >>= \pid -> lift $ lift $ AUTH.unsafe $ getPerson pid
+    , R.get         = Just getPerson
     , R.update      = Just updatePerson
     } where
         schemas = named
@@ -36,11 +40,37 @@ personResource = mkResourceReader
             , ( "inAlbum"   , listingBy (InAlbum . read) )
             ]
 
+getPerson :: MonadIO m => Handler (WithPerson m)
+getPerson = mkIdHandler jsonO handler where
+    handler :: MonadIO m => () -> SerialId -> ExceptT Reason_ (WithPerson m) Person
+    handler () pid = ExceptT $ lift $ AUTH.queryOne
+        "SELECT person_id, person_name, person_portrait FROM person WHERE (person_id = ?)"
+        (Only pid)
+
+personOrder :: Maybe String -> Query
+personOrder Nothing     = "person_name"
+personOrder (Just o)    = case o of
+    "name"  -> "person_name"
+    _       -> "person_name"
+
 personListHandler :: MonadIO m => PersonSelector -> ListHandler (Authenticated m)
-personListHandler which = mkListing jsonO handler where
-    handler r = lift $ case which of
-        AllPersons  -> AUTH.unsafe (listPersons (offset r) (count r))
-        InAlbum aid -> AUTH.unsafe (getAlbumPersons aid)
+personListHandler which = mkOrderedListing jsonO handler where
+    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Person]
+    handler (r, o, d) = lift $ case which of
+        AllPersons  -> AUTH.query
+                        (   "SELECT person_id, person_name, person_portrait FROM person "
+                        <>  "ORDER BY " <> personOrder o <> " " <> sortDir d <> " "
+                        <>  "LIMIT ? OFFSET ?"
+                        ) (count r, offset r)
+
+        InAlbum aid -> AUTH.query
+                        ( "SELECT DISTINCT p.person_id, p.person_name, person_portrait FROM person p "
+                        <>  "NATURAL JOIN person_file "
+                        <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
+                        <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file "
+                        <>          "WHERE person_file.person_id = p.person_id AND album_file.album_id = ?)"
+                        <>  "ORDER BY " <> personOrder o <> " " <> sortDir d <> " "
+                        ) (Only aid)
 
 updatePerson :: MonadIO m => Handler (WithPerson m)
 updatePerson = mkInputHandler jsonI handler where

@@ -14,8 +14,7 @@ module Mdb.Database (
     setContainerInfo,
 
     -- * persons
-    addPerson, listPersons, getPerson, personImageFile, getPersonFiles,
-    getAlbumPersons,
+    addPerson, getPersonFiles,
 
     -- * albums
     addAlbum,
@@ -41,7 +40,6 @@ import           System.FilePath        (isRelative, makeRelative,
                                          takeDirectory, (</>))
 
 import           Mdb.Database.File      (File)
-import           Mdb.Database.Person    (Person)
 import           Mdb.Types
 import           Paths_mdb
 
@@ -230,19 +228,6 @@ addPerson name = dbExecute
     "INSERT INTO person (person_name) VALUES (?)"
     (SQL.Only name) >> dbLastRowId
 
-getPerson :: MonadIO m => PersonId -> MDB m Person
-getPerson pid = asks mdbConn >>= \c -> liftIO $ liftM head $ SQL.query c
-        "SELECT person_id, person_name FROM person WHERE (person_id = ?)"
-        (SQL.Only pid)
-
-listPersons :: MonadIO m => Int -> Int -> MDB m [Person]
-listPersons off cnt = asks mdbConn >>= \c -> liftIO $ SQL.query c
-        "SELECT person_id, person_name FROM person LIMIT ? OFFSET ?"
-        (cnt, off)
-
-personImageFile :: Monad m => PersonId -> MDB m FilePath
-personImageFile pid = asks $ \x -> mdbDbDir x ++ "/persons/images/" ++ show pid ++ ".jpg"
-
 -- | Get all files assigned to a person.
 getPersonFiles :: MonadIO m => PersonId -> MDB m [File]
 getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
@@ -250,15 +235,6 @@ getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
     <>  "NATURAL JOIN person_file "
     <>  "WHERE person_file.person_id = ?" )
     (SQL.Only pid)
-
-getAlbumPersons :: MonadIO m => AlbumId -> MDB m [Person]
-getAlbumPersons aid = dbQuery
-    ( "SELECT DISTINCT p.person_id, p.person_name FROM person p "
-    <>  "NATURAL JOIN person_file "
-    <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
-    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file "
-    <>          "WHERE person_file.person_id = p.person_id AND album_file.album_id = ?)"
-    ) (SQL.Only aid)
 
 ----------------------------------------------------------
 -- albums

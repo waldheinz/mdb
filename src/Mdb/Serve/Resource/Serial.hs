@@ -1,27 +1,29 @@
 
-{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
+{-# LANGUAGE DeriveGeneric     #-}
+{-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Serve.Resource.Serial (
     Serial(..), Season(..), Episode(..),
     serialResource, seasonResource, episodeResource
     ) where
 
-import           Control.Monad.IO.Class ( MonadIO )
-import           Control.Monad.Reader ( ReaderT, ask )
-import           Control.Monad.Trans.Class ( lift )
+import           Control.Monad.IO.Class     (MonadIO)
+import           Control.Monad.Reader       (ReaderT, ask)
+import           Control.Monad.Trans.Class  (lift)
 import           Control.Monad.Trans.Except
-import           Database.SQLite.Simple ( FromRow(..), field, Query )
 import           Data.Aeson
-import           Data.JSON.Schema ( JSONSchema(..), gSchema )
-import           Data.Monoid ( (<>) )
-import qualified Data.Text as T
+import           Data.JSON.Schema           (JSONSchema (..), gSchema)
+import           Data.Monoid                ((<>))
+import qualified Data.Text                  as T
+import           Database.SQLite.Simple     (FromRow (..), Query, field)
 import           Generics.Generic.Aeson
 import           GHC.Generics
 import           Rest
-import qualified Rest.Resource as R
+import qualified Rest.Resource              as R
 
 import           Mdb.Database
-import           Mdb.Serve.Auth as AUTH
+import           Mdb.Serve.Auth             as AUTH
+import           Mdb.Serve.Resource.Utils   (sortDir)
 import           Mdb.Types
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -33,9 +35,9 @@ type WithSerial m = ReaderT SerialId (Authenticated m)
 data SerialFilter = AllSerials
 
 data Serial = Serial
-    { serialId      :: SerialId
-    , serialName    :: T.Text
-    , serialPoster  :: Maybe FileId
+    { serialId     :: SerialId
+    , serialName   :: T.Text
+    , serialPoster :: Maybe FileId
     } deriving ( Generic, Show )
 
 instance FromRow Serial where
@@ -62,10 +64,6 @@ serialOrder (Just o)    = case o of
     "name"  -> "series_name"
     _       -> "series_name"
 
-sortDir :: Maybe String -> Query
-sortDir (Just "DESC")   = "DESC"
-sortDir _               = "ASC"
-
 serialList :: MonadIO m => SerialFilter -> ListHandler (Authenticated m)
 serialList which = mkOrderedListing jsonO handler where
     handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Serial]
@@ -89,9 +87,9 @@ getSerial = mkIdHandler jsonO handler where
 type WithSeason m = ReaderT SeasonId (WithSerial m)
 
 data Season = Season
-    { seasonSerialId    :: SerialId
-    , seasonId          :: SeasonId
-    , seasonPoster      :: Maybe FileId
+    { seasonSerialId :: SerialId
+    , seasonId       :: SeasonId
+    , seasonPoster   :: Maybe FileId
     } deriving ( Generic, Show )
 
 instance ToJSON Season where
@@ -142,11 +140,11 @@ getSeason = mkIdHandler jsonO handler where
 ------------------------------------------------------------------------------------------------------------------------
 
 data Episode = Episode
-    { episodeSerialId   :: SerialId
-    , episodeSeasonId   :: SeasonId
-    , episodeId         :: EpisodeId
-    , episodeTitle      :: T.Text
-    , episodeFile       :: Maybe FileId
+    { episodeSerialId :: SerialId
+    , episodeSeasonId :: SeasonId
+    , episodeId       :: EpisodeId
+    , episodeTitle    :: T.Text
+    , episodeFile     :: Maybe FileId
     } deriving ( Generic, Show )
 
 instance ToJSON Episode where

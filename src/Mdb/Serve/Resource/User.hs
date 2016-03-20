@@ -1,5 +1,5 @@
 
-{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Mdb.Serve.Resource.User (
     userResource
@@ -7,23 +7,19 @@ module Mdb.Serve.Resource.User (
 
 import           Control.Monad.Error.Class ( throwError )
 import           Control.Monad.IO.Class ( MonadIO )
-import           Control.Monad.Reader ( ReaderT, ask )
+import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except
 import qualified Data.ByteString.UTF8 as BSU
-import qualified Network.Wai as WAI
 import           Rest
 import qualified Rest.Resource as R
 
 import           Data.Aeson
-import           Data.Int ( Int64 )
 import           Data.JSON.Schema ( JSONSchema(..), gSchema )
-import qualified Data.Text as T
 import           Generics.Generic.Aeson
 import           GHC.Generics
 
-
-import           Mdb.Database.User ( UserId )
+import           Mdb.Database (Only(..))
 import           Mdb.Serve.Auth as AUTH
 
 data UserSelect
@@ -46,7 +42,9 @@ getUser = mkIdHandler stringO handler where
         muid <- lift . lift $ AUTH.userId
         case muid of
             Nothing     -> throwError NotAllowed
-            Just uid    -> return "jupp"
+            Just uid    -> do
+                (Only uname) <- ExceptT . lift $ AUTH.queryOne "SELECT user_name FROM user WHERE user_id = ?" (Only uid)
+                return uname
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Logging in

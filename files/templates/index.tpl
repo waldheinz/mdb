@@ -29,6 +29,11 @@
                 height: 100%;
                 background-size: cover;
                 background-position: center;
+                background-repeat: no-repeat;
+            }
+
+            .thumb-container-square .file-thumb {
+                background-size: contain;
             }
 
             .thumbnail .item-name {

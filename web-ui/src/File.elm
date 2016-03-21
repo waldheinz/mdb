@@ -1,7 +1,7 @@
 
 module File (
     -- * Files
-    thumb,
+    AspectRatio(..), thumb,
 
     -- * File Listings
     ListModel, mkListModel, ListAction, viewList, updateListModel, setListFilter
@@ -23,12 +23,27 @@ import Types exposing (..)
 -- Individual Files
 ------------------------------------------------------------------------------------------------------------------------
 
-thumb : FileId -> Html
-thumb fid =
-    Html.div [ HA.class "file-thumb-container" ]
-        [ Html.div [ HA.class "file-thumb", HA.style [("background-image", "url(" ++ Server.fileThumbUrl fid ++ ")") ] ]
-            [  ]
-        ]
+type AspectRatio
+    = Square
+    | Movie
+    | Poster
+
+thumb : AspectRatio -> FileId -> Html
+thumb aspect fid =
+    let
+        classes = HA.classList
+            [ ( "thumb-container"           , True)
+            , ( "thumb-container-square"    , aspect == Square )
+            , ( "thumb-container-movie"     , aspect == Movie )
+            , ( "thumb-container-poster"    , aspect == Poster )
+            ]
+    in
+        Html.div [ classes ]
+            [ Html.div
+                [ HA.class "file-thumb"
+                , HA.style [ ( "background-image", "url(" ++ Server.fileThumbUrl fid ++ ")" ) ]
+                ] []
+            ]
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Listings
@@ -69,7 +84,7 @@ viewList aa m =
             in
                 Html.div [ HA.class "col-xs-3 col-md-2" ]
                     [ Html.a ( HA.class "thumbnail" :: clickWhat )
-                        [ thumb fid ]
+                        [ thumb Square fid ]
                     ]
     in
         List.map oneFile m.files |> Html.div [ HA.class "row" ]

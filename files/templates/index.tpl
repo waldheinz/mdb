@@ -12,29 +12,14 @@
         <script src="static/js/mdb.js"></script>
         <style>
             .thumb-container {
-                display: flex;
-                flex-wrap: wrap;
-                justify-content: space-between;
-                margin: -1px -1px;
-            }
-
-            .thumb-container:after {
-                content: "";
-                flex: auto;
-            }
-
-            .file-thumb-container {
                 position: relative;
                 display: inline-block;
                 width: 100%;
             }
 
-            .file-thumb-container:after {
-                padding-top: 133.33%;
-                /* 16:9 ratio */
-                display: block;
-                content: '';
-            }
+            .thumb-container-movie:after    { padding-top: 56.25%;  display: block; content: ''; }
+            .thumb-container-square:after   { padding-top: 100%;    display: block; content: ''; }
+            .thumb-container-poster:after   { padding-top: 150%; display: block; content: ''; }
 
             .file-thumb {
                 position: absolute;

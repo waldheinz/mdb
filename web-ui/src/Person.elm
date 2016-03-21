@@ -56,7 +56,7 @@ viewList aa m =
         onePerson (pid, p) =
             Html.div [ HA.class "col-xs-3 col-md-2" ]
                 [ Html.a (HA.class "thumbnail" :: clickRoute (Route.Person pid))
-                    [ Maybe.withDefault 0 p.portrait |> File.thumb
+                    [ Maybe.withDefault 0 p.portrait |> File.thumb File.Poster
                     , Html.span [ HA.class "item-name" ] [ Html.text p.name ]
                     ]
                 ]

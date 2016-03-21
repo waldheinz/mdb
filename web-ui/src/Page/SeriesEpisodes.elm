@@ -47,7 +47,7 @@ view aa wm =
             in
                 Html.div [ HA.class "col-xs-4 col-md-2" ]
                     [ Html.a (HA.class "thumbnail" :: onClick )
-                        [ File.thumb (Maybe.withDefault 0 ep.fileId)
+                        [ File.thumb File.Movie (Maybe.withDefault 0 ep.fileId)
                         , Html.span [ HA.class "item-name" ]
                             [ Html.text ep.title ]
                         ]

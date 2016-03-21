@@ -21,7 +21,7 @@ viewList aa d =
         oneAlbum (aid, a) =
             Html.div [ HA.class "col-xs-2" ]
                 [ Html.a [ HA.class "thumbnail", onClick' aa (AlbumSelected aid), HA.href "#" ]
-                    [ Maybe.withDefault 0 a.albumPoster |> File.thumb
+                    [ Maybe.withDefault 0 a.albumPoster |> File.thumb File.Square
                     , Html.span [ HA.class "item-name" ] [ Html.text a.name ]
                     ]
                 ]

@@ -1,6 +1,6 @@
 
 module Album (
-    ListModel, initialListModel, withListFilter, ListAction, updateList, viewList
+    ListModel, initialListModel, withListFilter, ListAction, updateList, viewList, listPagination
     ) where
 
 import Effects exposing ( Effects )
@@ -44,6 +44,9 @@ viewList aa m =
                 ]
     in
         List.map oneAlbum m.albums.items |> Html.div [ HA.class "row" ]
+
+listPagination : Address ListAction -> ListModel -> Html
+listPagination aa m = Listing.pagination (Signal.forwardTo aa AlbumListing) m.albums
 
 updateList : ListAction -> ListModel -> (ListModel, Effects ListAction)
 updateList a m = case a of

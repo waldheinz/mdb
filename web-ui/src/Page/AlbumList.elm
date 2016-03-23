@@ -41,6 +41,8 @@ view : Address Action -> Model -> Html
 view aa m =
     Html.div [ HA.class "container" ]
         [ Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Albums" ]
+        , Html.div [ HA.class "text-center" ]
+            [ Album.listPagination (Signal.forwardTo aa AlbumListAction) m.albums ]
         , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
         ]
 

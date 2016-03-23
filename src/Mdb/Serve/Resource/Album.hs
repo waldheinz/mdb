@@ -16,6 +16,7 @@ import           Mdb.Database
 import           Mdb.Database.Album         (Album)
 import           Mdb.Serve.Auth             as AUTH
 import           Mdb.Serve.Resource.Person  (WithPerson)
+import           Mdb.Serve.Resource.Utils   (sortDir)
 import           Mdb.Types
 
 type WithAlbum m = ReaderT AlbumId (Authenticated m)
@@ -53,6 +54,12 @@ listPersonAlbums = mkListing jsonO handler
                 <>  "WHERE person_file.person_id = ? LIMIT ?,?" )
                 (pid, offset r, count r)
 
+albumOrder :: Maybe String -> Query
+albumOrder Nothing     = "album_name"
+albumOrder (Just o)    = case o of
+    "created"   -> "album_created"
+    _           -> "album_name"
+
 albumResource :: (MonadIO m) => Resource (Authenticated m) (WithAlbum m) AlbumId () Void
 albumResource = mkResourceReader
     { R.name        = "album"
@@ -69,9 +76,10 @@ albumHandler = mkIdHandler jsonO handler where
             (Only aid)
 
 listAlbums :: MonadIO m => ListHandler (Authenticated m)
-listAlbums = mkListing jsonO handler where
-    handler :: MonadIO m => Range -> ExceptT Reason_ (Authenticated m) [Album]
-    handler r = lift $ AUTH.query
+listAlbums = mkOrderedListing jsonO handler where
+    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Album]
+    handler (r, o, d) = lift $ AUTH.query
         (   "SELECT a.album_id, a.album_name, " <> posterQuery <> " "
         <>  "FROM album a "
-        <>  "ORDER BY a.album_name LIMIT ?,?") (offset r, count r)
+        <>  "ORDER BY " <> albumOrder o <> " " <> sortDir d <> " "
+        <>  "LIMIT ?,?") (offset r, count r)

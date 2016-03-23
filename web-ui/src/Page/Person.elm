@@ -72,6 +72,8 @@ view aa m =
         Html.div [ HA.class "container" ]
             [ Html.h1 [ HA.class "page-header" ] [ Utils.editable (Signal.forwardTo aa ChangeName) pname ]
             , Html.h2 [] [ Html.text "Albums" ]
+            , Html.div [ HA.class "text-center" ]
+                [ Album.listPagination (Signal.forwardTo aa AlbumListAction) m.albums ]
             , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
             , Html.h2 [] [ Html.text "Random Files" ]
             , File.viewList (Signal.forwardTo aa FileListAction) m.randomFiles

@@ -3,7 +3,6 @@
 
 module Mdb.Serve.Resource.Album ( albumResource, personAlbumResource ) where
 
-import           Control.Monad.Error.Class  (throwError)
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Reader       (ReaderT, ask, runReaderT)
 import           Control.Monad.Trans.Class  (lift)
@@ -65,14 +64,9 @@ albumResource = mkResourceReader
 albumHandler :: MonadIO m => Handler (WithAlbum m)
 albumHandler = mkIdHandler jsonO handler where
     handler :: MonadIO m => () -> AlbumId -> ExceptT Reason_ (WithAlbum m) Album
-    handler () aid = do
-        al <- lift . lift $ AUTH.query
+    handler () aid = ExceptT $ lift $ AUTH.queryOne
             ("SELECT a.album_id, a.album_name, " <> posterQuery <> " FROM album a WHERE a.album_id = ?")
             (Only aid)
-
-        case al of
-            []  -> throwError NotFound
-            (a : _)  -> return a
 
 listAlbums :: MonadIO m => ListHandler (Authenticated m)
 listAlbums = mkListing jsonO handler where

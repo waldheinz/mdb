@@ -34,8 +34,9 @@ view muser r =
                     ]
                 , Html.div [ HA.class "collapse navbar-collapse", HA.id "mdb-navbar" ]
                     [ Html.ul [ HA.class "nav navbar-nav" ]
-                        [ pageLink (r == Home)      Home    "Home"
-                        , pageLink (r == Series)    Series  "Series"
+                        [ pageLink (r == Home)      Home        "Home"
+                        , pageLink (r == Series)    Series      "Series"
+                        , pageLink (r == AlbumList) AlbumList   "Albums"
                         ]
                     , Html.ul [ HA.class "nav navbar-nav navbar-right" ]
                         [ Html.li [ HA.class "dropdown" ]

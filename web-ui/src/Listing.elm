@@ -1,7 +1,7 @@
 
 module Listing (
     Model, FetchTask, mkModel, pagination,
-    Action, withFetchTask, update
+    Action, withFetchTask, refresh, update
     ) where
 
 import Effects exposing ( Effects )
@@ -50,15 +50,15 @@ pagination aa m =
                 List.map go [0..maxPage]
             ]
 
-doFetch : Model a -> Effects (Action a)
-doFetch m = m.fetch (m.currentPage * m.perPage, m.perPage) |> Task.toResult |> Task.map ItemsLoaded |> Effects.task
+refresh : Model a -> Effects (Action a)
+refresh m = m.fetch (m.currentPage * m.perPage, m.perPage) |> Task.toResult |> Task.map ItemsLoaded |> Effects.task
 
 withFetchTask : FetchTask a -> Model a -> (Model a, Effects (Action a))
 withFetchTask ft m =
     let
         m' = { m | fetch = ft, items = [], currentPage = 0, totalPages = Nothing }
     in
-        (m', doFetch m')
+        (m', refresh m')
 
 updateForResponse : Model a -> ApiList a -> Model a
 updateForResponse m al = { m | items = al.items }
@@ -67,4 +67,4 @@ update : Action a -> Model a -> (Model a, Effects (Action a))
 update a m = case a of
     ItemsLoaded (Err er)    -> Debug.log "error loading list items" |> \_ -> (m, Effects.none)
     ItemsLoaded (Ok al)     -> (updateForResponse m al, Effects.none)
-    GoPage p                -> let m' = { m | currentPage = p } in (m', doFetch m')
+    GoPage p                -> let m' = { m | currentPage = p } in (m', refresh m')

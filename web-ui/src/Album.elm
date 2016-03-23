@@ -24,10 +24,13 @@ initialListModel = { albums = Listing.mkModel (Server.fetchAlbums AllAlbums), al
 
 withListFilter : WhichAlbums -> ListModel -> (ListModel, Effects ListAction)
 withListFilter flt m =
-    let
-        (as', afx)  = Listing.withFetchTask (Server.fetchAlbums flt) m.albums
-    in
-        ( { m | albumFilter = flt, albums = as' }, Effects.map AlbumListing afx )
+    if (flt == m.albumFilter)
+        then (m, Listing.refresh m.albums |> Effects.map AlbumListing)
+        else
+            let
+                (as', afx)  = Listing.withFetchTask (Server.fetchAlbums flt) m.albums
+            in
+                ( { m | albumFilter = flt, albums = as' }, Effects.map AlbumListing afx )
 
 type ListAction
     = AlbumListing (Listing.Action Album)

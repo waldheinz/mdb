@@ -6,32 +6,31 @@ module Album (
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Http
 import Signal exposing ( Address )
-import Task
 
 import File
+import Listing
 import Route exposing ( clickRoute )
 import Server
 import Types exposing ( .. )
-import Utils exposing ( onClick' )
 
 type alias ListModel =
-    { albums        : List Album
+    { albums        : Listing.Model Album
     , albumFilter   : WhichAlbums
     }
 
 initialListModel : ListModel
-initialListModel = { albums = [], albumFilter = AllAlbums }
-
-fetchList : WhichAlbums -> Effects ListAction
-fetchList f = Server.fetchAlbums f |> Task.toResult |> Task.map AlbumsLoaded |> Effects.task
+initialListModel = { albums = Listing.mkModel (Server.fetchAlbums AllAlbums), albumFilter = AllAlbums }
 
 withListFilter : WhichAlbums -> ListModel -> (ListModel, Effects ListAction)
-withListFilter flt m = ( { m | albumFilter = flt }, fetchList flt )
+withListFilter flt m =
+    let
+        (as', afx)  = Listing.withFetchTask (Server.fetchAlbums flt) m.albums
+    in
+        ( { m | albumFilter = flt, albums = as' }, Effects.map AlbumListing afx )
 
 type ListAction
-    = AlbumsLoaded (Result Http.Error (ApiList Album))
+    = AlbumListing (Listing.Action Album)
 
 viewList : Address ListAction -> ListModel -> Html
 viewList aa m =
@@ -44,9 +43,8 @@ viewList aa m =
                     ]
                 ]
     in
-        List.map oneAlbum m.albums |> Html.div [ HA.class "row" ]
+        List.map oneAlbum m.albums.items |> Html.div [ HA.class "row" ]
 
 updateList : ListAction -> ListModel -> (ListModel, Effects ListAction)
 updateList a m = case a of
-    AlbumsLoaded (Err er)   -> Debug.log "fetching albums failed" er |> \_ -> (m, Effects.none)
-    AlbumsLoaded (Ok al)    -> ( { m | albums = al.items }, Effects.none )
+    AlbumListing la -> Listing.update la m.albums |> \(as', fx) -> ( { m | albums = as' }, Effects.map AlbumListing fx )

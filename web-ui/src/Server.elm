@@ -74,12 +74,13 @@ putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toS
 -- Albums
 ------------------------------------------------------------------------------------------------------------------------
 
-fetchAlbums : WhichAlbums -> Task Http.Error (ApiList Album)
-fetchAlbums which =
+fetchAlbums : WhichAlbums -> (Int, Int) -> Task Http.Error (ApiList Album)
+fetchAlbums which (offset, cnt) =
     let
         endpoint = case which of
             AllAlbums           -> "/album"
-            PersonAlbums pid    -> "/person/byId/" ++ toString pid ++ "/albums"
+            PersonAlbums pid    -> "/person/byId/" ++ toString pid ++ "/albums?offset="
+                                        ++ toString offset ++ "&count=" ++ toString cnt
     in
         getJson endpoint (listDecoder albumDecoder)
 

@@ -17,10 +17,17 @@ import Types exposing ( .. )
 type alias ListModel =
     { albums        : Listing.Model Album
     , albumFilter   : WhichAlbums
+    , order         : String
+    , direction     : String
     }
 
 initialListModel : ListModel
-initialListModel = { albums = Listing.mkModel (Server.fetchAlbums AllAlbums), albumFilter = AllAlbums }
+initialListModel =
+    { albums        = Listing.mkModel (Server.fetchAlbums AllAlbums "created" "DESC")
+    , albumFilter   = AllAlbums
+    , order         = "created"
+    , direction     = "DESC"
+    }
 
 withListFilter : WhichAlbums -> ListModel -> (ListModel, Effects ListAction)
 withListFilter flt m =
@@ -28,7 +35,7 @@ withListFilter flt m =
         then (m, Listing.refresh m.albums |> Effects.map AlbumListing)
         else
             let
-                (as', afx)  = Listing.withFetchTask (Server.fetchAlbums flt) m.albums
+                (as', afx)  = Listing.withFetchTask (Server.fetchAlbums flt m.order m.direction) m.albums
             in
                 ( { m | albumFilter = flt, albums = as' }, Effects.map AlbumListing afx )
 

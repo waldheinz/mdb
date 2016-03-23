@@ -74,10 +74,15 @@ putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toS
 -- Albums
 ------------------------------------------------------------------------------------------------------------------------
 
-fetchAlbums : WhichAlbums -> (Int, Int) -> Task Http.Error (ApiList Album)
-fetchAlbums which (offset, cnt) =
+fetchAlbums : WhichAlbums -> String -> String -> (Int, Int) -> Task Http.Error (ApiList Album)
+fetchAlbums which order direction (offset, cnt) =
     let
-        range = "?offset=" ++ toString offset ++ "&count=" ++ toString cnt
+        range =
+            "?offset=" ++ toString offset ++
+            "&count=" ++ toString cnt ++
+            "&order=" ++ order ++
+            "&direction=" ++ direction
+
         endpoint = case which of
             AllAlbums           -> "/album" ++ range
             PersonAlbums pid    -> "/person/byId/" ++ toString pid ++ "/albums" ++ range

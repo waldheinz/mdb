@@ -27,7 +27,7 @@ type alias Model a =
 mkModel : FetchTask a -> Model a
 mkModel f =
     { items = []
-    , perPage       = 40
+    , perPage       = 30
     , currentPage   = 0
     , totalPages    = Nothing
     , fetch         = f
@@ -42,7 +42,7 @@ pagination aa m =
     let
         maxPage = Maybe.withDefault (m.currentPage + 4) m.totalPages
         go p =
-            Html.li []
+            Html.li [ HA.classList [ ( "active", m.currentPage == p ) ] ]
                 [ Html.a [ HA.href "#", onClick' aa (GoPage p) ] [ Html.text <| toString (p + 1) ] ]
     in
         Html.nav []

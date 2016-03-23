@@ -13,6 +13,7 @@ import TransitRouter exposing ( WithRoute, getTransition )
 
 import Navbar
 import Page.Album
+import Page.AlbumList
 import Page.Home
 import Page.Person
 import Page.Series exposing ( WithSeries )
@@ -40,6 +41,8 @@ type alias Model = WithEpisodes (WithSeasons (WithSeries (WithRoute Route
     , videoPageModel    : Page.Video.Model
     , userName          : Maybe String
     , loginModel        : LoginModel
+    , albumPageModel    : Page.Album.Model
+    , albumListPageModel    : Page.AlbumList.Model
     })))
 
 initialModel : Model
@@ -53,6 +56,8 @@ initialModel =
   , pageSeriesModel     = Page.Series.initialModel
   , pageSeasonsModel    = Page.SeriesSeasons.initialModel
   , pageEpisodesModel   = Page.SeriesEpisodes.initialModel
+  , albumPageModel      = Page.Album.initialModel
+  , albumListPageModel  = Page.AlbumList.initialModel
   }
 
 type Action
@@ -63,6 +68,8 @@ type Action
     | PageSeasonsAction Page.SeriesSeasons.Action
     | PageEpisodesAction Page.SeriesEpisodes.Action
     | PageVideoAction Page.Video.Action
+    | PageAlbumAction Page.Album.Action
+    | PageAlbumListAction Page.AlbumList.Action
     | GotUser (Result Http.Error String)
     | SetLoginUser String
     | SetLoginPass String
@@ -82,19 +89,23 @@ mountRoute prevRoute route m = case route of
         in
             ( { m | homePageModel = hp' }, Effects.map PageHomeAction hpfx )
 
+    Route.AlbumList ->
+        let
+            (al', fx) = Page.AlbumList.onMount m.albumListPageModel
+        in
+            ( { m | albumListPageModel = al' } , Effects.map PageAlbumListAction fx)
+
     Route.Person pid            ->
         let
             (pp', ppfx) = Page.Person.onMount pid m.personPageModel
         in
             ( { m | personPageModel = pp' }, ppfx |> Effects.map PagePersonAction )
 
-    Route.PersonAlbum pid aid   ->
+    Route.Album aid   ->
         let
-            ppm         = m.personPageModel
-            (ap', apfx) = Page.Album.onMount aid ppm.albumPage
-            ppm'        = { ppm | albumPage = ap' }
+            (ap', apfx) = Page.Album.onMount aid m.albumPageModel
         in
-            ( { m | personPageModel = ppm' }, Effects.map (Page.Person.AlbumAction >> PagePersonAction) apfx)
+            ( { m | albumPageModel = ap' }, Effects.map PageAlbumAction apfx)
 
     Route.Series ->
         let
@@ -126,6 +137,11 @@ update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     RouterAction ra         -> TransitRouter.update routerConfig ra m
     PageHomeAction ha       -> ( { m | homePageModel = Page.Home.update ha m.homePageModel }, Effects.none)
+    PageAlbumAction a       -> Page.Album.update a m.albumPageModel
+                                |> \(ap', fx) -> ( { m | albumPageModel = ap'}, Effects.map PageAlbumAction fx)
+    PageAlbumListAction a -> Page.AlbumList.update a m.albumListPageModel
+                                |> \(ap', fx) -> ( { m | albumListPageModel = ap'}, Effects.map PageAlbumListAction fx)
+
     PagePersonAction pa     ->
         let
             (pp', ppfx) = Page.Person.update pa m.personPageModel
@@ -192,7 +208,8 @@ view aa m =
         routedContent = case TransitRouter.getRoute m of
             Home            -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
             Person _        -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
-            PersonAlbum _ _ -> Page.Album.view (Signal.forwardTo aa (Page.Person.AlbumAction >> PagePersonAction) ) m.personPageModel.albumPage
+            Album _         -> Page.Album.view (Signal.forwardTo aa PageAlbumAction) m.albumPageModel
+            AlbumList       -> Page.AlbumList.view (Signal.forwardTo aa PageAlbumListAction) m.albumListPageModel
             Series          -> Page.Series.view (Signal.forwardTo aa PageSeriesAction) m
             SeriesSeasons _ -> Page.SeriesSeasons.view (Signal.forwardTo aa PageSeasonsAction) m
             SeriesEpisodes _ _  -> Page.SeriesEpisodes.view (Signal.forwardTo aa PageEpisodesAction) m

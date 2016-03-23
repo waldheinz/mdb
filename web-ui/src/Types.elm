@@ -8,7 +8,7 @@ module Types (
     encodePerson,
 
     -- * Albums
-    AlbumId, Album, WhichAlbums(..), albumListDecoder,
+    AlbumId, Album, albumDecoder, WhichAlbums(..),
 
     -- * Files
     FileId, File, fileDecoder, fileListDecoder,
@@ -78,17 +78,16 @@ type WhichAlbums
 type alias AlbumId = Int
 
 type alias Album =
-    { name          : String
-    , albumPoster   : Maybe FileId
+    { albumId   : AlbumId
+    , name      : String
+    , poster    : Maybe FileId
     }
 
 albumDecoder : JD.Decoder Album
-albumDecoder = JD.object2 Album
+albumDecoder = JD.object3 Album
+    ( "albumId"     := JD.int )
     ( "albumName"   := JD.string )
     ( "albumPoster" := fileIdDecoder |> JD.maybe )
-
-albumListDecoder : JD.Decoder (AlbumId, Album)
-albumListDecoder = JD.object2 (,) ("albumId" := JD.int) albumDecoder
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Files

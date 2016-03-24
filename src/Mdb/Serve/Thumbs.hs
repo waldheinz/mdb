@@ -16,35 +16,42 @@ import           Data.String ( fromString )
 import qualified Data.Text as T
 import           Data.Text.Encoding ( encodeUtf8 )
 import qualified Graphics.ImageMagick.MagickWand as IM
-import           Network.HTTP.Types ( status200 )
+import           Network.HTTP.Types ( status200, status404 )
 import           Network.Wai
 import           Network.Wai.Routing
 import           System.Directory ( doesFileExist, createDirectoryIfMissing )
 
 import           Mdb.Database
-import qualified Mdb.Database.File as DBF
+import           Mdb.Serve.Auth as AUTH
 import qualified Mdb.Serve.Video as V
 import           Mdb.Types
 
-thumbApp :: MediaDb -> Application
-thumbApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
+thumbApp :: MediaDb -> AUTH.SessionKey IO -> Application
+thumbApp mdb skey req respond = route root req (liftIO . respond) where
+    xxx = runMDB' mdb . AUTH.request skey req
     root = prepare $
-        get "/medium/:fid"        (continue fileThumb)        $ capture "fid"
+        get "/medium/:fid"        (continue $ xxx . fileThumb)        $ capture "fid"
 
-fileThumb :: (MonadMask m, MonadIO m) => FileId -> MDB m Response
+fileThumb :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 fileThumb fid = do
-    file <- fileById fid
-    srcFile <- case T.takeWhile ( /= '/') (DBF.fileMime file) of
-        "image" -> fileAbs $ DBF.filePath file
-        "video" -> V.ensureFrame fid 180
-        _       -> fail "fileThumb unknown type"
+    mf <- AUTH.queryOne "SELECT file_name, file_mime FROM auth_file WHERE file_id=?" (Only fid)
 
-    thumbFile <- ensureThumb srcFile
+    case mf of
+        Left _ -> return $ responseLBS status404
+            [ ("Content-Type", "text/plain; charset=utf-8")
+            ] $ BSL.fromChunks [ encodeUtf8 "it's not there" ]
+        Right (filePath, fileMime) -> do
+            srcFile <- AUTH.unsafe $ case T.takeWhile ( /= '/') fileMime of
+                "image" -> fileAbs filePath
+                "video" -> V.ensureFrame fid 180
+                _       -> fail "fileThumb unknown type"
 
-    return $ responseFile status200
-        [ ("Cache-Control", "max-age=3600")
-        , ("Content-Type", "image/jpeg")
-        ] thumbFile Nothing
+            thumbFile <- AUTH.unsafe $ ensureThumb srcFile
+
+            return $ responseFile status200
+                [ ("Cache-Control", "max-age=3600")
+                , ("Content-Type", "image/jpeg")
+                ] thumbFile Nothing
 
 ensureThumb :: MonadIO m => FilePath -> MDB m FilePath
 ensureThumb src = do

@@ -23,7 +23,7 @@ import Mdb.Database.User
 
 data Auth
     = NoAuth
-    | UserAuth UserId
+    | UserAuth ! UserId
 
 newtype Authenticated m a = Authenticated ( ReaderT (S.Session (MDB m) () UserId, Auth) (MDB m) a )
     deriving (Applicative, Functor, Monad, MonadIO )
@@ -38,31 +38,32 @@ request skey req (Authenticated f) =
                 Nothing     -> runReaderT f (sess, NoAuth)
                 Just uid    -> do
                     let
-                        createViews = dbExecute
-                            (   "CREATE TEMP VIEW auth_file AS "
-                            <>  "SELECT * FROM file WHERE EXISTS "
-                            <>  "   (SELECT * FROM tag_file WHERE tag_file.file_id = file.file_id AND tag_file.tag_id = 2)"
-                            ) ()
-                        destroyViews = dbExecute "DROP VIEW auth_file" ()
+                        createViews = dbExecute_
+                                (   "CREATE TEMP VIEW auth_file AS "
+                                <>  "SELECT * FROM file WHERE EXISTS "
+                                <>  "   (SELECT * FROM tag_file WHERE tag_file.file_id = file.file_id AND tag_file.tag_id = 2)"
+                                )
 
-                    bracket_ createViews destroyViews $ runReaderT f (sess, UserAuth uid)
+                        destroyViews = dbExecute_ "DROP VIEW auth_file"
+
+                    isolate $ bracket_ createViews destroyViews $! runReaderT f (sess, UserAuth uid)
 
 query :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]
 query q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth          -> fail "not authorized"
-    UserAuth _      -> lift $ dbQuery q p
+    UserAuth _      -> lift $! dbQuery q p
 
 queryOne :: (SQL.FromRow b, SQL.ToRow q, MonadMask m, MonadIO m) => SQL.Query -> q -> Authenticated m (Either (Reason a) b)
 queryOne q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth      -> return $ Left NotAllowed
-    UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $ case xs of
+    UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $! case xs of
                         []      -> Left NotFound
                         (a : _) -> Right a
 
 unsafe :: Monad m => MDB m a -> Authenticated m a
 unsafe f = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth      -> fail "not authorized"
-    UserAuth _  -> lift f
+    UserAuth _  -> lift $! f
 
 userId :: Monad m => Authenticated m (Maybe UserId)
 userId = Authenticated $ asks snd >>= \a -> case a of

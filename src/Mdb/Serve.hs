@@ -65,7 +65,7 @@ mkApp mdb skey = do
     return $ mapUrls $
                 mount "api"     (mapUrls $
                     mount "image"   (imageApp mdb)
-                <|> mount "thumb"   (thumbApp mdb)
+                <|> mount "thumb"   (thumbApp mdb skey)
                 <|> mount "video"   (videoApp mdb)
                 <|> mountRoot (apiApp mdb skey)
                 )

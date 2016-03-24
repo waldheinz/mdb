@@ -5,6 +5,7 @@
 module Mdb.Database (
     MediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
     MDB, runMDB, runMDB', findDbAndRun, withTransaction,
+    isolate,
 
     -- * files
     fileById, hasFile, fileIdFromName, assignFilePerson,
@@ -23,14 +24,14 @@ module Mdb.Database (
     ensureTag,
 
     -- * raw queries
-    dbExecute, dbQuery, dbQueryOne, dbQuery_, dbLastRowId, SQL.Only(..)
+    dbExecute, dbExecute_, dbQuery, dbQueryOne, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
 
 import           Control.Monad          (forM_, liftM)
 import           Control.Monad.Catch    (MonadCatch, MonadMask, MonadThrow,
                                          bracket)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
-import           Control.Monad.Reader   (MonadReader, ReaderT, ask, asks,
+import           Control.Monad.Reader   (MonadReader, ReaderT, ask, asks, local,
                                          runReaderT)
 import           Data.Int               (Int64)
 import           Data.Monoid            ((<>))
@@ -51,7 +52,7 @@ dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
 
 data MediaDb = MediaDb
-    { mdbConnPool :: ! (Pool SQL.Connection)
+    { mdbConnPool :: Either (Pool SQL.Connection) SQL.Connection
     , mdbBasePath :: ! FilePath
     , mdbDbDir    :: ! FilePath
     }
@@ -69,10 +70,10 @@ newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
         )
 
 runMDB :: (MonadIO m, MonadMask m) => FilePath -> MDB m a -> m a
-runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT (unMDB act))
+runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT $! unMDB act)
 
 runMDB' :: MediaDb -> MDB m a -> m a
-runMDB' db f = runReaderT (unMDB f) db
+runMDB' db f = f `seq` runReaderT (unMDB f) db
 
 findDbAndRun :: (MonadMask m, MonadIO m) => Maybe FilePath -> MDB m a -> m a
 findDbAndRun mp act = do
@@ -142,14 +143,15 @@ openDb dir = do
         close c = SQL.close c >> putStrLn "closed a connection"
         destroyWait = fromRational 30
         stripes = 1
-        perStripe = 8
-
+        perStripe = 16
 
     pool <- liftIO $ createPool create close stripes destroyWait perStripe
-    return $ MediaDb pool (takeDirectory dir) dir
+    return $ MediaDb (Left pool) (takeDirectory dir) dir
 
 closeDb :: MonadIO m => MediaDb -> m ()
-closeDb db = liftIO $ destroyAllResources $ mdbConnPool db
+closeDb db = case mdbConnPool db of
+    Left pool   -> liftIO (destroyAllResources pool)
+    Right _     -> return ()
 
 -- | finds the DB folder relative to the current directory by walking
 --   upwards the tree until a ".mdb" directory is found
@@ -167,34 +169,41 @@ withConnection :: (MonadMask m, MonadIO m) => (SQL.Connection -> MDB m a) -> MDB
 withConnection f = do
     mdb <- ask
 
-    bracket
-        (liftIO $ takeResource (mdbConnPool mdb))
-        (\(c, lp) -> liftIO $ putResource lp c)
-        (\(c, _) -> f c)
+    case mdbConnPool mdb of
+        Right c   -> f c
+        Left pool -> bracket
+            (liftIO $ takeResource pool)
+            (\(c, lp) -> liftIO $ putResource lp c)
+            (\(c, _) -> f c )
 
-
-    -- asks mdbConnPool >>= \pool -> withResource pool f
+isolate :: (MonadIO m, MonadMask m) => MDB m a -> MDB m a
+isolate f = ask >>= \mdb -> case mdbConnPool mdb of
+    Right _ -> f
+    Left _  -> withConnection $ \c -> local (const $ mdb { mdbConnPool = Right c } ) f
 
 dbExecute :: (MonadMask m, MonadIO m, SQL.ToRow r) => SQL.Query -> r -> MDB m ()
-dbExecute q r = withConnection (\c -> liftIO $ SQL.execute c q r)
+dbExecute q r = withConnection (\c -> liftIO $! SQL.execute c q r)
+
+dbExecute_ :: (MonadMask m, MonadIO m) => SQL.Query -> MDB m ()
+dbExecute_ q = withConnection (\c -> liftIO $! SQL.execute_ c q)
 
 dbQuery :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m [r]
-dbQuery q r = withConnection $ \c -> liftIO $ SQL.query c q r
+dbQuery q r = withConnection $ \c -> liftIO $! SQL.query c q r
 
 dbQueryOne :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m (Either T.Text r)
-dbQueryOne q p = dbQuery q p >>= \ xs -> return $ case xs of
+dbQueryOne q p = dbQuery q p >>= \ xs -> return $! case xs of
         []  -> Left "query returned no result but one was expected"
         [a] -> Right a
         _   -> Left "query returned multiple results but only one was expected"
 
 dbQuery_ :: (MonadMask m, MonadIO m, SQL.FromRow r) => SQL.Query -> MDB m [r]
-dbQuery_ q = withConnection $ \c -> liftIO $ SQL.query_ c q
+dbQuery_ q = withConnection $ \c -> liftIO $! SQL.query_ c q
 
 dbLastRowId :: (MonadMask m, MonadIO m) => MDB m Int64
-dbLastRowId = withConnection $ liftIO . SQL.lastInsertRowId
+dbLastRowId = withConnection $! liftIO . SQL.lastInsertRowId
 
 withTransaction :: (MonadMask m, MonadIO m) => MDB IO a -> MDB m a
-withTransaction f = withConnection $ \c -> ask >>= \mdb -> liftIO (SQL.withTransaction c (runMDB' mdb f))
+withTransaction f = withConnection $ \c -> ask >>= \mdb -> liftIO $! SQL.withTransaction c (runMDB' mdb f)
 
 -----------------------------------------------------------------
 -- Files

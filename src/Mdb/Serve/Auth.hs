@@ -6,10 +6,12 @@ module Mdb.Serve.Auth (
     SessionKey, request, checkLogin
 ) where
 
+import           Control.Monad.Catch (MonadMask, bracket_)
 import           Control.Monad.Except
 import           Control.Monad.Trans.Reader ( ReaderT, asks, runReaderT )
 import qualified Crypto.Scrypt as SCRYPT
 import           Data.ByteString ( ByteString )
+import           Data.Monoid ( (<>) )
 import qualified Data.Vault.Lazy as V
 import qualified Database.SQLite.Simple as SQL
 import qualified Network.Wai as WAI
@@ -23,25 +25,34 @@ data Auth
     = NoAuth
     | UserAuth UserId
 
-newtype Authenticated m a = Authenticated { _unAuthenticated :: ReaderT (S.Session (MDB m) () UserId, Auth) (MDB m) a }
+newtype Authenticated m a = Authenticated ( ReaderT (S.Session (MDB m) () UserId, Auth) (MDB m) a )
     deriving (Applicative, Functor, Monad, MonadIO )
 
 type SessionKey m = V.Key (S.Session (MDB m) () UserId)
 
-request :: Monad m => SessionKey m -> WAI.Request -> Authenticated m a -> MDB m a
+request :: (MonadMask m, MonadIO m) => SessionKey m -> WAI.Request -> Authenticated m a -> MDB m a
 request skey req (Authenticated f) =
     case V.lookup skey (WAI.vault req) of
         Nothing -> fail "no session storage found"
         Just sess@(getUser, _) -> getUser () >>= \muid -> case muid of
                 Nothing     -> runReaderT f (sess, NoAuth)
-                Just uid    -> runReaderT f (sess, UserAuth uid)
+                Just uid    -> do
+                    let
+                        createViews = dbExecute
+                            (   "CREATE TEMP VIEW auth_file AS "
+                            <>  "SELECT * FROM file WHERE EXISTS "
+                            <>  "   (SELECT * FROM tag_file WHERE tag_file.file_id = file.file_id AND tag_file.tag_id = 2)"
+                            ) ()
+                        destroyViews = dbExecute "DROP VIEW auth_file" ()
 
-query :: (MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]
+                    bracket_ createViews destroyViews $ runReaderT f (sess, UserAuth uid)
+
+query :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]
 query q p = Authenticated $ asks snd >>= \mauth -> case mauth of
-    NoAuth      -> fail "not authorized"
-    UserAuth _  -> lift $ dbQuery q p
+    NoAuth          -> fail "not authorized"
+    UserAuth _      -> lift $ dbQuery q p
 
-queryOne :: (SQL.FromRow b, SQL.ToRow q, MonadIO m) => SQL.Query -> q -> Authenticated m (Either (Reason a) b)
+queryOne :: (SQL.FromRow b, SQL.ToRow q, MonadMask m, MonadIO m) => SQL.Query -> q -> Authenticated m (Either (Reason a) b)
 queryOne q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth      -> return $ Left NotAllowed
     UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $ case xs of
@@ -58,7 +69,7 @@ userId = Authenticated $ asks snd >>= \a -> case a of
     UserAuth uid    -> return $ Just uid
     _               -> return Nothing
 
-checkLogin :: MonadIO m => String -> ByteString -> Authenticated m Bool
+checkLogin :: (MonadMask m, MonadIO m) => String -> ByteString -> Authenticated m Bool
 checkLogin login pass = Authenticated $ do
     cs      <- lift $ dbQuery "SELECT user_pass_scrypt, user_id FROM user WHERE user_name = ?" (Only login)
     (_, put)    <- asks fst

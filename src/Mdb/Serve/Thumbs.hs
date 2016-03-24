@@ -7,6 +7,7 @@ module Mdb.Serve.Thumbs (
 
 
 import           Control.Monad ( unless )
+import           Control.Monad.Catch ( MonadMask )
 import           Control.Monad.IO.Class ( MonadIO, liftIO )
 import           Control.Monad.Reader.Class ( asks )
 import qualified Data.ByteString.Lazy as BSL
@@ -30,7 +31,7 @@ thumbApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
     root = prepare $
         get "/medium/:fid"        (continue fileThumb)        $ capture "fid"
 
-fileThumb :: MonadIO m => FileId -> MDB m Response
+fileThumb :: (MonadMask m, MonadIO m) => FileId -> MDB m Response
 fileThumb fid = do
     file <- fileById fid
     srcFile <- case T.takeWhile ( /= '/') (DBF.fileMime file) of

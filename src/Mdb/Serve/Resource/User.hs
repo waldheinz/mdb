@@ -5,6 +5,7 @@ module Mdb.Serve.Resource.User (
     userResource
     ) where
 
+import           Control.Monad.Catch (MonadMask)
 import           Control.Monad.Error.Class ( throwError )
 import           Control.Monad.IO.Class ( MonadIO )
 import           Control.Monad.Reader ( ReaderT )
@@ -27,7 +28,7 @@ data UserSelect
 
 type WithUser m = ReaderT UserSelect (Authenticated m)
 
-userResource :: MonadIO m => Resource (Authenticated m) (WithUser m) UserSelect Void Void
+userResource :: (MonadMask m, MonadIO m) => Resource (Authenticated m) (WithUser m) UserSelect Void Void
 userResource = mkResourceReader
     { R.name    = "user"
     , R.schema  = noListing $ named [ ( "self", single Myself ) ]
@@ -35,9 +36,9 @@ userResource = mkResourceReader
     , R.actions = [ ( "login", loginHandler ) ]
     }
 
-getUser :: MonadIO m => Handler (WithUser m)
+getUser :: (MonadMask m, MonadIO m) => Handler (WithUser m)
 getUser = mkIdHandler stringO handler where
-    handler :: MonadIO m => () -> UserSelect -> ExceptT Reason_ (WithUser m) String
+    handler :: (MonadMask m, MonadIO m) => () -> UserSelect -> ExceptT Reason_ (WithUser m) String
     handler () Myself = do
         muid <- lift . lift $ AUTH.userId
         case muid of
@@ -61,9 +62,9 @@ instance FromJSON LoginMessage where
 instance JSONSchema LoginMessage where
     schema = gSchema
 
-loginHandler :: MonadIO m => Handler (WithUser m)
+loginHandler :: (MonadMask m, MonadIO m) => Handler (WithUser m)
 loginHandler = mkIdHandler (jsonI . stringO) handler where
-    handler :: MonadIO m => LoginMessage -> UserSelect -> ExceptT Reason_ (WithUser m) String
+    handler :: (MonadMask m, MonadIO m) => LoginMessage -> UserSelect -> ExceptT Reason_ (WithUser m) String
     handler lm Myself = do
         success <- lift . lift $ AUTH.checkLogin (user lm) (BSU.fromString $ pass lm)
         if success

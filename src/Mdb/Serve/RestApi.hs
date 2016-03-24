@@ -5,6 +5,7 @@ module Mdb.Serve.RestApi (
     apiApp
     ) where
 
+import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class ( MonadIO )
 import qualified Network.Wai as WAI
 import           Rest.Driver.Wai ( apiToApplication )
@@ -23,7 +24,7 @@ apiApp mdb skey req = apiToApplication (runMDB' mdb . AUTH.request skey req) api
     where
         api = [(mkVersion 0 1 0, Some1 api010)]
 
-api010 :: (Applicative m, MonadIO m) => Router (Authenticated m) (Authenticated m)
+api010 :: (MonadMask m, MonadIO m) => Router (Authenticated m) (Authenticated m)
 api010 = root
             -/ albums
             -/ files

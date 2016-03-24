@@ -3,7 +3,7 @@
 
 module Mdb.TvShow ( doMode ) where
 
-import           Control.Monad.Catch         (MonadCatch, try)
+import           Control.Monad.Catch         (MonadMask, try)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
 import           Control.Monad.Reader.Class  (asks)
 import           Control.Monad.Trans.Class   (lift)
@@ -100,7 +100,7 @@ pick els dirName lang = do
         [x] -> return $ snd x
         _   -> left $ "still multiple candidates left: " <> T.pack (show $ map fst exactName)
 
-assign :: (MonadCatch m, MonadIO m) => String -> FilePath -> XML.Element -> EitherT T.Text (ReaderT Manager (MDB m)) ()
+assign :: (MonadMask m, MonadIO m) => String -> FilePath -> XML.Element -> EitherT T.Text (ReaderT Manager (MDB m)) ()
 assign lang showDir xml = do
 
     let
@@ -138,7 +138,7 @@ readChild name xml = textChild name xml >>= \str -> case reads str of
     [(a, _)]    -> right a
     _           -> left $ "there are multiple parses for \"" <> T.pack str <> "\" (" <> name <> ")"
 
-updateSeries :: (MonadIO m, MonadCatch m) => Int64 ->  EitherT T.Text (ReaderT Manager (MDB m)) ()
+updateSeries :: (MonadIO m, MonadMask m) => Int64 ->  EitherT T.Text (ReaderT Manager (MDB m)) ()
 updateSeries showId = do
     (tvDbId, lang) <- EitherT $ lift $ dbQueryOne
         "SELECT series_tvdb_id, series_lang FROM series WHERE series_id = ?" (Only showId)
@@ -205,7 +205,7 @@ updateSeries showId = do
 
     mapM_ (onePoster $ parseBanners bannersXml) (nub seasonIds)
 
-updateImage :: (MonadCatch m, MonadIO m) => FilePath -> String -> EitherT T.Text (ReaderT Manager (MDB m)) FileId
+updateImage :: (MonadMask m, MonadIO m) => FilePath -> String -> EitherT T.Text (ReaderT Manager (MDB m)) FileId
 updateImage destFile banner = do
     dbDir <- lift . lift $ asks mdbDbDir
 

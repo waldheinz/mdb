@@ -8,7 +8,7 @@ module Mdb.File (
 import qualified Codec.FFmpeg.Probe          as FFM
 import           Control.Exception.Base      (IOException)
 import           Control.Monad               (foldM, forM_, liftM, unless, when)
-import           Control.Monad.Catch         (MonadCatch, catchIOError)
+import           Control.Monad.Catch         (MonadMask, catchIOError)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
 import Control.Monad.Reader.Class (ask)
 import           Control.Monad.Trans.Class   (lift)
@@ -62,7 +62,7 @@ doFile CMD.FileAdd rec fs = mapM_ (withFiles go rec) fs where
 
 doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles (scanFile sha) rec) fs
 
-scanFile :: MonadIO m => Bool -> FilePath -> MDB m ()
+scanFile :: (MonadMask m, MonadIO m) => Bool -> FilePath -> MDB m ()
 scanFile sha fn = do
     mfid <- fileIdFromName fn
     case mfid of
@@ -85,7 +85,7 @@ scanFile sha fn = do
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"
 
-addFile :: MonadIO m => (FilePath, Integer, T.Text) -> MDB m FileId
+addFile :: (MonadMask m, MonadIO m) => (FilePath, Integer, T.Text) -> MDB m FileId
 addFile (absPath, fs, mime) = do
     relPath <- relFile absPath
     dbExecute
@@ -113,14 +113,14 @@ withFiles f rec fp = unless (ignoreFile fp) $ do
                 then f fp
                 else liftIO $ putStrLn $ "neither file nor directory: " ++ fp
 
-checkFile :: (MonadCatch m, MonadIO m) => FilePath -> MDB m (Either T.Text FileId)
+checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m (Either T.Text FileId)
 checkFile fn = flip catchIOError
     (\e -> (\x -> return $ Left $ T.pack $ "caught: " ++ show x) (e :: IOException))
     $ do
         sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
         Right <$> addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
 
-assignSeriesEpisode :: MonadIO m => FilePath -> FileId -> MDB m ()
+assignSeriesEpisode :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
 assignSeriesEpisode fn fid = do
     rel <- relFile fn
 

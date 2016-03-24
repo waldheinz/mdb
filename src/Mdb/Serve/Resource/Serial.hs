@@ -7,6 +7,7 @@ module Mdb.Serve.Resource.Serial (
     serialResource, seasonResource, episodeResource
     ) where
 
+import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Reader       (ReaderT, ask)
 import           Control.Monad.Trans.Class  (lift)
@@ -49,7 +50,7 @@ instance ToJSON Serial where
 instance JSONSchema Serial where
   schema = gSchema
 
-serialResource :: MonadIO m => Resource (Authenticated m) (WithSerial m) SerialId SerialFilter Void
+serialResource :: (MonadMask m, MonadIO m) => Resource (Authenticated m) (WithSerial m) SerialId SerialFilter Void
 serialResource = mkResourceReader
     { R.name        = "serial"
     , R.description = "Access TV serials"
@@ -64,9 +65,9 @@ serialOrder (Just o)    = case o of
     "name"  -> "series_name"
     _       -> "series_name"
 
-serialList :: MonadIO m => SerialFilter -> ListHandler (Authenticated m)
+serialList :: (MonadMask m, MonadIO m) => SerialFilter -> ListHandler (Authenticated m)
 serialList which = mkOrderedListing jsonO handler where
-    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Serial]
+    handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Serial]
     handler (r, o, d) = case which of
         AllSerials  -> lift $
             AUTH.query
@@ -74,9 +75,9 @@ serialList which = mkOrderedListing jsonO handler where
                 <>  "ORDER BY " <> serialOrder o <> " " <> sortDir d <> " "
                 <>  "LIMIT ? OFFSET ?" ) (count r, offset r)
 
-getSerial :: MonadIO m => Handler (WithSerial m)
+getSerial :: (MonadMask m, MonadIO m) => Handler (WithSerial m)
 getSerial = mkIdHandler jsonO handler where
-    handler :: MonadIO m => () -> SerialId -> ExceptT Reason_ (WithSerial m) Serial
+    handler :: (MonadMask m, MonadIO m) => () -> SerialId -> ExceptT Reason_ (WithSerial m) Serial
     handler () sid = ExceptT $ lift $ AUTH.queryOne
         "SELECT series_id, series_name, series_poster FROM series WHERE series_id = ?" (Only sid)
 
@@ -101,7 +102,7 @@ instance JSONSchema Season where
 seasonOrder :: Maybe String -> Query
 seasonOrder _     = "series_season_number"
 
-seasonResource :: MonadIO m => Resource (WithSerial m) (WithSeason m) SeasonId () Void
+seasonResource :: (MonadMask m, MonadIO m) => Resource (WithSerial m) (WithSeason m) SeasonId () Void
 seasonResource = mkResourceReader
     { R.name        = "season"
     , R.description = "Access TV serial seasons"
@@ -110,9 +111,9 @@ seasonResource = mkResourceReader
     , R.get         = Just getSeason
     }
 
-seasonList :: MonadIO m => () -> ListHandler (WithSerial m)
+seasonList :: (MonadMask m, MonadIO m) => () -> ListHandler (WithSerial m)
 seasonList () = mkOrderedListing jsonO handler where
-    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSerial m) [Season]
+    handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSerial m) [Season]
     handler (r, o, d) = lift $ do
         serId  <- ask
         xs <- lift $ AUTH.query
@@ -123,9 +124,9 @@ seasonList () = mkOrderedListing jsonO handler where
 
         return $ map (uncurry (Season serId)) xs
 
-getSeason :: MonadIO m => Handler (WithSeason m)
+getSeason :: (MonadMask m, MonadIO m) => Handler (WithSeason m)
 getSeason = mkIdHandler jsonO handler where
-    handler :: MonadIO m => () -> SerialId -> ExceptT Reason_ (WithSeason m) Season
+    handler :: (MonadMask m, MonadIO m) => () -> SerialId -> ExceptT Reason_ (WithSeason m) Season
     handler () seaId = do
         serId <- lift . lift $ ask
 
@@ -156,7 +157,7 @@ instance JSONSchema Episode where
 episodeOrder :: Maybe String -> Query
 episodeOrder _     = "series_episode_number"
 
-episodeResource :: MonadIO m => Resource (WithSeason m) (WithSeason m) SeasonId () Void
+episodeResource :: (MonadMask m, MonadIO m) => Resource (WithSeason m) (WithSeason m) SeasonId () Void
 episodeResource = mkResourceId
     { R.name        = "episode"
     , R.description = "Access TV serial episodes"
@@ -164,9 +165,9 @@ episodeResource = mkResourceId
     , R.list        = episodeList
     }
 
-episodeList :: MonadIO m => () -> ListHandler (WithSeason m)
+episodeList :: (MonadMask m, MonadIO m) => () -> ListHandler (WithSeason m)
 episodeList () = mkOrderedListing jsonO handler where
-    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSeason m) [Episode]
+    handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSeason m) [Episode]
     handler (r, o, d) = lift $ do
         serId    <- lift ask
         seaId    <- ask

@@ -3,6 +3,7 @@
 
 module Mdb.Serve.Resource.Album ( albumResource, personAlbumResource ) where
 
+import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Reader       (ReaderT, ask, runReaderT)
 import           Control.Monad.Trans.Class  (lift)
@@ -26,7 +27,7 @@ type WithAlbum m = ReaderT AlbumId (Authenticated m)
 enter :: Monad m => AlbumId -> WithAlbum m b -> WithPerson m b
 enter aid f = lift $ runReaderT f aid
 
-personAlbumResource :: MonadIO m => Resource (WithPerson m) (WithAlbum m) AlbumId () Void
+personAlbumResource :: (MonadMask m, MonadIO m) => Resource (WithPerson m) (WithAlbum m) AlbumId () Void
 personAlbumResource = (mkResource enter)
     { R.name    = "albums"
     , R.schema  = withListing () $ named []
@@ -41,10 +42,10 @@ posterQuery =
                 "(SELECT MIN(file.file_name) FROM album_file af NATURAL JOIN file WHERE af.album_id = a.album_id))" <>
     ")"
 
-listPersonAlbums :: MonadIO m => ListHandler (WithPerson m)
+listPersonAlbums :: (MonadMask m, MonadIO m) => ListHandler (WithPerson m)
 listPersonAlbums = mkListing jsonO handler
     where
-        handler :: MonadIO m => Range -> ExceptT Reason_ (WithPerson m) [Album]
+        handler :: (MonadMask m, MonadIO m) => Range -> ExceptT Reason_ (WithPerson m) [Album]
         handler r = do
             pid <- lift ask
             lift . lift $ AUTH.query
@@ -60,7 +61,7 @@ albumOrder (Just o)    = case o of
     "created"   -> "album_created"
     _           -> "album_name"
 
-albumResource :: (MonadIO m) => Resource (Authenticated m) (WithAlbum m) AlbumId () Void
+albumResource :: (MonadMask m, MonadIO m) => Resource (Authenticated m) (WithAlbum m) AlbumId () Void
 albumResource = mkResourceReader
     { R.name        = "album"
     , R.schema      = withListing () $ named [ ( "byId", singleBy read ) ]
@@ -68,16 +69,16 @@ albumResource = mkResourceReader
     , R.list        = const listAlbums
     }
 
-albumHandler :: MonadIO m => Handler (WithAlbum m)
+albumHandler :: (MonadMask m, MonadIO m) => Handler (WithAlbum m)
 albumHandler = mkIdHandler jsonO handler where
-    handler :: MonadIO m => () -> AlbumId -> ExceptT Reason_ (WithAlbum m) Album
+    handler :: (MonadMask m, MonadIO m) => () -> AlbumId -> ExceptT Reason_ (WithAlbum m) Album
     handler () aid = ExceptT $ lift $ AUTH.queryOne
             ("SELECT a.album_id, a.album_name, " <> posterQuery <> " FROM album a WHERE a.album_id = ?")
             (Only aid)
 
-listAlbums :: MonadIO m => ListHandler (Authenticated m)
+listAlbums :: (MonadMask m, MonadIO m) => ListHandler (Authenticated m)
 listAlbums = mkOrderedListing jsonO handler where
-    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Album]
+    handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Album]
     handler (r, o, d) = lift $ AUTH.query
         (   "SELECT a.album_id, a.album_name, " <> posterQuery <> " "
         <>  "FROM album a "

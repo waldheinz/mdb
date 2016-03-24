@@ -5,6 +5,7 @@ module Mdb.Serve.Resource.Person (
     WithPerson, personResource
     ) where
 
+import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Reader       (ReaderT, ask)
 import           Control.Monad.Trans.Class  (lift)
@@ -26,7 +27,7 @@ data PersonSelector
 
 type WithPerson m = ReaderT PersonId (Authenticated m)
 
-personResource :: MonadIO m => Resource (Authenticated m) (WithPerson m) PersonId PersonSelector Void
+personResource :: (MonadMask m, MonadIO m) => Resource (Authenticated m) (WithPerson m) PersonId PersonSelector Void
 personResource = mkResourceReader
     { R.name        = "person"
     , R.description = "Access persons"
@@ -40,9 +41,9 @@ personResource = mkResourceReader
             , ( "inAlbum"   , listingBy (InAlbum . read) )
             ]
 
-getPerson :: MonadIO m => Handler (WithPerson m)
+getPerson :: (MonadMask m, MonadIO m) => Handler (WithPerson m)
 getPerson = mkIdHandler jsonO handler where
-    handler :: MonadIO m => () -> SerialId -> ExceptT Reason_ (WithPerson m) Person
+    handler :: (MonadMask m, MonadIO m) => () -> SerialId -> ExceptT Reason_ (WithPerson m) Person
     handler () pid = ExceptT $ lift $ AUTH.queryOne
         "SELECT person_id, person_name, person_portrait FROM person WHERE (person_id = ?)"
         (Only pid)
@@ -53,9 +54,9 @@ personOrder (Just o)    = case o of
     "name"  -> "person_name"
     _       -> "person_name"
 
-personListHandler :: MonadIO m => PersonSelector -> ListHandler (Authenticated m)
+personListHandler :: (MonadMask m, MonadIO m) => PersonSelector -> ListHandler (Authenticated m)
 personListHandler which = mkOrderedListing jsonO handler where
-    handler :: MonadIO m => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Person]
+    handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Person]
     handler (r, o, d) = lift $ case which of
         AllPersons  -> AUTH.query
                         (   "SELECT person_id, person_name, person_portrait FROM person "
@@ -72,7 +73,7 @@ personListHandler which = mkOrderedListing jsonO handler where
                         <>  "ORDER BY " <> personOrder o <> " " <> sortDir d <> " "
                         ) (Only aid)
 
-updatePerson :: MonadIO m => Handler (WithPerson m)
+updatePerson :: (MonadMask m, MonadIO m) => Handler (WithPerson m)
 updatePerson = mkInputHandler jsonI handler where
     handler p = do
         pid <- ask

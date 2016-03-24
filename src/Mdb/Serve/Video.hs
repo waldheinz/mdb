@@ -8,6 +8,7 @@ module Mdb.Serve.Video (
 
 import           Blaze.ByteString.Builder   (fromByteString)
 import           Control.Monad              (unless, void)
+import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Reader.Class (asks)
 import           Control.Monad.Trans.Class  (lift)
@@ -34,7 +35,7 @@ videoApp mdb req respond = runMDB' mdb $ route root req (liftIO . respond) where
 roundTimeToMs :: Double -> Integer
 roundTimeToMs ts = round ts `div` 30 * 30000
 
-ensureFrame :: MonadIO m => FileId -> Double -> MDB m FilePath
+ensureFrame :: (MonadMask m, MonadIO m) => FileId -> Double -> MDB m FilePath
 ensureFrame fid ts = do
     dbDir <- asks mdbDbDir
     f <- fileById fid
@@ -52,10 +53,10 @@ ensureFrame fid ts = do
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return outFile
 
-frame :: MonadIO m => (FileId ::: Double) -> MDB m Response
+frame :: (MonadMask m, MonadIO m) => (FileId ::: Double) -> MDB m Response
 frame (fid ::: ts) = ensureFrame fid ts >>= \outFile -> return $ responseFile status200 [] outFile Nothing
 
-stream :: MonadIO m => (FileId ::: Double ::: Int) -> MDB m Response
+stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Int) -> MDB m Response
 stream (fid ::: ts ::: rv) = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f
@@ -74,7 +75,7 @@ stream (fid ::: ts ::: rv) = do
 
     return $ responseStream status200 [ ("Content-Type", "video/x-matroska") ] str
 
-streamDirect :: MonadIO m => FileId -> MDB m Response
+streamDirect :: (MonadMask m, MonadIO m) => FileId -> MDB m Response
 streamDirect fid = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f

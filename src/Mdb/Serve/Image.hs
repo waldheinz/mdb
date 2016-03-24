@@ -5,6 +5,7 @@ module Mdb.Serve.Image (
     imageApp
     ) where
 
+import           Control.Monad.Catch    (MonadMask)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Network.HTTP.Types     (status200)
 import           Network.Wai
@@ -18,11 +19,11 @@ imageApp :: MediaDb -> Application
 imageApp mdb req respond = runMDB' mdb
     $ route start req (liftIO . respond)
 
-start :: MonadIO m => Tree (App (MDB m))
+start :: (MonadMask m, MonadIO m) => Tree (App (MDB m))
 start = prepare $
     get "/image/:id" (continue getImage)        $ capture "id"
 
-getImage :: MonadIO m => FileId -> MDB m Response
+getImage :: (MonadMask m, MonadIO m) => FileId -> MDB m Response
 getImage fid = do
     f <- fileById fid
     p <- fileAbs $ DBF.filePath f

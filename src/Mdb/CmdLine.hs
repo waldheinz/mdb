@@ -57,6 +57,7 @@ data AssignTarget
     | AssignNewPerson String
     | AssignAlbum AlbumId
     | AssignNewAlbum String
+    | AssignTag String
     deriving ( Show )
 
 data OptFile
@@ -96,7 +97,7 @@ fileScan = FileScan
             )
 
 fileAssign :: Parser OptFile
-fileAssign = FileAssign <$> some (p <|> np <|> a <|> na) where
+fileAssign = FileAssign <$> some (p <|> np <|> a <|> na <|> tag) where
     p = AssignPerson <$> option auto
         (   long "person"
         <>  short 'p'
@@ -117,6 +118,12 @@ fileAssign = FileAssign <$> some (p <|> np <|> a <|> na) where
     na = AssignNewAlbum <$> strOption
         (   long "new-album"
         <>  help "assign new album"
+        <>  metavar "NAME"
+        )
+    tag = AssignTag <$> strOption
+        (   long "tag"
+        <>  short 't'
+        <>  help "assign a tag"
         <>  metavar "NAME"
         )
 

@@ -19,6 +19,9 @@ module Mdb.Database (
     -- * albums
     addAlbum,
 
+    -- * tags
+    ensureTag,
+
     -- * raw queries
     dbExecute, dbQuery, dbQueryOne, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
@@ -246,5 +249,12 @@ getPersonFiles pid = asks mdbConn >>= \c -> liftIO $ SQL.query c
 ----------------------------------------------------------
 
 addAlbum :: MonadIO m => String -> MDB m AlbumId
-addAlbum name = liftM fromIntegral $ dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name)
-    >> dbLastRowId
+addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name) >> dbLastRowId
+
+ensureTag :: MonadIO m => String -> MDB m TagId
+ensureTag tag = withTransaction $
+    dbQueryOne "SELECT tag_id FROM tag WHERE tag_name = ?" (SQL.Only tag) >>= \mtid -> case mtid of
+        Right (SQL.Only tid)    -> return tid
+        Left _                  -> do
+            dbExecute "INSERT INTO tag(tag_name) VALUES (?)" (SQL.Only tag)
+            dbLastRowId

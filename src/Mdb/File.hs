@@ -31,24 +31,26 @@ import           Mdb.Database.File           (fileMime)
 import           Mdb.Types
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
-doFile (CMD.FileAssign tgts) rec fs = withTransaction $ do
+doFile (CMD.FileAssign tgts) rec fs = do
     let
-        prepare (ps, as) tgt = case tgt of
-            CMD.AssignPerson pid    -> return (pid : ps, as)
-            CMD.AssignNewPerson n   -> addPerson n >>= \pid -> return (pid:ps, as)
-            CMD.AssignAlbum aid     -> return (ps, aid:as)
-            CMD.AssignNewAlbum n    -> addAlbum n >>= \aid -> return (ps, aid:as)
+        prepare (ps, as, ts) tgt = case tgt of
+            CMD.AssignPerson pid    -> return (pid : ps, as, ts)
+            CMD.AssignNewPerson n   -> addPerson n >>= \pid -> return (pid:ps, as, ts)
+            CMD.AssignAlbum aid     -> return (ps, aid:as, ts)
+            CMD.AssignNewAlbum n    -> addAlbum n >>= \aid -> return (ps, aid:as, ts)
+            CMD.AssignTag tname     -> ensureTag tname >>= \tid -> return (ps, as, tid:ts)
 
-        go pids aids fn = do
-            mfid <- fileIdFromName fn
-            case mfid of
-                Nothing    -> fail $ fn ++ " not registered yet"
-                Just fid   -> do
-                    mapM_ (assignFilePerson fid) pids
-                    mapM_ (assignFileAlbum fid) aids
+        assignFileTag fid tid = dbExecute "INSERT OR IGNORE INTO tag_file(tag_id, file_id) VALUES (?, ?)" (tid, fid)
 
-    (pids, aids) <- foldM prepare ([], []) tgts
-    mapM_ (withFiles (go pids aids) rec) fs
+        go pids aids tids fn = fileIdFromName fn >>= \mfid -> case mfid of
+            Nothing    -> fail $ fn ++ " not registered"
+            Just fid   -> do
+                mapM_ (assignFilePerson fid) pids
+                mapM_ (assignFileAlbum fid) aids
+                mapM_ (assignFileTag fid) tids
+
+    (pids, aids, tids) <- foldM prepare ([], [], []) tgts
+    mapM_ (withFiles (go pids aids tids) rec) fs
 
 doFile CMD.FileAdd rec fs = mapM_ (withFiles go rec) fs where
     go fn = hasFile fn >>= \known -> unless known $ checkFile fn >>= \efid ->

@@ -47,11 +47,16 @@ doServe = do
                     []              -> return Nothing
                     (Only uid : _)  -> return (Just uid)
 
-            setUser () uid = dbExecute "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, sid)
+            setUser () (Just uid)   = dbExecute
+                "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, sid)
+
+            setUser () Nothing      = dbExecute
+                "DELETE FROM user_session WHERE session_id = ?" (Only sid)
 
         sstore Nothing = do
             newKey <- S.genSessionId
             return (session newKey, return newKey)
+
         sstore (Just sid) = return (session sid, return sid)
         sessMiddleware = S.withSession sstore cname setc skey
 

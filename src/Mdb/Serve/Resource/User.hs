@@ -12,6 +12,7 @@ import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except
 import qualified Data.ByteString.UTF8 as BSU
+import qualified Data.Text as T
 import           Rest
 import qualified Rest.Resource as R
 
@@ -33,7 +34,10 @@ userResource = mkResourceReader
     { R.name    = "user"
     , R.schema  = noListing $ named [ ( "self", single Myself ) ]
     , R.get     = Just getUser
-    , R.actions = [ ( "login", loginHandler ) ]
+    , R.actions =
+        [ ( "login"     , loginHandler )
+        , ( "logout"    , logoutHandler )
+        ]
     }
 
 getUser :: (MonadMask m, MonadIO m) => Handler (WithUser m)
@@ -48,12 +52,12 @@ getUser = mkIdHandler stringO handler where
                 return uname
 
 ------------------------------------------------------------------------------------------------------------------------
--- Logging in
+-- Logging in/out
 ------------------------------------------------------------------------------------------------------------------------
 
 data LoginMessage = LoginMessage
-    { user  :: String
-    , pass  :: String
+    { user  :: ! T.Text
+    , pass  :: ! String
     } deriving ( Generic, Show )
 
 instance FromJSON LoginMessage where
@@ -68,5 +72,10 @@ loginHandler = mkIdHandler (jsonI . stringO) handler where
     handler lm Myself = do
         success <- lift . lift $ AUTH.checkLogin (user lm) (BSU.fromString $ pass lm)
         if success
-            then return (user lm)
+            then return $ T.unpack (user lm)
             else throwError NotAllowed
+
+logoutHandler :: (MonadMask m, MonadIO m) => Handler (WithUser m)
+logoutHandler = mkIdHandler id handler where
+    handler :: (MonadMask m, MonadIO m) => () -> UserSelect -> ExceptT Reason_ (WithUser m) ()
+    handler () Myself = lift . lift $ AUTH.doLogout

@@ -7,24 +7,23 @@ module Mdb.Serve.Image (
 
 import           Control.Monad.Catch    (MonadMask)
 import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Data.Text.Encoding     (encodeUtf8)
 import           Network.HTTP.Types     (status200)
 import           Network.Wai
 import           Network.Wai.Routing
 
 import           Mdb.Database
-import qualified Mdb.Database.File      as DBF
+import           Mdb.Serve.Auth         (Authenticated)
+import qualified Mdb.Serve.Auth         as AUTH
+import           Mdb.Serve.Utils        (withFileAccess)
 import           Mdb.Types
 
-imageApp :: MediaDb -> Application
-imageApp mdb req respond = runMDB' mdb
-    $ route start req (liftIO . respond)
+imageApp :: MediaDb -> AUTH.SessionKey IO -> Application
+imageApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) where
+    goAuth = AUTH.request skey req
+    root = prepare $
+        get "/image/:id" (continue $ goAuth . getImage)        $ capture "id"
 
-start :: (MonadMask m, MonadIO m) => Tree (App (MDB m))
-start = prepare $
-    get "/image/:id" (continue getImage)        $ capture "id"
-
-getImage :: (MonadMask m, MonadIO m) => FileId -> MDB m Response
-getImage fid = do
-    f <- fileById fid
-    p <- fileAbs $ DBF.filePath f
-    return $ responseFile status200 [] p Nothing
+getImage :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
+getImage = withFileAccess $ \p mime ->
+    return $ responseFile status200 [("Content-Type", encodeUtf8 mime)] p Nothing

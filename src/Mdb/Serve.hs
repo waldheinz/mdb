@@ -64,7 +64,7 @@ mkApp mdb skey = do
     heist   <- liftIO $ getDataDir >>= \ddir -> mkHeist $ ddir ++ "/files/templates"
     return $ mapUrls $
                 mount "api"     (mapUrls $
-                    mount "image"   (imageApp mdb)
+                    mount "image"   (imageApp mdb skey)
                 <|> mount "thumb"   (thumbApp mdb skey)
                 <|> mount "video"   (videoApp mdb skey)
                 <|> mountRoot (apiApp mdb skey)

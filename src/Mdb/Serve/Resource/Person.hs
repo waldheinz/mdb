@@ -45,7 +45,7 @@ getPerson :: (MonadMask m, MonadIO m) => Handler (WithPerson m)
 getPerson = mkIdHandler jsonO handler where
     handler :: (MonadMask m, MonadIO m) => () -> SerialId -> ExceptT Reason_ (WithPerson m) Person
     handler () pid = ExceptT $ lift $ AUTH.queryOne
-        "SELECT person_id, person_name, person_portrait FROM person WHERE (person_id = ?)"
+        "SELECT person_id, person_name, person_portrait FROM auth_person WHERE (person_id = ?)"
         (Only pid)
 
 personOrder :: Maybe String -> Query
@@ -59,13 +59,13 @@ personListHandler which = mkOrderedListing jsonO handler where
     handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Person]
     handler (r, o, d) = lift $ case which of
         AllPersons  -> AUTH.query
-                        (   "SELECT person_id, person_name, person_portrait FROM person "
+                        (   "SELECT person_id, person_name, person_portrait FROM auth_person "
                         <>  "ORDER BY " <> personOrder o <> " " <> sortDir d <> " "
                         <>  "LIMIT ? OFFSET ?"
                         ) (count r, offset r)
 
         InAlbum aid -> AUTH.query
-                        ( "SELECT DISTINCT p.person_id, p.person_name, person_portrait FROM person p "
+                        ( "SELECT DISTINCT p.person_id, p.person_name, person_portrait FROM auth_person p "
                         <>  "NATURAL JOIN person_file "
                         <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
                         <>      "SELECT 1 FROM auth_album a NATURAL JOIN person_file NATURAL JOIN album_file "

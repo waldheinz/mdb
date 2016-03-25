@@ -75,10 +75,23 @@ request skey req (Authenticated f) =
                             =   "SELECT * FROM album a "
                             <>  "WHERE (" <> unrestricted <> ") OR (" <> albumWithAuthFile <> ")"
 
+                        -- persons
+                        personWithAuthFile
+                            =   "EXISTS ("
+                            <>  "   SELECT 1 FROM auth_file, person_file pf"
+                            <>  "       WHERE pf.person_id = p.person_id"
+                            <>  "       AND auth_file.file_id = pf.file_id"
+                            <>  ")"
+
+                        authPersons
+                            =   "SELECT * FROM person p "
+                            <>  "WHERE (" <> unrestricted <> ") OR (" <> personWithAuthFile <> ")"
+
                         -- all authenticated views
                         authViews =
                             [ ( "auth_file"     , authFiles )
                             , ( "auth_album"    , authAlbums )
+                            , ( "auth_person"   , authPersons )
                             ]
 
                         createViews     = mapM_ go authViews where

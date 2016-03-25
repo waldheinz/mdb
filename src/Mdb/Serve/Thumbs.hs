@@ -6,52 +6,48 @@ module Mdb.Serve.Thumbs (
     ) where
 
 
-import           Control.Monad ( unless )
-import           Control.Monad.Catch ( MonadMask )
-import           Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Control.Monad.Reader.Class ( asks )
-import qualified Data.ByteString.Lazy as BSL
-import           Data.Digest.Pure.MD5 ( md5 )
-import           Data.String ( fromString )
-import qualified Data.Text as T
-import           Data.Text.Encoding ( encodeUtf8 )
+import           Control.Monad                   (unless)
+import           Control.Monad.Catch             (MonadMask)
+import           Control.Monad.IO.Class          (MonadIO, liftIO)
+import           Control.Monad.Reader.Class      (asks)
+import qualified Data.ByteString.Lazy            as BSL
+import           Data.Digest.Pure.MD5            (md5)
+import           Data.String                     (fromString)
+import qualified Data.Text                       as T
+import           Data.Text.Encoding              (encodeUtf8)
 import qualified Graphics.ImageMagick.MagickWand as IM
-import           Network.HTTP.Types ( status200, status404 )
+import           Network.HTTP.Types              (status200)
 import           Network.Wai
 import           Network.Wai.Routing
-import           System.Directory ( doesFileExist, createDirectoryIfMissing )
+import           System.Directory                (createDirectoryIfMissing,
+                                                  doesFileExist)
 
 import           Mdb.Database
-import           Mdb.Serve.Auth as AUTH
-import qualified Mdb.Serve.Video as V
+import           Mdb.Serve.Auth                  as AUTH
+import           Mdb.Serve.Utils                 (withFileAccess)
+import qualified Mdb.Serve.Video                 as V
 import           Mdb.Types
 
 thumbApp :: MediaDb -> AUTH.SessionKey IO -> Application
-thumbApp mdb skey req respond = route root req (liftIO . respond) where
-    xxx = runMDB' mdb . AUTH.request skey req
+thumbApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) where
+    goAuth = AUTH.request skey req
     root = prepare $
-        get "/medium/:fid"        (continue $ xxx . fileThumb)        $ capture "fid"
+        get "/medium/:fid"        (continue $ goAuth . fileThumb)        $ capture "fid"
 
 fileThumb :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
-fileThumb fid = do
-    mf <- AUTH.queryOne "SELECT file_name, file_mime FROM auth_file WHERE file_id=?" (Only fid)
+fileThumb fid = withFileAccess go fid where
+    go filePath fileMime = do
+        srcFile <- AUTH.unsafe $ case T.takeWhile ( /= '/') fileMime of
+            "image" -> return filePath
+            "video" -> V.ensureFrame filePath fid 180
+            _       -> fail "fileThumb unknown type"
 
-    case mf of
-        Left _ -> return $ responseLBS status404
-            [ ("Content-Type", "text/plain; charset=utf-8")
-            ] $ BSL.fromChunks [ encodeUtf8 "it's not there" ]
-        Right (filePath, fileMime) -> do
-            srcFile <- AUTH.unsafe $ case T.takeWhile ( /= '/') fileMime of
-                "image" -> fileAbs filePath
-                "video" -> V.ensureFrame fid 180
-                _       -> fail "fileThumb unknown type"
+        thumbFile <- AUTH.unsafe $ ensureThumb srcFile
 
-            thumbFile <- AUTH.unsafe $ ensureThumb srcFile
-
-            return $ responseFile status200
-                [ ("Cache-Control", "max-age=3600")
-                , ("Content-Type", "image/jpeg")
-                ] thumbFile Nothing
+        return $ responseFile status200
+            [ ("Cache-Control", "max-age=3600")
+            , ("Content-Type", "image/jpeg")
+            ] thumbFile Nothing
 
 ensureThumb :: MonadIO m => FilePath -> MDB m FilePath
 ensureThumb src = do

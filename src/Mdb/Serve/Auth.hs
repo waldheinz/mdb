@@ -12,6 +12,7 @@ import           Control.Monad.Trans.Reader ( ReaderT, asks, runReaderT )
 import qualified Crypto.Scrypt as SCRYPT
 import           Data.ByteString ( ByteString )
 import           Data.Monoid ( (<>) )
+import qualified Data.Text as T
 import qualified Data.Vault.Lazy as V
 import qualified Database.SQLite.Simple as SQL
 import qualified Network.Wai as WAI
@@ -38,10 +39,17 @@ request skey req (Authenticated f) =
                 Nothing     -> runReaderT f (sess, NoAuth)
                 Just uid    -> do
                     let
+                        userWhitelist
+                            =   "SELECT tag_id FROM user_tag_whitelist WHERE user_id = "
+                            <>  (SQL.Query . T.pack $ show uid)
+
                         createViews = dbExecute_
                                 (   "CREATE TEMP VIEW auth_file AS "
                                 <>  "SELECT * FROM file WHERE EXISTS "
-                                <>  "   (SELECT * FROM tag_file WHERE tag_file.file_id = file.file_id AND tag_file.tag_id = 2)"
+                                <>  "   (SELECT * FROM tag_file "
+                                <>  "       WHERE tag_file.file_id = file.file_id "
+                                <>  "           AND tag_file.tag_id IN (" <> userWhitelist <> ")"
+                                <>  "   )"
                                 )
 
                         destroyViews = dbExecute_ "DROP VIEW auth_file"

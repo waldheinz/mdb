@@ -38,7 +38,7 @@ posterQuery :: Query
 posterQuery =
     "COALESCE(" <>
         "a.album_poster," <>
-            "(SELECT file_id FROM file WHERE file_name = " <>
+            "(SELECT file_id FROM auth_file WHERE file_name = " <>
                 "(SELECT MIN(file.file_name) FROM album_file af NATURAL JOIN file WHERE af.album_id = a.album_id))" <>
     ")"
 
@@ -49,7 +49,7 @@ listPersonAlbums = mkListing jsonO handler
         handler r = do
             pid <- lift ask
             lift . lift $ AUTH.query
-                (   "SELECT DISTINCT a.album_id, a.album_name, " <> posterQuery <> " FROM album a "
+                (   "SELECT DISTINCT a.album_id, a.album_name, " <> posterQuery <> " FROM auth_album a "
                 <>  "NATURAL JOIN person_file "
                 <>  "NATURAL JOIN album_file "
                 <>  "WHERE person_file.person_id = ? LIMIT ?,?" )
@@ -73,7 +73,7 @@ albumHandler :: (MonadMask m, MonadIO m) => Handler (WithAlbum m)
 albumHandler = mkIdHandler jsonO handler where
     handler :: (MonadMask m, MonadIO m) => () -> AlbumId -> ExceptT Reason_ (WithAlbum m) Album
     handler () aid = ExceptT $ lift $ AUTH.queryOne
-            ("SELECT a.album_id, a.album_name, " <> posterQuery <> " FROM album a WHERE a.album_id = ?")
+            ("SELECT a.album_id, a.album_name, " <> posterQuery <> " FROM auth_album a WHERE a.album_id = ?")
             (Only aid)
 
 listAlbums :: (MonadMask m, MonadIO m) => ListHandler (Authenticated m)
@@ -81,6 +81,6 @@ listAlbums = mkOrderedListing jsonO handler where
     handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Album]
     handler (r, o, d) = lift $ AUTH.query
         (   "SELECT a.album_id, a.album_name, " <> posterQuery <> " "
-        <>  "FROM album a "
+        <>  "FROM auth_album a "
         <>  "ORDER BY " <> albumOrder o <> " " <> sortDir d <> " "
         <>  "LIMIT ?,?") (offset r, count r)

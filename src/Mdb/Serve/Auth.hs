@@ -41,6 +41,7 @@ request skey req (Authenticated f) =
                     let
                         uidQuery = SQL.Query . T.pack $ show uid
 
+                        -- files
                         userWhitelistTags
                             =   "SELECT tag_id FROM user_tag_whitelist WHERE user_id = " <> uidQuery
 
@@ -51,19 +52,39 @@ request skey req (Authenticated f) =
                             <>  "       AND tag_file.tag_id IN (" <> userWhitelistTags <> ")"
                             <>  ")"
 
-                        unrestrictedFiles
+                        unrestricted
                             =   "EXISTS ("
                             <>  "   SELECT 1 FROM user"
                             <>  "       WHERE user_restricted = 0"
                             <>  "       AND user_id = " <> uidQuery
                             <>  ")"
 
-                        userFiles
+                        authFiles
                             =   "SELECT * FROM file f "
-                            <>  "WHERE (" <> unrestrictedFiles <> ") OR (" <> userWhitelistFiles <> ")"
+                            <>  "WHERE (" <> unrestricted <> ") OR (" <> userWhitelistFiles <> ")"
 
-                        createViews     = dbExecute_ $ "CREATE TEMP VIEW auth_file AS " <> userFiles
-                        destroyViews    = dbExecute_ "DROP VIEW auth_file"
+                        -- albums
+                        albumWithAuthFile
+                            =   "EXISTS ("
+                            <>  "   SELECT 1 FROM auth_file, album_file af"
+                            <>  "       WHERE af.album_id = a.album_id"
+                            <>  "       AND auth_file.file_id = af.file_id"
+                            <>  ")"
+
+                        authAlbums
+                            =   "SELECT * FROM album a "
+                            <>  "WHERE (" <> unrestricted <> ") OR (" <> albumWithAuthFile <> ")"
+
+                        -- all authenticated views
+                        authViews =
+                            [ ( "auth_file"     , authFiles )
+                            , ( "auth_album"    , authAlbums )
+                            ]
+
+                        createViews     = mapM_ go authViews where
+                            go (vn, vq) = dbExecute_ $ "CREATE TEMP VIEW " <> vn <> " AS " <> vq
+
+                        destroyViews    = mapM_ (\(vn, _) -> dbExecute_ $ "DROP VIEW " <> vn) authViews
 
                     isolate $ bracket_ createViews destroyViews $! runReaderT f (sess, UserAuth uid)
 

@@ -68,7 +68,7 @@ personListHandler which = mkOrderedListing jsonO handler where
                         ( "SELECT DISTINCT p.person_id, p.person_name, person_portrait FROM person p "
                         <>  "NATURAL JOIN person_file "
                         <>  "WHERE person_file.person_id = p.person_id AND EXISTS ("
-                        <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file "
+                        <>      "SELECT 1 FROM auth_album a NATURAL JOIN person_file NATURAL JOIN album_file "
                         <>          "WHERE person_file.person_id = p.person_id AND album_file.album_id = ?)"
                         <>  "ORDER BY " <> personOrder o <> " " <> sortDir d <> " "
                         ) (Only aid)

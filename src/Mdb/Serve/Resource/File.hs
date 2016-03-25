@@ -71,7 +71,7 @@ getRandomPersonFiles pid = AUTH.query
     (   "SELECT DISTINCT f.file_id, f.file_name, f.file_size, f.file_mime FROM auth_file f "
     <>  "NATURAL JOIN person_file "
     <>  "WHERE person_file.person_id = ? AND NOT EXISTS ("
-    <>      "SELECT 1 FROM album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ? AND album_file.file_id = f.file_id "
+    <>      "SELECT 1 FROM auth_album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ? AND album_file.file_id = f.file_id "
     <>  ") LIMIT 100"
     )
     (pid, pid)

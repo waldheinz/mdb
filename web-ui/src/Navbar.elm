@@ -1,15 +1,19 @@
 
 module Navbar (
-    view
+    Action(..), view
     ) where
 
 import Html exposing ( Html )
 import Html.Attributes as HA
+import Signal exposing ( Address )
 
 import Route exposing ( Route(..), clickRoute )
+import Utils exposing ( onClick' )
 
-view : Maybe String -> Route -> Html
-view muser r =
+type Action = LogOut
+
+view : Address Action -> Maybe String -> Route -> Html
+view aa muser r =
     let
         userName            = Maybe.withDefault "(not logged in)" muser
         pageLink pa pr pn   =
@@ -43,7 +47,7 @@ view muser r =
                             [ Html.a [ HA.href "#", HA.class "dropdown-toggle", HA.attribute "data-toggle" "dropdown" ]
                                 [ Html.text userName, Html.span [ HA.class "caret"] [] ]
                             , Html.ul [ HA.class "dropdown-menu" ]
-                                [ Html.li [ ] [ Html.a [ HA.href "#" ] [ Html.text "log out"] ]
+                                [ Html.li [ ] [ Html.a [ HA.href "#", onClick' aa LogOut ] [ Html.text "log out"] ]
                                 ]
                             ]
                         ]

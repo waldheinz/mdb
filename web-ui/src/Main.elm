@@ -74,6 +74,8 @@ type Action
     | SetLoginUser String
     | SetLoginPass String
     | DoLogin
+    | NavbarAction Navbar.Action
+    | NoOp
 
 actions : Signal Action
 actions = Signal.mergeMany
@@ -135,6 +137,7 @@ routerConfig =
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
+    NoOp                    -> ( m, Effects.none )
     RouterAction ra         -> TransitRouter.update routerConfig ra m
     PageHomeAction ha       -> ( { m | homePageModel = Page.Home.update ha m.homePageModel }, Effects.none)
     PageAlbumAction a       -> Page.Album.update a m.albumPageModel
@@ -180,6 +183,9 @@ update a m = case a of
     DoLogin ->
         (m, Server.doLogin m.loginModel |> Task.toResult |> Task.map GotUser |> Effects.task )
 
+    NavbarAction (Navbar.LogOut) ->
+        ({ m | userName = Nothing }, Server.doLogout |> Task.toResult |> Task.map (\_ -> NoOp) |> Effects.task )
+
 loginPage : Signal.Address Action -> LoginModel -> Html
 loginPage aa m =
     Html.div [ HA.class "jumbotron" ]
@@ -215,16 +221,13 @@ view aa m =
             SeriesEpisodes _ _  -> Page.SeriesEpisodes.view (Signal.forwardTo aa PageEpisodesAction) m
             Video _         -> Page.Video.view (Signal.forwardTo aa PageVideoAction) m.videoPageModel
 
-        mainContent = case m.userName of
-            Nothing -> loginPage aa m.loginModel
-            Just _  -> Html.div [ ] [ routedContent ]
-
     in
-        Html.div []
-            [ Navbar.view m.userName <| TransitRouter.getRoute m
-            , mainContent
-            ]
-
+        case m.userName of
+            Nothing -> Html.div [ HA.class "container" ] [ loginPage aa m.loginModel ]
+            Just _  -> Html.div [ ]
+                [ Navbar.view (Signal.forwardTo aa NavbarAction) m.userName <| TransitRouter.getRoute m
+                , routedContent
+                ]
 
 init : (Model, Effects Action)
 init =

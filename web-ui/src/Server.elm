@@ -10,7 +10,7 @@ module Server (
     fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl,
 
     -- * Users / Login
-    checkUser, doLogin,
+    checkUser, doLogin, doLogout,
 
     -- * Containers
     fetchContainerForFile,
@@ -150,6 +150,18 @@ doLogin l =
             }
     in
         Http.send Http.defaultSettings req |> Http.fromJson decoder
+
+doLogout : Task Http.Error ()
+doLogout =
+    let
+        req =
+            { verb      = "POST"
+            , headers   = [ ("Content-Type", "application/json" ) ]
+            , url       = apiBaseUrl ++ "/user/self/logout"
+            , body      = Http.empty 
+            }
+    in
+        Http.send Http.defaultSettings req |> Http.fromJson (JD.succeed ())
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Media

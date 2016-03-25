@@ -136,7 +136,7 @@ openDb :: MonadIO m => FilePath -> m MediaDb
 openDb dir = do
     let
         create = do
-            c <- SQL.open (dir </> "index.db")
+            c <- SQL.open ("file:" ++ dir </> "index.db?cache=shared")
             SQL.execute_ c "PRAGMA foreign_keys = ON"
             putStrLn "opened a connection"
             return c

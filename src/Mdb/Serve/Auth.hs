@@ -39,20 +39,31 @@ request skey req (Authenticated f) =
                 Nothing     -> runReaderT f (sess, NoAuth)
                 Just uid    -> do
                     let
-                        userWhitelist
-                            =   "SELECT tag_id FROM user_tag_whitelist WHERE user_id = "
-                            <>  (SQL.Query . T.pack $ show uid)
+                        uidQuery = SQL.Query . T.pack $ show uid
 
-                        createViews = dbExecute_
-                                (   "CREATE TEMP VIEW auth_file AS "
-                                <>  "SELECT * FROM file WHERE EXISTS "
-                                <>  "   (SELECT * FROM tag_file "
-                                <>  "       WHERE tag_file.file_id = file.file_id "
-                                <>  "           AND tag_file.tag_id IN (" <> userWhitelist <> ")"
-                                <>  "   )"
-                                )
+                        userWhitelistTags
+                            =   "SELECT tag_id FROM user_tag_whitelist WHERE user_id = " <> uidQuery
 
-                        destroyViews = dbExecute_ "DROP VIEW auth_file"
+                        userWhitelistFiles
+                            =   "EXISTS ("
+                            <>  "   SELECT 1 FROM tag_file "
+                            <>  "       WHERE tag_file.file_id = f.file_id "
+                            <>  "       AND tag_file.tag_id IN (" <> userWhitelistTags <> ")"
+                            <>  ")"
+
+                        unrestrictedFiles
+                            =   "EXISTS ("
+                            <>  "   SELECT 1 FROM user"
+                            <>  "       WHERE user_restricted = 0"
+                            <>  "       AND user_id = " <> uidQuery
+                            <>  ")"
+
+                        userFiles
+                            =   "SELECT * FROM file f "
+                            <>  "WHERE (" <> unrestrictedFiles <> ") OR (" <> userWhitelistFiles <> ")"
+
+                        createViews     = dbExecute_ $ "CREATE TEMP VIEW auth_file AS " <> userFiles
+                        destroyViews    = dbExecute_ "DROP VIEW auth_file"
 
                     isolate $ bracket_ createViews destroyViews $! runReaderT f (sess, UserAuth uid)
 

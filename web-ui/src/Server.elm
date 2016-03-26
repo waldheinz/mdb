@@ -139,14 +139,12 @@ doLogin : { userName : String, password : String } -> Task Http.Error String
 doLogin l =
     let
         json    = JE.object [ ( "user", JE.string l.userName ), ("pass", JE.string l.password ) ]
-        body    = JE.encode 0 json |> Http.string
-        url     = apiBaseUrl ++ "/user/self/login"
-        decoder = JD.at ["user"] JD.string
+        decoder = JD.at ["userName"] JD.string
         req     =
             { verb      = "POST"
             , headers   = [ ("Content-Type", "application/json" ) ]
-            , url       = url
-            , body      = body
+            , url       = apiBaseUrl ++ "/user/self/login"
+            , body      = JE.encode 0 json |> Http.string
             }
     in
         Http.send Http.defaultSettings req |> Http.fromJson decoder
@@ -158,7 +156,7 @@ doLogout =
             { verb      = "POST"
             , headers   = [ ("Content-Type", "application/json" ) ]
             , url       = apiBaseUrl ++ "/user/self/logout"
-            , body      = Http.empty 
+            , body      = Http.empty
             }
     in
         Http.send Http.defaultSettings req |> Http.fromJson (JD.succeed ())

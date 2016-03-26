@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Mdb.Serve.Resource.User (
-    userResource
+    LoginRequest(..), LoginResponse(..), userResource
     ) where
 
 import           Control.Monad.Catch (MonadMask)
@@ -55,24 +55,34 @@ getUser = mkIdHandler stringO handler where
 -- Logging in/out
 ------------------------------------------------------------------------------------------------------------------------
 
-data LoginMessage = LoginMessage
+data LoginRequest = LoginRequest
     { user  :: ! T.Text
     , pass  :: ! String
     } deriving ( Generic, Show )
 
-instance FromJSON LoginMessage where
+instance FromJSON LoginRequest where
     parseJSON = gparseJson
 
-instance JSONSchema LoginMessage where
+instance JSONSchema LoginRequest where
+    schema = gSchema
+
+data LoginResponse = LoginResponse
+    { userName  :: ! T.Text
+    } deriving ( Generic, Show )
+
+instance ToJSON LoginResponse where
+    toJSON = gtoJson
+
+instance JSONSchema LoginResponse where
     schema = gSchema
 
 loginHandler :: (MonadMask m, MonadIO m) => Handler (WithUser m)
-loginHandler = mkIdHandler (jsonI . stringO) handler where
-    handler :: (MonadMask m, MonadIO m) => LoginMessage -> UserSelect -> ExceptT Reason_ (WithUser m) String
+loginHandler = mkIdHandler (jsonI . jsonO) handler where
+    handler :: (MonadMask m, MonadIO m) => LoginRequest -> UserSelect -> ExceptT Reason_ (WithUser m) LoginResponse
     handler lm Myself = do
         success <- lift . lift $ AUTH.checkLogin (user lm) (BSU.fromString $ pass lm)
         if success
-            then return $ T.unpack (user lm)
+            then return $ LoginResponse (user lm)
             else throwError NotAllowed
 
 logoutHandler :: (MonadMask m, MonadIO m) => Handler (WithUser m)

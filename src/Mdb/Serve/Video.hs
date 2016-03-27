@@ -6,7 +6,7 @@ module Mdb.Serve.Video (
     videoApp, ensureFrame
     ) where
 
-import           Blaze.ByteString.Builder   (fromByteString)
+import           Blaze.ByteString.Builder   (Builder, fromByteString)
 import           Control.Monad              (unless, void)
 import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
@@ -14,6 +14,9 @@ import           Control.Monad.Reader.Class (asks)
 import           Control.Monad.Trans.Class  (lift)
 import           Data.Conduit
 import           Data.Conduit.Process
+import           Data.Fixed (divMod')
+import           Data.Monoid                ((<>))
+import qualified Data.Text as T
 import           Data.Text.Encoding         (encodeUtf8)
 import           Network.HTTP.Types         (status200)
 import           Network.Wai
@@ -35,6 +38,7 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
         get "/:id/frame"        (continue $ goAuth . frame)        $ capture "id" .&. def 0 (query "ts")
         get "/:id/stream"       (continue $ goAuth . stream)       $
             capture "id" .&. def 0 (query "t") .&. opt (query "l") .&.  def 720 (query "rv")
+        get "/:id/hls"          (continue $ goAuth . hls) $ capture "id"
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
 
 roundTimeToMs :: Double -> Integer
@@ -55,6 +59,30 @@ ensureFrame p fid ts = do
     exists <- liftIO $ doesFileExist outFile
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return outFile
+
+hls :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
+hls fid = withFileAccess go fid where
+    buildm3u :: Double -> Builder
+    buildm3u dur = start <> parts <> end where
+        (lastLen, partCount) = divMod' dur 10
+        start = fromByteString $ encodeUtf8
+            $   "#EXTM3U\n"
+            <>  "#EXT-X-PLAYLIST-TYPE:VOD\n"
+            <>  "#EXT-X-TARGETDURATION:10\n"
+            <>  "#EXT-X-VERSION:3\n"
+            <>  "#EXT-X-MEDIA-SEQUENCE:0\n"
+        end = fromByteString $ encodeUtf8 "#EXT-X-ENDLIST\n"
+        parts = mconcat $ map part [0..(partCount-1)] where
+            part pt = fromByteString $ encodeUtf8 $ "#EXTINF:10.0,\nstream?t="
+                <> T.pack (show $ pt * 10) <> "&l=10\n"
+
+    go _ _ = do
+        mdur <- AUTH.queryOne "SELECT container_duration FROM container WHERE file_id = ?" (Only fid)
+        case mdur of
+            Left _ -> fail "container not found"
+            Right (Only duration) -> do
+                return $ responseBuilder status200
+                            [("Content-Type", "application/x-mpegURL")] (buildm3u duration)
 
 frame :: (MonadMask m, MonadIO m) => (FileId ::: Double) -> Authenticated m Response
 frame (fid ::: ts) = withFileAccess go fid where

@@ -67,14 +67,14 @@ variants :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 variants fid = withFileAccess go fid where
     vs :: [(Int, Int, Int)]
     vs =
-        [ (540  , 3000  , 96)
+        [ (540  , 2000  , 96)
         , (270  , 400   , 64)
         , (360  , 600   , 64)
         , (360  , 1200  , 96)
-        , (720  , 4000  , 96)
-        , (720  , 5500  , 96)
-        , (1080 , 6500  , 128)
-        , (1080 , 8000  , 128)
+        , (720  , 3000  , 96)
+        , (720  , 4500  , 96)
+        , (1080 , 5500  , 128)
+        , (1080 , 7000  , 128)
         ]
     gov (rv, bv, ba) = fromByteString $ encodeUtf8
         $   "#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=" <> T.pack (show $ 600 * (bv + ba)) <> "\n"

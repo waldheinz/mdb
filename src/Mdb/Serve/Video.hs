@@ -131,7 +131,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
                 " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
-                " -f mpegts" ++
+                " -f mpegts -copyts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
 

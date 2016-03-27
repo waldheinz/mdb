@@ -33,7 +33,8 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
     goAuth = AUTH.request skey req
     root = prepare $ do
         get "/:id/frame"        (continue $ goAuth . frame)        $ capture "id" .&. def 0 (query "ts")
-        get "/:id/stream"       (continue $ goAuth . stream)       $ capture "id" .&. def 0 (query "t") .&. def 720 (query "rv")
+        get "/:id/stream"       (continue $ goAuth . stream)       $
+            capture "id" .&. def 0 (query "t") .&. opt (query "l") .&.  def 720 (query "rv")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
 
 roundTimeToMs :: Double -> Integer
@@ -61,12 +62,13 @@ frame (fid ::: ts) = withFileAccess go fid where
         outFile <- AUTH.unsafe $ ensureFrame p fid ts
         return $ responseFile status200 [("Content-Type", "image/jpeg")] outFile Nothing
 
-stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Int) -> Authenticated m Response
-stream (fid ::: ts ::: rv) = withFileAccess go fid where
+stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int) -> Authenticated m Response
+stream (fid ::: start ::: duration ::: rv) = withFileAccess go fid where
     go p _ = do
         let
-            cmd = "ffmpeg -ss " ++ show ts ++
+            cmd = "ffmpeg -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
+                (maybe "" (\l -> "-t " ++ show l) duration) ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast" ++
                 " -f matroska" ++

@@ -102,6 +102,7 @@ stream (fid ::: start ::: duration ::: rv) = withFileAccess go fid where
                 (maybe "" (\l -> " -t " ++ show l) duration) ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast" ++
+                " -c:a libfdk_aac -b:a 96k" ++
                 " -f mpegts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"

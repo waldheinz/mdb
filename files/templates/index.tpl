@@ -82,6 +82,7 @@
     </head>
     <body>
     </body>
+    <script src="static/js/hls.min.js"></script>
     <script type="text/javascript">
         Elm.fullscreen(Elm.Main, {
             initialPath: window.location.pathname

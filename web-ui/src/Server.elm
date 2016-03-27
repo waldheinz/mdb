@@ -7,7 +7,7 @@ module Server (
     fetchAlbums,
 
     -- * Files
-    fetchFiles, fileThumbUrl, imageUrl, videoStreamUrl, videoFrameUrl,
+    fetchFiles, fileThumbUrl, imageUrl, videoBaseUrl, videoStreamUrl, videoFrameUrl,
 
     -- * Users / Login
     checkUser, doLogin, doLogout,
@@ -170,6 +170,9 @@ fileThumbUrl fid = serverBaseUrl ++ "/api/thumb/medium/" ++ toString fid
 
 imageUrl : FileId -> String
 imageUrl fid = serverBaseUrl ++ "/api/image/image/" ++ toString fid
+
+videoBaseUrl : FileId -> String
+videoBaseUrl fid = serverBaseUrl ++ "/api/video/" ++ toString fid
 
 videoStreamUrl : FileId -> String
 videoStreamUrl fid = serverBaseUrl ++ "/api/video/" ++ toString fid ++ "/stream"

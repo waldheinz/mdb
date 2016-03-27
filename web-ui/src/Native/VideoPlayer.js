@@ -53,8 +53,19 @@ Elm.Native.VideoPlayer.make = function(elm) {
         return Task.succeed(noOp);
     }
 
+    function doAttachHls(model) {
+        return Task.asyncFunction(function(callback) {
+            var elem = document.getElementById(model.playerId);
+            var hls = new Hls();
+            hls.loadSource(model.videoBaseUrl + "/hls");
+            hls.attachMedia(elem);
+            return callback(Task.succeed(noOp));
+        });
+    }
+
     return elm.Native.VideoPlayer.values = {
         setPlay         : F2(doSetPlay),
-        goFullscreen    : doGoFullscreen
+        goFullscreen    : doGoFullscreen,
+        attachHls       : doAttachHls
     };
 };

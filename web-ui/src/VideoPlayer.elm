@@ -63,12 +63,12 @@ setVideo fid m =
                     | fileId        = fid
                     , playTime      = 0
                     , playStartTime = 0
-                    , videoBaseUrl  = Server.videoStreamUrl fid
+                    , videoBaseUrl  = Server.videoBaseUrl fid
                     , videoInfo     = Nothing
                     }
-        fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+        -- fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
     in
-        ( m', fx )
+        ( m', (Task.sleep 500 `Task.andThen` \_ -> attachHls m') |> Effects.task )
 
 type Action
     = NoOp
@@ -114,6 +114,9 @@ setPlay m play = Native.VideoPlayer.setPlay m play
 goFullscreen : Model -> Task Effects.Never Action
 goFullscreen m = Native.VideoPlayer.goFullscreen m
 
+attachHls : Model -> Task Effects.Never Action
+attachHls m = Native.VideoPlayer.attachHls m
+
 wantControls : Model -> Bool
 wantControls m = m.mouseMoved || m.overControls
 
@@ -126,15 +129,15 @@ view aa m =
         Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive", HA.style [ cursorStyle ] ]
             [ Html.div [ HA.id <| m.playerId ++ "-container" ]
                 [ Html.video
-                    [ HA.type' "video/webm"
-                    , HA.id m.playerId
+                    [ HA.id m.playerId
                     , HA.poster <| Server.videoFrameUrl m.fileId 200
-                    , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-                    , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-                    , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+                    , HA.controls True
+        --            , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
+        --            , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
+        --            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
                     ]
                     [ Html.text "Kein Video hier?" ]
-                , controls aa m
+                -- , controls aa m
                 ]
             ]
 

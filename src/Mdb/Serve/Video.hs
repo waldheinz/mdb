@@ -77,7 +77,7 @@ variants fid = withFileAccess go fid where
         , (1080 , 7000  , 128)
         ]
     gov (rv, bv, ba) = fromByteString $ encodeUtf8
-        $   "#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=" <> T.pack (show $ 600 * (bv + ba)) <> "\n"
+        $   "#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=" <> T.pack (show $ 1000 * (bv + ba)) <> "\n"
         <>  "hls?bv=" <> T.pack (show bv) <> "&ba=" <> T.pack (show ba) <> "&rv=" <> T.pack (show rv)
         <>  "\n"
     start = fromByteString $ encodeUtf8 "#EXTM3U\n"

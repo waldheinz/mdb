@@ -99,7 +99,7 @@ hls (fid ::: rv ::: bv ::: ba) = withFileAccess go fid where
             <>  "#EXT-X-MEDIA-SEQUENCE:0\n"
         end = fromByteString $ encodeUtf8 "#EXT-X-ENDLIST\n"
         parts = mconcat $ map part [0..(partCount-1)] where
-            part pt = fromByteString $ encodeUtf8 $ "#EXTINF:10.0,\nstream?t="
+            part pt = fromByteString $ encodeUtf8 $ "#EXT-X-DISCONTINUITY\n#EXTINF:10.0,\nstream?t="
                 <> T.pack (show $ pt * 10) <> "&end=" <> T.pack (show ((pt + 1) * 10))
                 <> "&rv=" <> T.pack (show rv) <> "&bv=" <> T.pack (show bv)
                 <> "&ba=" <> T.pack (show ba) <> "\n"
@@ -127,11 +127,11 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
         let
             cmd = "ffmpeg -y -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
-                (maybe "" (\l -> " -t " ++ show l) end) ++
+                (maybe "" (\l -> " -to " ++ show l) end) ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
                 " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
-                " -copyts -f mpegts" ++
+                " -f mpegts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
 

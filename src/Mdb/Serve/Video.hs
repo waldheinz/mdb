@@ -36,9 +36,12 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
     goAuth = AUTH.request skey req
     root = prepare $ do
         get "/:id/frame"        (continue $ goAuth . frame)        $ capture "id" .&. def 0 (query "ts")
-        get "/:id/stream"       (continue $ goAuth . stream)       $
-            capture "id" .&. def 0 (query "t") .&. opt (query "end") .&.  def 480 (query "rv")
-        get "/:id/hls"          (continue $ goAuth . hls) $ capture "id"
+        get "/:id/variants"     (continue $ goAuth . variants)     $ capture "id"
+        get "/:id/stream"       (continue $ goAuth . stream)
+            $ capture "id" .&. def 0 (query "t") .&. opt (query "end") .&.  def 480 (query "rv")
+            .&. def 1000 (query "bv") .&. def 64 (query "ba")
+        get "/:id/hls"          (continue $ goAuth . hls)
+            $ capture "id" .&. def 480 (query "rv") .&. def 1000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
 
 roundTimeToMs :: Double -> Integer
@@ -60,8 +63,27 @@ ensureFrame p fid ts = do
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return outFile
 
-hls :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
-hls fid = withFileAccess go fid where
+variants :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
+variants fid = withFileAccess go fid where
+    vs :: [(Int, Int, Int)]
+    vs =
+        [ (540  , 1500  , 96)
+        , (720  , 2500  , 96)
+        , (720  , 3500  , 96)
+        , (1080 , 4000  , 128)
+        , (1080 , 6000  , 128)
+        ]
+    gov (rv, bv, ba) = fromByteString $ encodeUtf8
+        $   "#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=" <> T.pack (show $ 1050 * (bv + ba)) <> "\n"
+        <>  "hls?bv=" <> T.pack (show bv) <> "&ba=" <> T.pack (show ba) <> "&rv=" <> T.pack (show rv)
+    start = fromByteString $ encodeUtf8 "#EXTM3U\n"
+    buildVariants = start <> mconcat (map gov vs)
+    go _ _ = do
+        return $ responseBuilder status200
+                    [("Content-Type", "application/x-mpegURL")] buildVariants
+
+hls :: (MonadMask m, MonadIO m) => (FileId ::: Int ::: Int ::: Int) -> Authenticated m Response
+hls (fid ::: rv ::: bv ::: ba) = withFileAccess go fid where
     buildm3u :: Double -> Builder
     buildm3u dur = start <> parts <> lastPart <> end where
         (partCount, lastLen) = (divMod' dur 10) :: (Int, Double)
@@ -74,7 +96,9 @@ hls fid = withFileAccess go fid where
         end = fromByteString $ encodeUtf8 "#EXT-X-ENDLIST\n"
         parts = mconcat $ map part [0..(partCount-1)] where
             part pt = fromByteString $ encodeUtf8 $ "#EXTINF:10.0,\nstream?t="
-                <> T.pack (show $ pt * 10) <> "&end=" <> T.pack (show ((pt + 1) * 10)) <> "\n"
+                <> T.pack (show $ pt * 10) <> "&end=" <> T.pack (show ((pt + 1) * 10))
+                <> "&rv=" <> T.pack (show rv) <> "&bv=" <> T.pack (show bv)
+                <> "&ba=" <> T.pack (show ba) <> "\n"
         lastPart = fromByteString $ encodeUtf8 $
             "#EXTINF:" <> T.pack (show lastLen) <> ",\nstream?t="
                 <> T.pack (show $ partCount * 10) <> "&l=" <> T.pack (show lastLen) <>"\n"
@@ -93,16 +117,16 @@ frame (fid ::: ts) = withFileAccess go fid where
         outFile <- AUTH.unsafe $ ensureFrame p fid ts
         return $ responseFile status200 [("Content-Type", "image/jpeg")] outFile Nothing
 
-stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int) -> Authenticated m Response
-stream (fid ::: start ::: end ::: rv) = withFileAccess go fid where
+stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int) -> Authenticated m Response
+stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid where
     go p _ = do
         let
             cmd = "ffmpeg -y -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
                 (maybe "" (\l -> " -t " ++ show l) end) ++
                 " -vf scale=-2:" ++ show rv ++
-                " -c:v libx264 -preset veryfast" ++
-                " -c:a libfdk_aac -b:a 96k" ++
+                " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
+                " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                 " -copyts -f mpegts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
@@ -111,7 +135,7 @@ stream (fid ::: start ::: end ::: rv) = withFileAccess go fid where
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
                 flush
 
-        liftIO $ putStrLn cmd
+        -- liftIO $ putStrLn cmd
         return $ responseStream status200 [ ("Content-Type", "video/mp2t") ] str
 
 streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response

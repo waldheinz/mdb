@@ -56,7 +56,9 @@ Elm.Native.VideoPlayer.make = function(elm) {
     function doAttachHls(model) {
         return Task.asyncFunction(function(callback) {
             var elem = document.getElementById(model.playerId);
-            var hls = new Hls();
+            var hls = new Hls({
+                debug : true
+            });
             hls.loadSource(model.videoBaseUrl + "/hls");
             hls.attachMedia(elem);
             return callback(Task.succeed(noOp));

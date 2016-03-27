@@ -96,10 +96,10 @@ stream (fid ::: start ::: duration ::: rv) = withFileAccess go fid where
         let
             cmd = "ffmpeg -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
-                (maybe "" (\l -> "-t " ++ show l) duration) ++
+                (maybe "" (\l -> " -t " ++ show l) duration) ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast" ++
-                " -f matroska" ++
+                " -f mpegts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
 

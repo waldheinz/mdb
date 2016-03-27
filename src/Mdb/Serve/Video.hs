@@ -63,8 +63,8 @@ ensureFrame p fid ts = do
 hls :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 hls fid = withFileAccess go fid where
     buildm3u :: Double -> Builder
-    buildm3u dur = start <> parts <> end where
-        (lastLen, partCount) = divMod' dur 10
+    buildm3u dur = start <> parts <> lastPart <> end where
+        (partCount, lastLen) = (divMod' dur 10) :: (Int, Double)
         start = fromByteString $ encodeUtf8
             $   "#EXTM3U\n"
             <>  "#EXT-X-PLAYLIST-TYPE:VOD\n"
@@ -75,6 +75,9 @@ hls fid = withFileAccess go fid where
         parts = mconcat $ map part [0..(partCount-1)] where
             part pt = fromByteString $ encodeUtf8 $ "#EXTINF:10.0,\nstream?t="
                 <> T.pack (show $ pt * 10) <> "&l=10\n"
+        lastPart = fromByteString $ encodeUtf8 $
+            "#EXTINF:" <> T.pack (show lastLen) <> ",\nstream?t="
+                <> T.pack (show $ partCount * 10) <> "&l=" <> T.pack (show lastLen) <>"\n"
 
     go _ _ = do
         mdur <- AUTH.queryOne "SELECT container_duration FROM container WHERE file_id = ?" (Only fid)

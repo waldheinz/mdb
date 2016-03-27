@@ -78,6 +78,7 @@ variants fid = withFileAccess go fid where
     gov (rv, bv, ba) = fromByteString $ encodeUtf8
         $   "#EXT-X-STREAM-INF:PROGRAM-ID=1,BANDWIDTH=" <> T.pack (show $ 1050 * (bv + ba)) <> "\n"
         <>  "hls?bv=" <> T.pack (show bv) <> "&ba=" <> T.pack (show ba) <> "&rv=" <> T.pack (show rv)
+        <>  "\n"
     start = fromByteString $ encodeUtf8 "#EXTM3U\n"
     buildVariants = start <> mconcat (map gov vs)
     go _ _ = do

@@ -59,7 +59,7 @@ Elm.Native.VideoPlayer.make = function(elm) {
             var hls = new Hls({
                 debug : true
             });
-            hls.loadSource(model.videoBaseUrl + "/hls");
+            hls.loadSource(model.videoBaseUrl + "/variants");
             hls.attachMedia(elem);
             return callback(Task.succeed(noOp));
         });

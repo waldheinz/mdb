@@ -63,6 +63,9 @@ ensureFrame p fid ts = do
     unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
     return outFile
 
+segmentDuration :: Int
+segmentDuration = 10
+
 variants :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 variants = withFileAccess go where
     vs :: [(Int, Int, Int)]
@@ -88,22 +91,24 @@ hls :: (MonadMask m, MonadIO m) => (FileId ::: Int ::: Int ::: Int) -> Authentic
 hls (fid ::: rv ::: bv ::: ba) = withFileAccess go fid where
     buildm3u :: Double -> Builder
     buildm3u dur = start <> parts <> lastPart <> end where
-        (partCount, lastLen) = divMod' dur 10 :: (Int, Double)
+        (partCount, lastLen) = divMod' dur (fromIntegral segmentDuration) :: (Int, Double)
         start = fromByteString $ encodeUtf8
             $   "#EXTM3U\n"
             <>  "#EXT-X-PLAYLIST-TYPE:VOD\n"
-            <>  "#EXT-X-TARGETDURATION:10\n"
+            <>  "#EXT-X-TARGETDURATION:" <> T.pack (show segmentDuration) <>"\n"
             <>  "#EXT-X-VERSION:3\n"
             <>  "#EXT-X-MEDIA-SEQUENCE:0\n"
         end = fromByteString $ encodeUtf8 "#EXT-X-ENDLIST\n"
         parts = mconcat $ map part [0..(partCount-1)] where  -- #EXT-X-DISCONTINUITY\n
-            part pt = fromByteString $ encodeUtf8 $ "#EXTINF:10.0,\nstream?t="
-                <> T.pack (show $ pt * 10) <> "&end=" <> T.pack (show ((pt + 1) * 10))
-                <> "&rv=" <> T.pack (show rv) <> "&bv=" <> T.pack (show bv)
-                <> "&ba=" <> T.pack (show ba) <> "\n"
+            part pt = fromByteString $ encodeUtf8 $ "#EXTINF:" <> T.pack (show segmentDuration) <>",\nstream?t="
+                <> T.pack (show $ pt * segmentDuration) <> "&end=" <> T.pack (show ((pt + 1) * segmentDuration))
+                <> "&rv=" <> T.pack (show rv)
+                <> "&bv=" <> T.pack (show bv)
+                <> "&ba=" <> T.pack (show ba)
+                <> "\n"
         lastPart = fromByteString $ encodeUtf8 $
             "#EXTINF:" <> T.pack (show lastLen) <> ",\nstream?t="
-                <> T.pack (show $ partCount * 10) <> "&l=" <> T.pack (show lastLen) <>"\n"
+                <> T.pack (show $ partCount * segmentDuration) <> "&l=" <> T.pack (show lastLen) <>"\n"
 
     go _ _ = do
         mdur <- AUTH.queryOne "SELECT container_duration FROM container WHERE file_id = ?" (Only fid)
@@ -128,8 +133,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 maybe "" (\l -> " -to " ++ show l) end ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
-                " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
-                " -vsync 0" ++
+    --            " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                 " -f mpegts -copyts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
@@ -138,7 +142,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
                 flush
 
-        liftIO $ putStrLn cmd
+        -- liftIO $ putStrLn cmd
         return $ responseStream status200 [ ("Content-Type", "video/mp2t") ] str
 
 streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response

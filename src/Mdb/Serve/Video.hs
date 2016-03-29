@@ -98,8 +98,8 @@ hls (fid ::: rv ::: bv ::: ba) = withFileAccess go fid where
             <>  "#EXT-X-VERSION:3\n"
             <>  "#EXT-X-MEDIA-SEQUENCE:0\n"
         end = fromByteString $ encodeUtf8 "#EXT-X-ENDLIST\n"
-        parts = mconcat $ map part [0..(partCount-1)] where
-            part pt = fromByteString $ encodeUtf8 $ "#EXT-X-DISCONTINUITY\n#EXTINF:10.0,\nstream?t="
+        parts = mconcat $ map part [0..(partCount-1)] where  -- #EXT-X-DISCONTINUITY\n
+            part pt = fromByteString $ encodeUtf8 $ "#EXTINF:10.0,\nstream?t="
                 <> T.pack (show $ pt * 10) <> "&end=" <> T.pack (show ((pt + 1) * 10))
                 <> "&rv=" <> T.pack (show rv) <> "&bv=" <> T.pack (show bv)
                 <> "&ba=" <> T.pack (show ba) <> "\n"
@@ -125,12 +125,13 @@ stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: In
 stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid where
     go p _ = do
         let
-            cmd = "ffmpeg -y -ss " ++ show start ++
+            cmd = "ffmpeg -y" ++
+                " -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
-                (maybe "" (\l -> " -to " ++ show l) end) ++
+                maybe "" (\l -> " -to " ++ show l) end ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
-                " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
+    --            " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                 " -f mpegts -copyts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"

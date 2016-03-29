@@ -64,7 +64,7 @@ ensureFrame p fid ts = do
     return outFile
 
 variants :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
-variants fid = withFileAccess go fid where
+variants = withFileAccess go where
     vs :: [(Int, Int, Int)]
     vs =
         [ (540  , 2000  , 96)
@@ -82,15 +82,13 @@ variants fid = withFileAccess go fid where
         <>  "\n"
     start = fromByteString $ encodeUtf8 "#EXTM3U\n"
     buildVariants = start <> mconcat (map gov vs)
-    go _ _ = do
-        return $ responseBuilder status200
-                    [("Content-Type", "application/x-mpegURL")] buildVariants
+    go _ _ = return $ responseBuilder status200 [("Content-Type", "application/x-mpegURL")] buildVariants
 
 hls :: (MonadMask m, MonadIO m) => (FileId ::: Int ::: Int ::: Int) -> Authenticated m Response
 hls (fid ::: rv ::: bv ::: ba) = withFileAccess go fid where
     buildm3u :: Double -> Builder
     buildm3u dur = start <> parts <> lastPart <> end where
-        (partCount, lastLen) = (divMod' dur 10) :: (Int, Double)
+        (partCount, lastLen) = divMod' dur 10 :: (Int, Double)
         start = fromByteString $ encodeUtf8
             $   "#EXTM3U\n"
             <>  "#EXT-X-PLAYLIST-TYPE:VOD\n"
@@ -111,9 +109,8 @@ hls (fid ::: rv ::: bv ::: ba) = withFileAccess go fid where
         mdur <- AUTH.queryOne "SELECT container_duration FROM container WHERE file_id = ?" (Only fid)
         case mdur of
             Left _ -> fail "container not found"
-            Right (Only duration) -> do
-                return $ responseBuilder status200
-                            [("Content-Type", "application/x-mpegURL")] (buildm3u duration)
+            Right (Only duration) ->
+                return $ responseBuilder status200 [("Content-Type", "application/x-mpegURL")] (buildm3u duration)
 
 frame :: (MonadMask m, MonadIO m) => (FileId ::: Double) -> Authenticated m Response
 frame (fid ::: ts) = withFileAccess go fid where
@@ -131,7 +128,8 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 maybe "" (\l -> " -to " ++ show l) end ++
                 " -vf scale=-2:" ++ show rv ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
-    --            " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
+                " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
+                " -vsync 0" ++
                 " -f mpegts -copyts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
@@ -140,7 +138,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
                 flush
 
-        -- liftIO $ putStrLn cmd
+        liftIO $ putStrLn cmd
         return $ responseStream status200 [ ("Content-Type", "video/mp2t") ] str
 
 streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response

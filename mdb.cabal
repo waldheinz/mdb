@@ -69,7 +69,9 @@ executable mdb
      wai-predicates,
      wai-routing,
      wai-session,
+     wai-websockets,
      warp,
+     websockets,
      xml
 
   hs-source-dirs:      src

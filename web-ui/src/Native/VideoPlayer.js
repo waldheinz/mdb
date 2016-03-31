@@ -72,21 +72,12 @@ Elm.Native.VideoPlayer.make = function(elm) {
     function doAttachHls(model) {
         return Task.asyncFunction(function(callback) {
             var elem = document.getElementById(model.playerId);
-
-            var ms = new MediaSource();
-
-
-            ms.addEventListener("sourceopen", function(evt) {
-                var ws = new WebSocket("ws://localhost:8080/videows");
-
-                ws.onopen = function() {
-                    console.log("open");
-                    ws.send(readCookie("mdb_session"));
-                    ws.send(model.fileId);
-                }
+            var hls = new Hls({
+                debug : true
             });
-
-            elem.src = URL.createObjectURL(ms);
+            
+            hls.loadSource(model.videoBaseUrl + "/variants");
+            hls.attachMedia(elem);
             return callback(Task.succeed(noOp));
         });
     }

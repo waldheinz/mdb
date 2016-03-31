@@ -127,7 +127,7 @@ stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: In
 stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid where
     go p _ = do
         let
-            cmd = "ffmpeg -y" ++
+            cmd2 = "ffmpeg -y" ++
                 " -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
                 maybe "" (\l -> " -to " ++ show l) end ++
@@ -137,6 +137,11 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 " -f mpegts -copyts" ++
                 " /tmp/out.mkv 2>&1"
     --            " - 2>/dev/null"
+
+            (Just xx) = end
+
+            cmd = "make-segment.sh \"" ++ p ++ "\" " ++ show start ++ " " ++ show xx ++ " " ++ show bv ++ " " ++ show rv
+                ++ " " ++ show (xx + 25)
 
             str write flush = do
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush

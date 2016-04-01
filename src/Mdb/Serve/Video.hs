@@ -38,8 +38,13 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
         get "/:id/frame"        (continue $ goAuth . frame)        $ capture "id" .&. def 0 (query "ts")
         get "/:id/variants"     (continue $ goAuth . variants)     $ capture "id"
         get "/:id/stream"       (continue $ goAuth . stream)
-            $ capture "id" .&. def 0 (query "t") .&. opt (query "end") .&. def 720 (query "rv")
-            .&. def 3000 (query "bv") .&. def 96 (query "ba")
+            $   capture "id"
+            .&. def 0 (query "t")
+            .&. opt (query "end")
+            .&. def 720 (query "rv")
+            .&. def 3000 (query "bv")
+            .&. def 96 (query "ba")
+            .&. def "webm" (query "format")
         get "/:id/hls"          (continue $ goAuth . hls)
             $ capture "id" .&. def 480 (query "rv") .&. def 1000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
@@ -123,27 +128,38 @@ frame (fid ::: ts) = withFileAccess go fid where
         outFile <- AUTH.unsafe $ ensureFrame p fid ts
         return $ responseFile status200 [("Content-Type", "image/jpeg")] outFile Nothing
 
-stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int) -> Authenticated m Response
-stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid where
+stream
+    :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int ::: String)
+    -> Authenticated m Response
+stream (fid ::: start ::: end ::: rv ::: bv ::: ba ::: fmt) = withFileAccess go fid where
     go p _ = do
         let
-            cmd = "ffmpeg -y" ++
+            input =
+                "ffmpeg -nostdin -loglevel quiet" ++
                 " -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
                 maybe "" (\l -> " -to " ++ show l) end ++
-                " -vf scale=-2:" ++ show rv ++ maybe "" (\l -> ",select='lt(t\\," ++ show l ++ ")'") end ++
-                " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
-                " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
-                " -f matroska -copyts" ++
-    --            " /tmp/out.mkv 2>&1"
-                " - 2>/dev/null"
+                " -vf scale=-2:" ++ show rv
+
+            transcode = case fmt of
+                "mkv"   ->
+                    " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
+                    " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
+                    " -f matroska"
+
+                _       -> -- webm
+                    " -c:v vp8 -quality realtime -cpu-used 5 -b:v " ++ show bv ++ "k" ++
+                    " -c:a libvorbis  -b:a " ++ show ba ++ "k" ++
+                    " -f webm"
+
+            cmd = input ++ transcode ++ " -"
 
             str write flush = do
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
                 flush
 
-        -- liftIO $ putStrLn cmd
-        return $ responseStream status200 [ ("Content-Type", "video/mp2t") ] str
+        liftIO $ putStrLn cmd
+        return $ responseStream status200 [ ("Content-Type", "video/webm") ] str
 
 streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 streamDirect = withFileAccess $ \f mime ->

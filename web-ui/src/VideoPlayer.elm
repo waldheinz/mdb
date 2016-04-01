@@ -66,9 +66,9 @@ setVideo fid m =
                     , videoBaseUrl  = Server.videoBaseUrl fid
                     , videoInfo     = Nothing
                     }
-        -- fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+        fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
     in
-        ( m', (Task.sleep 500 `Task.andThen` \_ -> attachHls m') |> Effects.task )
+        ( m', fx )
 
 type Action
     = NoOp
@@ -131,13 +131,13 @@ view aa m =
                 [ Html.video
                     [ HA.id m.playerId
                     , HA.poster <| Server.videoFrameUrl m.fileId 200
-                    , HA.controls True
-        --            , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-        --            , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-        --            , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+                    , HA.controls False
+                    , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
+                    , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
+                    , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
                     ]
                     [ Html.text "Kein Video hier?" ]
-                -- , controls aa m
+                , controls aa m
                 ]
             ]
 

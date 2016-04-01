@@ -38,8 +38,8 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
         get "/:id/frame"        (continue $ goAuth . frame)        $ capture "id" .&. def 0 (query "ts")
         get "/:id/variants"     (continue $ goAuth . variants)     $ capture "id"
         get "/:id/stream"       (continue $ goAuth . stream)
-            $ capture "id" .&. def 0 (query "t") .&. opt (query "end") .&.  def 480 (query "rv")
-            .&. def 1000 (query "bv") .&. def 64 (query "ba")
+            $ capture "id" .&. def 0 (query "t") .&. opt (query "end") .&. def 720 (query "rv")
+            .&. def 3000 (query "bv") .&. def 96 (query "ba")
         get "/:id/hls"          (continue $ goAuth . hls)
             $ capture "id" .&. def 480 (query "rv") .&. def 1000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
@@ -127,21 +127,16 @@ stream :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: In
 stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid where
     go p _ = do
         let
-            cmd2 = "ffmpeg -y" ++
+            cmd = "ffmpeg -y" ++
                 " -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
                 maybe "" (\l -> " -to " ++ show l) end ++
                 " -vf scale=-2:" ++ show rv ++ maybe "" (\l -> ",select='lt(t\\," ++ show l ++ ")'") end ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
     --            " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
-                " -f mpegts -copyts" ++
-                " /tmp/out.mkv 2>&1"
-    --            " - 2>/dev/null"
-
-            (Just xx) = end
-
-            cmd = "make-segment.sh \"" ++ p ++ "\" " ++ show start ++ " " ++ show xx ++ " " ++ show bv ++ " " ++ show rv
-                ++ " " ++ show (xx + 25)
+                " -f matroska -copyts" ++
+    --            " /tmp/out.mkv 2>&1"
+                " - 2>/dev/null"
 
             str write flush = do
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush

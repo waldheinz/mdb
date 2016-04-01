@@ -133,7 +133,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 maybe "" (\l -> " -to " ++ show l) end ++
                 " -vf scale=-2:" ++ show rv ++ maybe "" (\l -> ",select='lt(t\\," ++ show l ++ ")'") end ++
                 " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
-    --            " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
+                " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                 " -f matroska -copyts" ++
     --            " /tmp/out.mkv 2>&1"
                 " - 2>/dev/null"
@@ -142,7 +142,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba) = withFileAccess go fid wher
                 void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
                 flush
 
-        liftIO $ putStrLn cmd
+        -- liftIO $ putStrLn cmd
         return $ responseStream status200 [ ("Content-Type", "video/mp2t") ] str
 
 streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response

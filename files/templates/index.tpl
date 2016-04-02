@@ -78,6 +78,24 @@
                 font-size: 20px;
                 outline: none;
             }
+
+            .big-image-container {
+                width: 100vw;
+                height: 100vh;
+                position: absolute;
+                top: 0;
+                left: 0;
+                background-color: rgba(0,0,0,1);
+            }
+
+            .big-image {
+                position: relative;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                max-width: 100%;
+                max-height: 100%;
+            }
         </style>
     </head>
     <body>

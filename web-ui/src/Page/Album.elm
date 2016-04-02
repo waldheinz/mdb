@@ -66,7 +66,9 @@ view aa m =
                 , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
                 ]
 
-        bigFile fid = Html.img [ HA.src <| Server.imageUrl fid, HA.style [ ("max-width", "100%" )] ] []
+        bigFile fid =
+            Html.div [ HA.class "big-image-container" ]
+                [ Html.img [ HA.src <| Server.imageUrl fid, HA.class "big-image" ] [] ]
     in
         case m.bigItem of
             Nothing     -> fileList

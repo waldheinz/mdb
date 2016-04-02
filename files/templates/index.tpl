@@ -45,7 +45,7 @@
                 display: block;
             }
 
-            .video-responsive {
+            .video-container {
                 background-color: black;
             }
 

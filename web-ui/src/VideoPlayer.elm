@@ -126,8 +126,12 @@ view aa m =
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
         cursorStyle = ( "cursor", if wantControls m then "auto" else "none" )
     in
-        Html.div [ HA.class "embed-responsive embed-responsive-16by9 video-responsive", HA.style [ cursorStyle ] ]
-            [ Html.div [ HA.id <| m.playerId ++ "-container" ]
+        Html.div [ HA.class "embed-responsive embed-responsive-16by9" ]
+            [ Html.div
+                [ HA.id <| m.playerId ++ "-container"
+                , HA.class "embed-responsive-item video-container"
+                , HA.style [ cursorStyle ]
+                ]
                 [ Html.video
                     [ HA.id m.playerId
                     , HA.poster <| Server.videoFrameUrl m.fileId 200

@@ -42,11 +42,11 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
             .&. def 0 (query "t")
             .&. opt (query "end")
             .&. def 720 (query "rv")
-            .&. def 3000 (query "bv")
+            .&. def 4000 (query "bv")
             .&. def 96 (query "ba")
             .&. def "webm" (query "format")
         get "/:id/hls"          (continue $ goAuth . hls)
-            $ capture "id" .&. def 480 (query "rv") .&. def 1000 (query "bv") .&. def 64 (query "ba")
+            $ capture "id" .&. def 480 (query "rv") .&. def 2000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
 
 roundTimeToMs :: Double -> Integer
@@ -148,7 +148,7 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba ::: fmt) = withFileAccess go 
                     " -f matroska"
 
                 _       -> -- webm
-                    " -c:v vp8 -quality realtime -cpu-used 5 -b:v " ++ show bv ++ "k" ++
+                    " -c:v vp8 -quality realtime -cpu-used 10 -threads 4 -slices 4 -b:v " ++ show bv ++ "k" ++
                     " -c:a libvorbis  -b:a " ++ show ba ++ "k" ++
                     " -f webm"
 

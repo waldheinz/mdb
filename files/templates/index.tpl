@@ -86,6 +86,10 @@
                 top: 0;
                 left: 0;
                 background-color: rgba(0,0,0,1);
+                background-size: contain;
+                background-position: center;
+                background-repeat: no-repeat;
+                z-index: 1000;
             }
 
             .big-image {
@@ -93,8 +97,9 @@
                 top: 50%;
                 left: 50%;
                 transform: translate(-50%, -50%);
-                max-width: 100%;
-                max-height: 100%;
+                width: 100vw;
+                height: 100vh;
+                object-fit: contain;
             }
         </style>
     </head>

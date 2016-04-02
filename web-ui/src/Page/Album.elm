@@ -59,21 +59,24 @@ view : Address Action -> Model -> Html
 view aa m =
     let
         fileList =
-            Html.div [ HA.class "container" ]
-                [ Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Album " ++ toString m.albumId ]
-                , File.viewList (Signal.forwardTo aa FileListAction) m.files
-                , Html.h2 [] [ Html.text "Persons in this Album" ]
-                , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
+            Html.div [ HA.class "container" ] <| List.filterMap identity
+                [ Maybe.map bigFile m.bigItem
+                , Just <| Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Album " ++ toString m.albumId ]
+                , Just <| File.viewList (Signal.forwardTo aa FileListAction) m.files
+                , Just <| Html.h2 [] [ Html.text "Persons in this Album" ]
+                , Just <| Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
                 ]
 
         bigFile fid =
-            Html.div [ HA.class "big-image-container" ]
-                [ Html.img [ HA.src <| Server.imageUrl fid, HA.class "big-image" ] [] ]
-    in
-        case m.bigItem of
-            Nothing     -> fileList
-            Just fid    -> bigFile fid
+            Html.div [ HA.class "big-image-container", HA.style [ ("background-image", "url(" ++ Server.fileThumbUrl fid ++ ")")] ]
+                [ Html.img
+                    [ HA.src <| Server.imageUrl fid
+                    , HA.class "big-image"
 
+                    ] []
+                ]
+    in
+        fileList
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of

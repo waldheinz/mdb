@@ -4,7 +4,8 @@ module File (
     AspectRatio(..), thumb,
 
     -- * File Listings
-    ListModel, mkListModel, ListAction, viewList, updateListModel, setListFilter
+    ListModel, mkListModel, withImageRouter,
+    ListAction, viewList, updateListModel, setListFilter
     ) where
 
 import Effects exposing ( Effects )
@@ -15,7 +16,7 @@ import Signal exposing ( Address )
 import String
 import Task
 
-import Route exposing ( clickRoute )
+import Route exposing ( Route, clickRoute )
 import Server
 import Types exposing (..)
 
@@ -52,13 +53,18 @@ thumb aspect fid =
 type alias ListModel =
     { files         : List (FileId, File)
     , fileFilter    : WhichFiles
+    , imageRouter   : Maybe (FileId -> Route)
     }
 
 mkListModel : WhichFiles -> ListModel
 mkListModel which =
     { files         = []
     , fileFilter    = which
+    , imageRouter   = Nothing
     }
+
+withImageRouter : (FileId -> Route) -> ListModel -> ListModel
+withImageRouter r m = { m | imageRouter = Just r }
 
 type ListAction
     = FilesLoaded (Result Http.Error (ApiList (FileId, File)))
@@ -78,7 +84,9 @@ viewList aa m =
         oneFile (fid, f) =
             let
                 clickWhat = if String.startsWith "image/" f.mimeType
-                    then [ HA.href <| Server.imageUrl fid ]
+                    then case m.imageRouter of
+                        Nothing -> []
+                        Just r  -> clickRoute (r fid)
                     else clickRoute (Route.Video fid)
 
             in

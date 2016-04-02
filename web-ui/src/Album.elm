@@ -47,7 +47,7 @@ viewList aa m =
     let
         oneAlbum a =
             Html.div [ HA.class "col-xs-2" ]
-                [ Html.a (HA.class "thumbnail" :: clickRoute (Route.Album a.albumId))
+                [ Html.a (HA.class "thumbnail" :: clickRoute (Route.Album a.albumId Nothing))
                     [ Maybe.withDefault 0 a.poster |> File.thumb File.Square
                     , Html.span [ HA.class "item-name" ] [ Html.text a.name ]
                     ]

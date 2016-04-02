@@ -19,7 +19,7 @@ import Types exposing ( .. )
 type Route
     = Home
     | AlbumList
-    | Album AlbumId
+    | Album AlbumId (Maybe FileId)
     | Person PersonId
     | Series                            -- ^ series listing
     | SeriesSeasons SerialId            -- ^ individual serial
@@ -28,14 +28,15 @@ type Route
 
 routeParsers : List (Matcher Route)
 routeParsers =
-    [ static    Home            "/"
-    , static    AlbumList       "/albums"
-    , dyn1      Album           "/album/"   int ""
-    , dyn1      Person          "/person/"  int ""
-    , static    Series          "/series"
-    , dyn1      SeriesSeasons   "/series/"  int ""
-    , dyn2      SeriesEpisodes  "/series/"  int "/season/"  int ""
-    , dyn1      Video           "/video/"   int ""
+    [ static    Home                                "/"
+    , static    AlbumList                           "/albums"
+    , dyn1      (\aid -> Album aid Nothing)         "/album/"   int ""
+    , dyn2      (\aid fid -> Album aid (Just fid))  "/album/"   int "/file/" int ""
+    , dyn1      Person                              "/person/"  int ""
+    , static    Series                              "/series"
+    , dyn1      SeriesSeasons                       "/series/"  int ""
+    , dyn2      SeriesEpisodes                      "/series/"  int "/season/"  int ""
+    , dyn1      Video                               "/video/"   int ""
     ]
 
 decode : String -> Route
@@ -43,14 +44,15 @@ decode path = RouteParser.match routeParsers path |> Maybe.withDefault Home
 
 encode : Route -> String
 encode route = case route of
-    Home                -> "/"
-    AlbumList           -> "/albums"
-    Album aid           -> "/album/" ++ toString aid
-    Person pid          -> "/person/" ++ toString pid
-    Series              -> "/series"
-    SeriesSeasons sid   -> "/series/" ++ toString sid
-    SeriesEpisodes r a  -> "/series/" ++ toString r ++ "/season/" ++ toString a
-    Video fid           -> "/video/" ++ toString fid
+    Home                    -> "/"
+    AlbumList               -> "/albums"
+    Album aid Nothing       -> "/album/" ++ toString aid
+    Album aid (Just fid)    -> "/album/" ++ toString aid ++ "/file/" ++ toString fid
+    Person pid              -> "/person/" ++ toString pid
+    Series                  -> "/series"
+    SeriesSeasons sid       -> "/series/" ++ toString sid
+    SeriesEpisodes r a      -> "/series/" ++ toString r ++ "/season/" ++ toString a
+    Video fid               -> "/video/" ++ toString fid
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Helpers

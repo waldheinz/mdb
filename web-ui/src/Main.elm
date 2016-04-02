@@ -103,9 +103,9 @@ mountRoute prevRoute route m = case route of
         in
             ( { m | personPageModel = pp' }, ppfx |> Effects.map PagePersonAction )
 
-    Route.Album aid   ->
+    Route.Album aid mfid    ->
         let
-            (ap', apfx) = Page.Album.onMount aid m.albumPageModel
+            (ap', apfx) = Page.Album.onMount aid mfid m.albumPageModel
         in
             ( { m | albumPageModel = ap' }, Effects.map PageAlbumAction apfx)
 
@@ -214,7 +214,7 @@ view aa m =
         routedContent = case TransitRouter.getRoute m of
             Home            -> Page.Home.view (Signal.forwardTo aa PageHomeAction) m.homePageModel
             Person _        -> Page.Person.view (Signal.forwardTo aa PagePersonAction) m.personPageModel
-            Album _         -> Page.Album.view (Signal.forwardTo aa PageAlbumAction) m.albumPageModel
+            Album _ _       -> Page.Album.view (Signal.forwardTo aa PageAlbumAction) m.albumPageModel
             AlbumList       -> Page.AlbumList.view (Signal.forwardTo aa PageAlbumListAction) m.albumListPageModel
             Series          -> Page.Series.view (Signal.forwardTo aa PageSeriesAction) m
             SeriesSeasons _ -> Page.SeriesSeasons.view (Signal.forwardTo aa PageSeasonsAction) m

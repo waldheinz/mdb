@@ -9,8 +9,10 @@ import Html exposing ( Html )
 import Html.Attributes as HA
 import Signal exposing ( Address )
 
-import File
+import File exposing ( withImageRouter )
 import Person
+import Route
+import Server
 import Types exposing (..)
 
 type alias Model =
@@ -18,6 +20,7 @@ type alias Model =
     , album     : Maybe Album
     , files     : File.ListModel
     , persons   : Person.ListModel
+    , bigItem   : Maybe FileId      -- ^ currently shown image/video from this album, otherwise list
     }
 
 initialModel : Model
@@ -26,6 +29,7 @@ initialModel =
     , album     = Nothing
     , files     = File.mkListModel AllFiles
     , persons   = Person.initialListModel
+    , bigItem   = Nothing
     }
 
 type Action
@@ -36,24 +40,38 @@ type Action
 noOp : Effects () -> Effects Action
 noOp = Effects.map (\() -> NoOp)
 
-onMount : AlbumId -> Model-> (Model, Effects Action)
-onMount aid m =
+onMount : AlbumId -> Maybe FileId -> Model-> (Model, Effects Action)
+onMount aid mfid m =
     let
         (fl', ffx)  = File.setListFilter (AlbumFiles aid) m.files
         (pl', plfx) = Person.setListFilter (AlbumPersons aid) m.persons
     in
-        ( { m | albumId = aid, files = fl', persons = pl' }
-        , Effects.batch [ Effects.map FileListAction ffx, Effects.map PersonListAction plfx ]
+        (   { m
+            | albumId   = aid
+            , files     = withImageRouter (\fid -> Route.Album aid (Just fid)) fl'
+            , persons   = pl'
+            , bigItem   = mfid
+            }
+        ,   Effects.batch [ Effects.map FileListAction ffx, Effects.map PersonListAction plfx ]
         )
 
 view : Address Action -> Model -> Html
 view aa m =
-    Html.div [ HA.class "container" ]
-        [ Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Album " ++ toString m.albumId ]
-        , File.viewList (Signal.forwardTo aa FileListAction) m.files
-        , Html.h2 [] [ Html.text "Persons in this Album" ]
-        , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
-        ]
+    let
+        fileList =
+            Html.div [ HA.class "container" ]
+                [ Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Album " ++ toString m.albumId ]
+                , File.viewList (Signal.forwardTo aa FileListAction) m.files
+                , Html.h2 [] [ Html.text "Persons in this Album" ]
+                , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
+                ]
+
+        bigFile fid = Html.img [ HA.src <| Server.imageUrl fid, HA.style [ ("max-width", "100%" )] ] []
+    in
+        case m.bigItem of
+            Nothing     -> fileList
+            Just fid    -> bigFile fid
+
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of

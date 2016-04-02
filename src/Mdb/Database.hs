@@ -138,6 +138,7 @@ openDb dir = do
         create = do
             c <- SQL.open ("file:" ++ dir </> "index.db?cache=shared")
             SQL.execute_ c "PRAGMA foreign_keys = ON"
+            SQL.execute_ c "PRAGMA journal_mode = WAL"
             putStrLn "opened a connection"
             return c
 

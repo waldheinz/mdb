@@ -85,7 +85,7 @@ type Action
 
 currentTime : Model -> Float
 currentTime m = case m.playState of
-    Paused  -> m.playStartTime
+    Paused  -> m.playStartTime + m.playTime
     Playing -> m.playStartTime + m.playTime
     Seeking -> m.playStartTime
 
@@ -93,7 +93,7 @@ update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     NoOp                -> ( m, Effects.none )
     Play                -> ( { m | doSeek = False }, setPlay m True |> Effects.task )
-    Pause               -> ( { m | playStartTime = currentTime m }, setPlay m False |> Effects.task )
+    Pause               -> ( m , setPlay m False |> Effects.task )
     PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
     PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )

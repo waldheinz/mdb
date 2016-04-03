@@ -49,6 +49,7 @@ executable mdb
      monad-control,
      mtl,
      optparse-applicative,
+     process,
      pureMD5,
      regex-posix,
      resource-pool,

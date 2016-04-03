@@ -3,14 +3,13 @@
 {-# LANGUAGE TypeOperators     #-}
 
 module Mdb.Serve.Video (
-    videoApp, ensureFrame
+    videoApp
     ) where
 
 import           Blaze.ByteString.Builder   (Builder, fromByteString)
-import           Control.Monad              (unless, void)
+import           Control.Monad              (void)
 import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
-import           Control.Monad.Reader.Class (asks)
 import           Control.Monad.Trans.Class  (lift)
 import           Data.Conduit
 import           Data.Conduit.Process
@@ -22,10 +21,9 @@ import           Network.HTTP.Types         (status200)
 import           Network.Wai
 import           Network.Wai.Predicate
 import           Network.Wai.Routing
-import           System.Directory           (createDirectoryIfMissing,
-                                             doesFileExist)
 
 import           Mdb.Database
+import           Mdb.Image                  (ensureFrame )
 import           Mdb.Serve.Auth             (Authenticated)
 import qualified Mdb.Serve.Auth             as AUTH
 import           Mdb.Serve.Utils            (withFileAccess)
@@ -48,25 +46,6 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
         get "/:id/hls"          (continue $ goAuth . hls)
             $ capture "id" .&. def 480 (query "rv") .&. def 2000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
-
-roundTimeToMs :: Double -> Integer
-roundTimeToMs ts = round ts `div` 30 * 30000
-
-ensureFrame :: (MonadMask m, MonadIO m) => FilePath -> FileId -> Double -> MDB m FilePath
-ensureFrame p fid ts = do
-    dbDir <- asks mdbDbDir
-
-    let
-        thumbDir    = dbDir ++ "/videoFrames/"
-        tsMs = roundTimeToMs ts
-        tsS  = fromIntegral tsMs / 1000 :: Double
-        outFile = thumbDir ++ "/frame-" ++ show fid ++ "ts" ++ show tsMs ++ ".jpg"
-        cmd = "ffmpeg -y -ss " ++ show tsS ++ " -i \"" ++ p ++ "\" -t 1 -f image2 -update 1 \"" ++ outFile ++ "\""
-        createFrame = callCommand cmd
-
-    exists <- liftIO $ doesFileExist outFile
-    unless exists $ liftIO $ createDirectoryIfMissing True thumbDir >> createFrame
-    return outFile
 
 segmentDuration :: Int
 segmentDuration = 10

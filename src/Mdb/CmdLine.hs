@@ -2,7 +2,7 @@
 module Mdb.CmdLine (
     MdbOptions(..),
     Mode(..), OptAlbum(..), OptPerson(..), OptUser(..), OptTvShow(..),
-    OptFile(..), AssignTarget(..), parseCommandLine
+    OptFile(..), ScanFlags(..), AssignTarget(..), parseCommandLine
     ) where
 
 import           Options.Applicative
@@ -60,41 +60,39 @@ data AssignTarget
     | AssignTag String
     deriving ( Show )
 
+data ScanFlags = ScanFlags
+    { scanSha1      :: Bool
+    , scanThumbs    :: Bool
+    } deriving ( Show )
+
 data OptFile
-    = FileAdd
+    = FileAdd ScanFlags
     | FileAssign [AssignTarget]
-    | FileScan { scanSha1 :: Bool }
+    | FileScan ScanFlags
     deriving ( Show )
 
 fileOptions :: Parser Mode
-fileOptions = ModeFile
-    <$> subparser
+fileOptions = ModeFile <$> cmd <*> rec <*> files where
+    cmd = subparser
         (   command "add"       (info
-            (helper <*> pure FileAdd)
-            (progDesc "add files") )
+            (helper <*> (FileAdd <$> fileScanFlags ) )
+            (progDesc "add and scan new files") )
         <>  command "assign"    (info
-            (helper <*> fileAssign)
+            (helper <*> fileAssign )
             (progDesc "assign files to persons, albums, ...")
             )
         <>  command "scan" ( info
-            (helper <*> fileScan)
+            (helper <*> (FileScan <$> fileScanFlags) )
             (progDesc "scan files for hashes, resolution, ...")
             )
         )
-    <*> switch
-        (   long "recursive"
-        <>  short 'r'
-        <>  help "apply to files in subdirectories"
-        )
-    <*> (some . strArgument)
-        ( metavar "FILES..." )
+    rec = switch ( long "recursive" <>  short 'r' <>  help "apply to files in subdirectories" )
+    files = (some . strArgument) ( metavar "FILES..." )
 
-fileScan :: Parser OptFile
-fileScan = FileScan
-        <$> switch
-            (   long "sha1"
-            <>  help "calculate SHA1 for files"
-            )
+fileScanFlags :: Parser ScanFlags
+fileScanFlags = ScanFlags
+        <$> switch ( long "sha1" <> help "calculate SHA1 for files" )
+        <*> switch (long "thumbs" <> help "generate thumbnails" )
 
 fileAssign :: Parser OptFile
 fileAssign = FileAssign <$> some (p <|> np <|> a <|> na <|> tag) where

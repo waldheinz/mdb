@@ -7,10 +7,10 @@ module Mdb.File (
 
 import qualified Codec.FFmpeg.Probe          as FFM
 import           Control.Exception.Base      (IOException)
-import           Control.Monad               (foldM, forM_, liftM, unless, when)
+import           Control.Monad               (foldM, forM_, liftM, unless, void, when)
 import           Control.Monad.Catch         (MonadMask, catchIOError)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
-import Control.Monad.Reader.Class (ask)
+import           Control.Monad.Reader.Class  (ask)
 import           Control.Monad.Trans.Class   (lift)
 import qualified Data.ByteString.Base16.Lazy as HEX
 import qualified Data.ByteString.Lazy        as BSL
@@ -28,6 +28,7 @@ import           Text.Regex.Posix
 import qualified Mdb.CmdLine                 as CMD
 import           Mdb.Database
 import           Mdb.Database.File           (fileMime)
+import           Mdb.Image                   (ensureThumb)
 import           Mdb.Types
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
@@ -52,28 +53,30 @@ doFile (CMD.FileAssign tgts) rec fs = do
     (pids, aids, tids) <- foldM prepare ([], [], []) tgts
     mapM_ (withFiles (go pids aids tids) rec) fs
 
-doFile CMD.FileAdd rec fs = mapM_ (withFiles go rec) fs where
+doFile (CMD.FileAdd scanFlags) rec fs = mapM_ (withFiles go rec) fs where
     go fn = hasFile fn >>= \known -> unless known $ checkFile fn >>= \efid ->
         case efid of
             Left e      -> liftIO $ putStrLn $ fn ++ ": " ++ T.unpack e
             Right fid   -> do
                 liftIO $ putStrLn $ fn ++ ": " ++ show fid
-                scanFile False fn
+                scanFile scanFlags fn
 
-doFile (CMD.FileScan sha) rec fs = mapM_ (withFiles (scanFile sha) rec) fs
+doFile (CMD.FileScan scanFlags) rec fs = mapM_ (withFiles (scanFile scanFlags) rec) fs
 
-scanFile :: (MonadMask m, MonadIO m) => Bool -> FilePath -> MDB m ()
-scanFile sha fn = do
+scanFile :: (MonadMask m, MonadIO m) => CMD.ScanFlags -> FilePath -> MDB m ()
+scanFile flags fn = do
     mfid <- fileIdFromName fn
     case mfid of
         Nothing    -> liftIO $ putStrLn $ "unregistered file: " ++ fn
         Just fid   -> do
-            when sha $ do
+            when (CMD.scanSha1 flags) $ do
                 hash <- liftIO $ liftM (bytestringDigest . sha1) (BSL.readFile fn)
                 dbExecute "UPDATE file SET file_sha1=? WHERE file_id=?" (hash, fid)
                 liftIO $ putStrLn $ fn ++ ":" ++ show (HEX.encode hash)
 
             f <- fileById fid
+
+            when (CMD.scanThumbs flags) $ void $ ensureThumb fid fn (fileMime f)
 
             when ("video" `T.isPrefixOf` fileMime f) $ do
                 assignSeriesEpisode fn fid

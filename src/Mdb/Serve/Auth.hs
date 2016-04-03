@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 module Mdb.Serve.Auth (
-    Authenticated, query, queryOne, userExec, userExec_, unsafe, Mdb.Serve.Auth.userId,
+    Authenticated, query, queryOne, queryOneField, userExec, userExec_, unsafe, Mdb.Serve.Auth.userId,
     SessionKey, request, checkLogin, doLogout
 ) where
 
@@ -15,6 +15,7 @@ import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import qualified Data.Vault.Lazy as V
 import qualified Database.SQLite.Simple as SQL
+import qualified Database.SQLite.Simple.FromField as SQL
 import qualified Network.Wai as WAI
 import qualified Network.Wai.Session as S
 import           Rest ( Reason(NotAllowed, NotFound) )
@@ -113,6 +114,14 @@ queryOne q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $ case xs of
                         []      -> Left NotFound
                         (a : _) -> Right a
+
+queryOneField :: (SQL.ToRow q, SQL.FromField b, MonadMask m, MonadIO m) => SQL.Query -> q -> Authenticated m (Either (Reason a) b)
+queryOneField q p = Authenticated $ asks snd >>= \mauth -> case mauth of
+    NoAuth      -> return $ Left NotAllowed
+    UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $ case xs of
+                        []      -> Left NotFound
+                        (Only a : _) -> Right a
+
 
 userExec :: (MonadMask m, MonadIO m, SQL.ToRow r)
     => SQL.Query -> (UserId -> r) -> Authenticated m (Either (Reason a) ())

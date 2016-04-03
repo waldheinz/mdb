@@ -57,6 +57,7 @@ serialResource = mkResourceReader
     , R.schema      = withListing AllSerials $ unnamedSingle read
     , R.list        = serialList
     , R.get         = Just getSerial
+    , R.selects     = [ ( "description", serialDescription ) ]
     }
 
 serialOrder :: Maybe String -> Query
@@ -80,6 +81,11 @@ getSerial = mkIdHandler jsonO handler where
     handler :: (MonadMask m, MonadIO m) => () -> SerialId -> ExceptT Reason_ (WithSerial m) Serial
     handler () sid = ExceptT $ lift $ AUTH.queryOne
         "SELECT series_id, series_name, series_poster FROM series WHERE series_id = ?" (Only sid)
+
+serialDescription :: (MonadMask m, MonadIO m) => Handler (WithSerial m)
+serialDescription = mkIdHandler stringO handler where
+    handler () sid = ExceptT $ lift $
+        AUTH.queryOneField "SELECT series_description FROM series WHERE series_ID = ?" (Only sid)
 
 ------------------------------------------------------------------------------------------------------------------------
 -- seasons

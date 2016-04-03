@@ -2,7 +2,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 
 module Mdb.Image (
-    ensureThumb, ensureFrame
+    thumbFileName, ensureThumb, ensureFrame
     ) where
 
 import           Control.Monad                   (unless)
@@ -51,19 +51,16 @@ ensureThumb fid filePath fileMime = do
 
     ensureImageThumb srcFile
 
+thumbFileName :: Monad m => FilePath -> MDB m FilePath
+thumbFileName src = do
+    dbDir <- asks mdbDbDir
+    return $ (dbDir ++ "/thumbs/normal/") ++ show (md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack src) ++ ".jpg"
+
 ensureImageThumb :: MonadIO m => FilePath -> MDB m FilePath
 ensureImageThumb src = do
-    dbDir <- asks mdbDbDir
-
-    let
-        thumbDir    = dbDir ++ "/thumbs/normal/"
-        thumbFile   = thumbDir ++ show (md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack src) ++ ".jpg"
-
+    thumbFile <- thumbFileName src
     exists <- liftIO $ doesFileExist thumbFile
-    unless exists $ do
-
-        liftIO $ createDirectoryIfMissing True thumbDir
-        liftIO $ IM.localGenesis $ do
+    unless exists $ liftIO $ IM.localGenesis $ do
             (_,wand) <- IM.magickWand
             IM.readImage wand $ fromString src
             w <- IM.getImageWidth wand

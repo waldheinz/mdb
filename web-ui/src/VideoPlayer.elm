@@ -68,6 +68,7 @@ setVideo fid m =
                     , playStartTime     = 0
                     , videoBaseUrl      = Server.videoBaseUrl fid
                     , videoInfo         = Nothing
+                    , doSeek            = True
                     , lastRecPlayPos    = 0
                     }
         fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task

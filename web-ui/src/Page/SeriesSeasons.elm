@@ -35,6 +35,11 @@ type Action
     = NoOp
     | GotList (Result Http.Error (ApiList Season))
 
+seasonName : SeasonId -> String
+seasonName sid = case sid of
+    0   -> "Specials"
+    n   -> "Season " ++ toString n
+
 view : Address Action -> WithSeasons a -> Html
 view aa wm =
     let
@@ -44,7 +49,7 @@ view aa wm =
                 [ Html.a ( HA.class "thumbnail" :: (clickRoute <| Route.SeriesEpisodes s.seasonSerial s.seasonId))
                     [ File.thumb File.Poster (Maybe.withDefault 0 s.seasonPoster)
                     , Html.span [ HA.class "item-name" ]
-                        [ Html.text <| toString s.seasonId ]
+                        [ Html.text <| seasonName s.seasonId ]
                     ]
                 ]
     in

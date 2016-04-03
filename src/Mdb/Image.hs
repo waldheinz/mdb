@@ -51,10 +51,11 @@ ensureThumb fid filePath fileMime = do
 
     ensureImageThumb srcFile
 
-thumbFileName :: Monad m => FilePath -> MDB m FilePath
+thumbFileName :: MonadIO m => FilePath -> MDB m FilePath
 thumbFileName src = do
     dbDir <- asks mdbDbDir
-    return $ (dbDir ++ "/thumbs/normal/") ++ show (md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack src) ++ ".jpg"
+    relSrc <- relFile src
+    return $ (dbDir ++ "/thumbs/normal/") ++ show (md5 $ BSL.fromStrict $ encodeUtf8 $ T.pack relSrc) ++ ".jpg"
 
 ensureImageThumb :: MonadIO m => FilePath -> MDB m FilePath
 ensureImageThumb src = do

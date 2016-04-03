@@ -16,7 +16,7 @@ module Server (
     fetchContainerForFile,
 
     -- * Serials
-    fetchSerials, fetchSeasons, fetchEpisodes
+    fetchSerials, fetchSerialInfo, fetchSeasons, fetchEpisodes
     ) where
 
 import Http
@@ -117,6 +117,9 @@ fetchSerials flt =
             AllSerials  -> "/serial"
     in
         getJson ep (listDecoder serialListDecoder) |> Task.toResult
+
+fetchSerialInfo : SerialId -> Task never (Result Http.Error Serial)
+fetchSerialInfo sid = getJson ("/serial/" ++ toString sid) (serialDecoder) |> Task.toResult
 
 fetchSeasons : SerialId -> Task never (Result Http.Error (ApiList Season))
 fetchSeasons serid =

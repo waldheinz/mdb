@@ -2,7 +2,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving, OverloadedStrings #-}
 
 module Mdb.Serve.Auth (
-    Authenticated, query, queryOne, unsafe, Mdb.Serve.Auth.userId,
+    Authenticated, query, queryOne, userExec, userExec_, unsafe, Mdb.Serve.Auth.userId,
     SessionKey, request, checkLogin, doLogout
 ) where
 
@@ -20,7 +20,7 @@ import qualified Network.Wai.Session as S
 import           Rest ( Reason(NotAllowed, NotFound) )
 
 import Mdb.Database
-import Mdb.Database.User
+import Mdb.Database.User ( UserId )
 
 data Auth
     = NoAuth
@@ -105,14 +105,30 @@ request skey req (Authenticated f) =
 query :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]
 query q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth          -> fail "not authorized"
-    UserAuth _      -> lift $! dbQuery q p
+    UserAuth _      -> lift $ dbQuery q p
 
 queryOne :: (SQL.FromRow b, SQL.ToRow q, MonadMask m, MonadIO m) => SQL.Query -> q -> Authenticated m (Either (Reason a) b)
 queryOne q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth      -> return $ Left NotAllowed
-    UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $! case xs of
+    UserAuth _  -> lift (dbQuery q p) >>= \ xs -> return $ case xs of
                         []      -> Left NotFound
                         (a : _) -> Right a
+
+userExec :: (MonadMask m, MonadIO m, SQL.ToRow r)
+    => SQL.Query -> (UserId -> r) -> Authenticated m (Either (Reason a) ())
+userExec q ur = userId >>= \muid -> case muid of
+    Nothing     -> return $ Left NotAllowed
+    Just uid    -> do
+        unsafe $ dbExecute q (ur uid)
+        return (Right ())
+
+
+userExec_ :: (MonadMask m, MonadIO m) => (UserId -> SQL.Query) -> Authenticated m (Either (Reason a) ())
+userExec_ uq = userId >>= \muid -> case muid of
+    Nothing     -> return $ Left NotAllowed
+    Just uid    -> do
+        unsafe $ dbExecute_ (uq uid)
+        return (Right ())
 
 unsafe :: Monad m => MDB m a -> Authenticated m a
 unsafe f = Authenticated $ asks snd >>= \mauth -> case mauth of

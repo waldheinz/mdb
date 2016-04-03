@@ -115,6 +115,7 @@ dbTables =
     , "user"
     , "user_session"
     , "user_tag_whitelist"
+    , "user_video_play"
     ]
 
 initDb :: FilePath -> IO ()

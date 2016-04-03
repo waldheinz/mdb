@@ -2,7 +2,8 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings #-}
 
 module Mdb.Serve.Resource.User (
-    LoginRequest(..), LoginResponse(..), userResource
+    LoginRequest(..), LoginResponse(..), userResource,
+    VideoPlayRecord(..)
     ) where
 
 import           Control.Monad.Catch (MonadMask)
@@ -12,6 +13,7 @@ import           Control.Monad.Reader ( ReaderT )
 import           Control.Monad.Trans.Class ( lift )
 import           Control.Monad.Trans.Except
 import qualified Data.ByteString.UTF8 as BSU
+import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import           Rest
 import qualified Rest.Resource as R
@@ -23,6 +25,7 @@ import           GHC.Generics
 
 import           Mdb.Database (Only(..))
 import           Mdb.Serve.Auth as AUTH
+import           Mdb.Types
 
 data UserSelect
     = Myself
@@ -37,6 +40,7 @@ userResource = mkResourceReader
     , R.actions =
         [ ( "login"     , loginHandler )
         , ( "logout"    , logoutHandler )
+        , ( "videoPlay" , videoPlayHandler )
         ]
     }
 
@@ -89,3 +93,27 @@ logoutHandler :: (MonadMask m, MonadIO m) => Handler (WithUser m)
 logoutHandler = mkIdHandler id handler where
     handler :: (MonadMask m, MonadIO m) => () -> UserSelect -> ExceptT Reason_ (WithUser m) ()
     handler () Myself = lift . lift $ AUTH.doLogout
+
+------------------------------------------------------------------------------------------------------------------------
+-- video play pos
+------------------------------------------------------------------------------------------------------------------------
+
+data VideoPlayRecord = VideoPlayRecord
+    { fileId    :: FileId
+    , playPos   :: Double
+    } deriving ( Generic, Show )
+
+instance FromJSON VideoPlayRecord where
+    parseJSON = gparseJson
+
+instance JSONSchema VideoPlayRecord where
+    schema = gSchema
+
+videoPlayHandler :: (MonadMask m, MonadIO m) => Handler (WithUser m)
+videoPlayHandler = mkIdHandler jsonI handler where
+    handler :: (MonadMask m, MonadIO m) => VideoPlayRecord -> UserSelect -> ExceptT Reason_ (WithUser m) ()
+    handler vpr Myself = ExceptT . lift $ AUTH.userExec
+        (   "INSERT OR REPLACE INTO user_video_play (user_id, file_id, last_play_pos, last_play_time) VALUES "
+        <> "(?, ?, ?, CURRENT_TIMESTAMP)"
+        )
+        $ \uid -> (uid, fileId vpr, playPos vpr)

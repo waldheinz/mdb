@@ -4,7 +4,7 @@ module Server (
     fetchPerson, fetchPersons, putPerson,
 
     -- * Albums
-    fetchAlbums,
+    fetchAlbums, fetchAlbumInfo,
 
     -- * Files
     fetchFiles, fileThumbUrl, imageUrl, videoBaseUrl, videoStreamUrl, videoFrameUrl,
@@ -88,6 +88,9 @@ fetchAlbums which order direction (offset, cnt) =
             PersonAlbums pid    -> "/person/byId/" ++ toString pid ++ "/albums" ++ range
     in
         getJson endpoint (listDecoder albumDecoder)
+
+fetchAlbumInfo : AlbumId -> Task Http.Error Album
+fetchAlbumInfo aid = getJson ("/album/byId/" ++ toString aid) albumDecoder
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Files

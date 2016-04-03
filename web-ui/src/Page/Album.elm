@@ -77,8 +77,12 @@ view aa m =
                 [ Maybe.map bigFile m.bigItem
                 , Just <| Html.h1 [ HA.class "page-lead" ] [ Html.text albumName ]
                 , Just <| File.viewList (Signal.forwardTo aa FileListAction) m.files
-                , Just <| Html.h2 [] [ Html.text "Persons in this Album" ]
-                , Just <| Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
+                , if Person.listEmpty m.persons
+                    then Nothing
+                    else Just <| Html.div []
+                        [ Html.h2 [] [ Html.text "Persons in this Album" ]
+                        , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
+                        ]
                 ]
 
         bigFile fid =

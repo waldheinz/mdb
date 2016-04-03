@@ -1,7 +1,7 @@
 
 module Person (
     -- * List
-    ListModel, initialListModel, viewList,
+    ListModel, initialListModel, listEmpty, viewList,
     ListAction, setListFilter, updateListModel,
 
     -- * Editing
@@ -35,6 +35,9 @@ initialListModel =
     { persons       = []
     , personFilter  = AllPersons
     }
+
+listEmpty : ListModel -> Bool
+listEmpty m = List.isEmpty m.persons
 
 type ListAction
     = PersonSelected PersonId

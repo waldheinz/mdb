@@ -10,7 +10,7 @@ module Server (
     fetchFiles, fileThumbUrl, imageUrl, videoBaseUrl, videoStreamUrl, videoFrameUrl,
 
     -- * Users / Login
-    checkUser, doLogin, doLogout,
+    checkUser, doLogin, doLogout, recordVideoPlay,
 
     -- * Containers
     fetchContainerForFile,
@@ -157,6 +157,18 @@ doLogout =
             , headers   = [ ("Content-Type", "application/json" ) ]
             , url       = apiBaseUrl ++ "/user/self/logout"
             , body      = Http.empty
+            }
+    in
+        Http.send Http.defaultSettings req |> Http.fromJson (JD.succeed ())
+
+recordVideoPlay : JE.Value -> Task Http.Error ()
+recordVideoPlay v =
+    let
+        req =
+            { verb      = "POST"
+            , headers   = [ ("Content-Type", "application/json" ) ]
+            , url       = apiBaseUrl ++ "/user/self/videoPlay"
+            , body      = JE.encode 0 v |> Http.string
             }
     in
         Http.send Http.defaultSettings req |> Http.fromJson (JD.succeed ())

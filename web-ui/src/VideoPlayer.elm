@@ -5,6 +5,7 @@ module VideoPlayer (
     ) where
 
 import Json.Decode as JD
+import Json.Encode as JE
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
@@ -24,30 +25,32 @@ import Native.VideoPlayer
 type PlayState = Playing | Paused | Seeking
 
 type alias Model =
-    { videoBaseUrl  : String
-    , fileId        : FileId
-    , playTime      : Float
-    , playStartTime : Float
-    , playState     : PlayState
-    , playerId      : String
-    , videoInfo     : Maybe Container
-    , mouseMoved    : Bool
-    , overControls  : Bool              -- ^ does the mouse cursor hover over the control panel?
-    , doSeek        : Bool              -- ^ if there is a seek operation pending (so we have to set src again)
+    { videoBaseUrl      : String
+    , fileId            : FileId
+    , playTime          : Float
+    , playStartTime     : Float
+    , playState         : PlayState
+    , playerId          : String
+    , videoInfo         : Maybe Container
+    , mouseMoved        : Bool
+    , overControls      : Bool              -- ^ does the mouse cursor hover over the control panel?
+    , doSeek            : Bool              -- ^ if there is a seek operation pending (so we have to set src again)
+    , lastRecPlayPos    : Float
     }
 
 initialModel : String -> Model
 initialModel playerId =
-    { videoBaseUrl  = ""
-    , fileId        = 0
-    , playTime      = 0
-    , playStartTime = 0
-    , playState     = Paused
-    , playerId      = playerId
-    , videoInfo     = Nothing
-    , mouseMoved    = True
-    , overControls  = False
-    , doSeek        = True
+    { videoBaseUrl      = ""
+    , fileId            = 0
+    , playTime          = 0
+    , playStartTime     = 0
+    , playState         = Paused
+    , playerId          = playerId
+    , videoInfo         = Nothing
+    , mouseMoved        = True
+    , overControls      = False
+    , doSeek            = True
+    , lastRecPlayPos    = 0
     }
 
 input : Signal Action
@@ -60,11 +63,12 @@ setVideo fid m =
                 then m
                 else
                     { m
-                    | fileId        = fid
-                    , playTime      = 0
-                    , playStartTime = 0
-                    , videoBaseUrl  = Server.videoBaseUrl fid
-                    , videoInfo     = Nothing
+                    | fileId            = fid
+                    , playTime          = 0
+                    , playStartTime     = 0
+                    , videoBaseUrl      = Server.videoBaseUrl fid
+                    , videoInfo         = Nothing
+                    , lastRecPlayPos    = 0
                     }
         fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
     in
@@ -82,6 +86,7 @@ type Action
     | MouseMoved Bool
     | OverControls Bool
     | GoFullscreen
+    | PlayPosRecorded (Result Http.Error ())
 
 currentTime : Model -> Float
 currentTime m = case m.playState of
@@ -89,13 +94,24 @@ currentTime m = case m.playState of
     Playing -> m.playStartTime + m.playTime
     Seeking -> m.playStartTime
 
+recordPlayPos : Model -> (Model, Effects Action)
+recordPlayPos m =
+    let
+        t   = currentTime m
+        pp  = JE.object [ ("fileId", encodeFileId m.fileId), ("playPos", JE.float t ) ]
+        m'  = { m | lastRecPlayPos = t }
+    in
+        if t > (m.lastRecPlayPos + 10)
+            then (m', Server.recordVideoPlay pp |> Task.toResult |> Task.map PlayPosRecorded |> Effects.task)
+            else (m, Effects.none)
+
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
     NoOp                -> ( m, Effects.none )
     Play                -> ( { m | doSeek = False }, setPlay m True |> Effects.task )
     Pause               -> ( m , setPlay m False |> Effects.task )
     PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
-    PlayTimeChanged t   -> ( { m | playTime = t }, Effects.none )
+    PlayTimeChanged t   -> { m | playTime = t } |> recordPlayPos
     FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
     FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
     MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
@@ -104,9 +120,11 @@ update a m = case a of
     SeekDone            -> ( { m | doSeek = False }, Effects.none )
     SeekTo t            ->
         let
-            m' = { m | playStartTime = t, playState = Seeking, doSeek = True }
+            m' = { m | playStartTime = t, playState = Seeking, doSeek = True, lastRecPlayPos = t }
         in
             (m' , setPlay m' True |> Effects.task )
+    PlayPosRecorded (Err ex)    -> Debug.log "recording play pos failed" ex |> \_ -> ( m , Effects.none)
+    PlayPosRecorded (Ok ())     -> ( m , Effects.none)
 
 setPlay : Model -> Bool -> Task Effects.Never Action
 setPlay m play = Native.VideoPlayer.setPlay m play

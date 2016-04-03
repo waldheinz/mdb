@@ -11,7 +11,7 @@ module Types (
     AlbumId, Album, albumDecoder, WhichAlbums(..),
 
     -- * Files
-    FileId, File, fileDecoder, fileListDecoder,
+    FileId, File, fileDecoder, encodeFileId, fileListDecoder,
     WhichFiles(..),
 
     -- * Containers
@@ -97,6 +97,9 @@ type alias FileId = Int
 
 fileIdDecoder : JD.Decoder FileId
 fileIdDecoder = JD.int
+
+encodeFileId : FileId -> JE.Value
+encodeFileId = JE.int
 
 type alias File =
     { path      : String

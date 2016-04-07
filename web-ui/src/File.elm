@@ -11,11 +11,10 @@ module File (
 import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Http
 import Signal exposing ( Address )
 import String
-import Task
 
+import Listing
 import Route exposing ( Route, clickRoute )
 import Server
 import Types exposing (..)
@@ -51,14 +50,14 @@ thumb aspect fid =
 ------------------------------------------------------------------------------------------------------------------------
 
 type alias ListModel =
-    { files         : List (FileId, File)
+    { files         : Listing.Model File
     , fileFilter    : WhichFiles
     , imageRouter   : Maybe (FileId -> Route)
     }
 
 mkListModel : WhichFiles -> ListModel
 mkListModel which =
-    { files         = []
+    { files         = Listing.mkModel (Server.fetchFiles AllFiles)
     , fileFilter    = which
     , imageRouter   = Nothing
     }
@@ -67,22 +66,24 @@ withImageRouter : (FileId -> Route) -> ListModel -> ListModel
 withImageRouter r m = { m | imageRouter = Just r }
 
 type ListAction
-    = FilesLoaded (Result Http.Error (ApiList (FileId, File)))
+    = FileList (Listing.Action File)
 
 setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
-setListFilter which m =
-    let
-        fs' = if which == m.fileFilter then m.files else []
-    in
-        ( { m | fileFilter = which, files = fs' }
-        , Server.fetchFiles which |> Task.toResult |> Task.map FilesLoaded |> Effects.task
-        )
+setListFilter flt m =
+    if (flt == m.fileFilter)
+        then (m, Listing.refresh m.files |> Effects.map FileList)
+        else
+            let
+                (fs', ffx)  = Listing.withFetchTask (Server.fetchFiles flt) m.files
+            in
+                ( { m | fileFilter = flt, files = fs' }, Effects.map FileList ffx )
 
 viewList : Address ListAction -> ListModel -> Html
 viewList aa m =
     let
-        oneFile (fid, f) =
+        oneFile f =
             let
+                fid = f.fileId
                 clickWhat = if String.startsWith "image/" f.mimeType
                     then case m.imageRouter of
                         Nothing -> []
@@ -95,9 +96,8 @@ viewList aa m =
                         [ thumb Square fid ]
                     ]
     in
-        List.map oneFile m.files |> Html.div [ HA.class "row" ]
+        List.map oneFile m.files.items |> Html.div [ HA.class "row" ]
 
-updateListModel : ListAction -> ListModel -> ListModel
+updateListModel : ListAction -> ListModel -> (ListModel, Effects ListAction)
 updateListModel a m = case a of
-    FilesLoaded (Err x) -> Debug.log "failed loading files" x |> \_ -> m
-    FilesLoaded (Ok l)  -> { m | files = l.items }
+    FileList a  -> Listing.update a m.files |> \(fs', fx) -> ( { m | files = fs' } , Effects.map FileList fx )

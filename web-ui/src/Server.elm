@@ -96,15 +96,19 @@ fetchAlbumInfo aid = getJson ("/album/byId/" ++ toString aid) albumDecoder
 -- Files
 ------------------------------------------------------------------------------------------------------------------------
 
-fetchFiles : WhichFiles -> Task Http.Error (ApiList (FileId, File))
-fetchFiles which =
+fetchFiles : WhichFiles -> (Int, Int) -> Task Http.Error (ApiList File)
+fetchFiles which (offset, cnt) =
     let
+        range =
+            "?offset=" ++ toString offset ++
+            "&count=" ++ toString cnt
+
         endpoint = case which of
-            AllFiles        -> "/file"
-            AlbumFiles aid  -> "/file/inAlbum/" ++ toString aid
-            PersonNoAlbum pid   -> "/file/personNoAlbum/" ++ toString pid
+            AllFiles        -> "/file" ++ range
+            AlbumFiles aid  -> "/file/inAlbum/" ++ toString aid ++ range
+            PersonNoAlbum pid   -> "/file/personNoAlbum/" ++ toString pid ++ range
     in
-        getJson endpoint (listDecoder fileListDecoder)
+        getJson endpoint (listDecoder fileDecoder)
 
 fetchContainerForFile : FileId -> Task Http.Error Container
 fetchContainerForFile fid = getJson ("/file/byId/" ++ toString fid ++ "/container") containerDecoder

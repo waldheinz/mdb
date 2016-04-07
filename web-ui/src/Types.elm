@@ -11,7 +11,7 @@ module Types (
     AlbumId, Album, albumDecoder, WhichAlbums(..),
 
     -- * Files
-    FileId, File, fileDecoder, encodeFileId, fileListDecoder,
+    FileId, File, fileDecoder, encodeFileId,
     WhichFiles(..),
 
     -- * Containers
@@ -102,19 +102,18 @@ encodeFileId : FileId -> JE.Value
 encodeFileId = JE.int
 
 type alias File =
-    { path      : String
+    { fileId    : FileId
+    , path      : String
     , size      : Int
     , mimeType  : String
     }
 
 fileDecoder : JD.Decoder File
-fileDecoder = JD.object3 File
+fileDecoder = JD.object4 File
+    ( "fileId"      := fileIdDecoder )
     ( "filePath"    := JD.string )
     ( "fileSize"    := JD.int )
     ( "fileMime"    := JD.string )
-
-fileListDecoder : JD.Decoder (FileId, File)
-fileListDecoder = JD.object2 (,) ( "fileId" := fileIdDecoder ) fileDecoder
 
 type WhichFiles
     = AllFiles

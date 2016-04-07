@@ -92,7 +92,8 @@ update a m = case a of
 
     PersonLoaded (Err err)              -> Debug.log "loading person failed" err |> \_ -> (m, Effects.none)
     PersonLoaded (Ok p)                 -> ( { m | person = Just p}, Effects.none )
-    FileListAction fla                  -> ( { m | randomFiles = File.updateListModel fla m.randomFiles }, Effects.none)
+    FileListAction fla                  -> File.updateListModel fla m.randomFiles
+        |> \ (rfs', rffx) -> ( { m | randomFiles = rfs' }, Effects.map FileListAction rffx)
     AlbumListAction aa                  ->
         let
             (as', afx) = Album.updateList aa m.albums

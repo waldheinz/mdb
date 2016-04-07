@@ -98,8 +98,9 @@ view aa m =
 
 update : Action -> Model -> (Model, Effects Action)
 update a m = case a of
-    NoOp                                -> (m, Effects.none)
-    FileListAction la                   -> ({ m | files = File.updateListModel la m.files }, Effects.none)
+    NoOp                    -> (m, Effects.none)
+    FileListAction la       -> File.updateListModel la m.files
+        |> \(fs', ffx) -> ({ m | files = fs' }, Effects.map FileListAction ffx)
     PersonListAction pla    -> ({ m | persons = Person.updateListModel pla m.persons }, Effects.none)
     GotAlbumInfo (Err er)   -> Debug.log "fetching album info failed" er |> \_ -> ( m, Effects.none )
     GotAlbumInfo (Ok a)     -> ( { m | album = Just a }, Effects.none )

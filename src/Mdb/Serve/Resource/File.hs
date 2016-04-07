@@ -54,8 +54,9 @@ fileListHandler which = mkOrderedListing jsonO handler where
                 (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM auth_file f "
                 <>  "NATURAL JOIN album_file "
                 <>  "WHERE album_file.album_id = ? "
-                <>  "ORDER BY f.file_name ASC" )
-                (Only aid)
+                <>  "ORDER BY f.file_name ASC "
+                <>  "LIMIT ? OFFSET ?"
+                ) (aid, count r, offset r)
         PersonNoAlbum pid   -> lift $ getRandomPersonFiles pid
 
 listFiles

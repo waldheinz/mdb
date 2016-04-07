@@ -7,7 +7,9 @@ module Mdb.Serve.Thumbs (
 
 import           Control.Monad.Catch             (MonadMask)
 import           Control.Monad.IO.Class          (MonadIO, liftIO)
-import           Network.HTTP.Types              (status200)
+import           Control.Monad.Trans.Except
+import           Data.Text.Encoding              (encodeUtf8Builder)
+import           Network.HTTP.Types              (status200, status400)
 import           Network.Wai
 import           Network.Wai.Routing
 
@@ -26,8 +28,12 @@ thumbApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
 fileThumb :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 fileThumb fid = withFileAccess go fid where
     go filePath fileMime = AUTH.unsafe $ do
-        thumbFile <- ensureThumb fid filePath fileMime
-        return $ responseFile status200
-            [ ("Cache-Control", "max-age=3600")
-            , ("Content-Type", "image/jpeg")
-            ] thumbFile Nothing
+        etf <- runExceptT $ ensureThumb fid filePath fileMime
+        case etf of
+            Left msg -> return $ responseBuilder status400
+                [ ( "Content-Type", "text/plain; charset=utf8")
+                ] (encodeUtf8Builder msg)
+            Right thumbFile -> return $ responseFile status200
+                [ ("Cache-Control", "max-age=3600")
+                , ("Content-Type", "image/jpeg")
+                ] thumbFile Nothing

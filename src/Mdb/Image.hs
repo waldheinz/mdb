@@ -9,6 +9,8 @@ import           Control.Monad                   (unless)
 import           Control.Monad.Catch             (MonadMask)
 import           Control.Monad.IO.Class          (MonadIO, liftIO)
 import           Control.Monad.Reader.Class      (asks)
+import           Control.Monad.Trans.Class       (lift)
+import           Control.Monad.Trans.Except
 import qualified Data.ByteString.Lazy            as BSL
 import           Data.Digest.Pure.MD5            (md5)
 import           Data.String                     (fromString)
@@ -42,14 +44,14 @@ ensureFrame p fid ts = do
     return outFile
 
 
-ensureThumb :: (MonadMask m, MonadIO m) => FileId -> FilePath -> T.Text -> MDB m FilePath
+ensureThumb :: (MonadMask m, MonadIO m) => FileId -> FilePath -> T.Text -> ExceptT T.Text (MDB m) FilePath
 ensureThumb fid filePath fileMime = do
     srcFile <- case T.takeWhile ( /= '/') fileMime of
         "image" -> return filePath
-        "video" -> ensureFrame filePath fid 180
-        _       -> fail "fileThumb unknown type"
+        "video" -> lift $ ensureFrame filePath fid 180
+        _       -> throwE "unknown mime type for thumb generation"
 
-    ensureImageThumb srcFile
+    lift $ ensureImageThumb srcFile
 
 thumbFileName :: MonadIO m => FilePath -> MDB m FilePath
 thumbFileName src = do

@@ -7,11 +7,12 @@ module Mdb.File (
 
 import qualified Codec.FFmpeg.Probe          as FFM
 import           Control.Exception.Base      (IOException)
-import           Control.Monad               (foldM, forM_, liftM, unless, void, when)
+import           Control.Monad               (foldM, forM_, liftM, unless, when)
 import           Control.Monad.Catch         (MonadMask, catchIOError)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
 import           Control.Monad.Reader.Class  (ask)
 import           Control.Monad.Trans.Class   (lift)
+import           Control.Monad.Trans.Except
 import qualified Data.ByteString.Base16.Lazy as HEX
 import qualified Data.ByteString.Lazy        as BSL
 import           Data.Digest.Pure.SHA        (bytestringDigest, sha1)
@@ -81,7 +82,11 @@ scanFile flags fn = do
                 te  <- liftIO $ doesFileExist tfn
                 unless te $ do
                     liftIO $ putStrLn $ "creatig thumb for " ++ fn
-                    void $ ensureThumb fid fn (fileMime f)
+                    et <- runExceptT $ ensureThumb fid fn (fileMime f)
+
+                    case et of
+                        Left msg    -> liftIO $ putStrLn $ T.unpack $ "error: " <> msg
+                        Right tn    -> liftIO $ putStrLn $ "generated as " ++ tn
 
             when ("video" `T.isPrefixOf` fileMime f) $ do
                 assignSeriesEpisode fn fid

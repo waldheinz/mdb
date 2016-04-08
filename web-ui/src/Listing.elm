@@ -1,7 +1,7 @@
 
 module Listing (
     Model, FetchTask, mkModel, pagination,
-    Action, withFetchTask, refresh, update
+    Action, withFetchTask, withItemCount, refresh, update
     ) where
 
 import Effects exposing ( Effects )
@@ -20,7 +20,7 @@ type alias Model a =
     { items         : List a
     , perPage       : Int
     , currentPage   : Int
-    , totalPages    : Maybe Int
+    , totalItems    : Maybe Int
     , fetch         : FetchTask a
     }
 
@@ -29,7 +29,7 @@ mkModel f =
     { items = []
     , perPage       = 30
     , currentPage   = 0
-    , totalPages    = Nothing
+    , totalItems    = Nothing
     , fetch         = f
     }
 
@@ -37,17 +37,22 @@ type Action a
     = ItemsLoaded (Result Http.Error (ApiList a))
     | GoPage Int
 
+totalPages : Model i -> Int
+totalPages m =
+    Maybe.map (\items -> (items - 1) // m.perPage + 1) m.totalItems |>
+    Maybe.withDefault (m.currentPage + 4)
+
 pagination : Address (Action a) -> Model a -> Html
 pagination aa m =
     let
-        maxPage = Maybe.withDefault (m.currentPage + 4) m.totalPages
+        maxPage = totalPages m
         go p =
             Html.li [ HA.classList [ ( "active", m.currentPage == p ) ] ]
                 [ Html.a [ HA.href "#", onClick' aa (GoPage p) ] [ Html.text <| toString (p + 1) ] ]
     in
         Html.nav []
             [ Html.ul [ HA.class "pagination" ] <|
-                List.map go [0..maxPage]
+                List.map go [0..(maxPage - 1)]
             ]
 
 refresh : Model a -> Effects (Action a)
@@ -56,9 +61,12 @@ refresh m = m.fetch (m.currentPage * m.perPage, m.perPage) |> Task.toResult |> T
 withFetchTask : FetchTask a -> Model a -> (Model a, Effects (Action a))
 withFetchTask ft m =
     let
-        m' = { m | fetch = ft, items = [], currentPage = 0, totalPages = Nothing }
+        m' = { m | fetch = ft, items = [], currentPage = 0, totalItems = Nothing }
     in
         (m', refresh m')
+
+withItemCount : Int -> Model a -> Model a
+withItemCount cnt m = { m | totalItems = Just cnt }
 
 updateForResponse : Model a -> ApiList a -> Model a
 updateForResponse m al = { m | items = al.items }

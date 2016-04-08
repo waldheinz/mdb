@@ -4,8 +4,9 @@ module File (
     AspectRatio(..), thumb,
 
     -- * File Listings
-    ListModel, mkListModel, withImageRouter,
-    ListAction, viewList, updateListModel, setListFilter
+    ListModel, mkListModel, withImageRouter, setListItemCount,
+    ListAction, viewList, listPagination,
+    updateListModel, setListFilter
     ) where
 
 import Effects exposing ( Effects )
@@ -65,6 +66,9 @@ mkListModel which =
 withImageRouter : (FileId -> Route) -> ListModel -> ListModel
 withImageRouter r m = { m | imageRouter = Just r }
 
+setListItemCount : Int -> ListModel -> ListModel
+setListItemCount cnt m = { m | files = Listing.withItemCount cnt m.files }
+
 type ListAction
     = FileList (Listing.Action File)
 
@@ -97,6 +101,9 @@ viewList aa m =
                     ]
     in
         List.map oneFile m.files.items |> Html.div [ HA.class "row" ]
+
+listPagination : Address ListAction -> ListModel -> Html
+listPagination aa m = Listing.pagination (Signal.forwardTo aa FileList) m.files
 
 updateListModel : ListAction -> ListModel -> (ListModel, Effects ListAction)
 updateListModel a m = case a of

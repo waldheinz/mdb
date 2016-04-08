@@ -76,6 +76,8 @@ view aa m =
             Html.div [ HA.class "container" ] <| List.filterMap identity
                 [ Maybe.map bigFile m.bigItem
                 , Just <| Html.h1 [ HA.class "page-lead" ] [ Html.text albumName ]
+                , Just <| Html.div [ HA.class "text-center" ]
+                    [ File.listPagination (Signal.forwardTo aa FileListAction) m.files ]
                 , Just <| File.viewList (Signal.forwardTo aa FileListAction) m.files
                 , if Person.listEmpty m.persons
                     then Nothing
@@ -103,4 +105,4 @@ update a m = case a of
         |> \(fs', ffx) -> ({ m | files = fs' }, Effects.map FileListAction ffx)
     PersonListAction pla    -> ({ m | persons = Person.updateListModel pla m.persons }, Effects.none)
     GotAlbumInfo (Err er)   -> Debug.log "fetching album info failed" er |> \_ -> ( m, Effects.none )
-    GotAlbumInfo (Ok a)     -> ( { m | album = Just a }, Effects.none )
+    GotAlbumInfo (Ok a)     -> ( { m | album = Just a, files = File.setListItemCount a.fileCount m.files }, Effects.none )

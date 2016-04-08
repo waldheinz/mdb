@@ -81,13 +81,15 @@ type alias Album =
     { albumId   : AlbumId
     , name      : String
     , poster    : Maybe FileId
+    , fileCount : Int
     }
 
 albumDecoder : JD.Decoder Album
-albumDecoder = JD.object3 Album
+albumDecoder = JD.object4 Album
     ( "albumId"     := JD.int )
     ( "albumName"   := JD.string )
     ( "albumPoster" := fileIdDecoder |> JD.maybe )
+    ( "fileCount"   := JD.int )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Files

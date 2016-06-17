@@ -10,6 +10,7 @@ import           Blaze.ByteString.Builder   (Builder, fromByteString)
 import           Control.Monad              (void)
 import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
+import           Control.Monad.Reader.Class ( asks )
 import           Control.Monad.Trans.Class  (lift)
 import           Data.Conduit
 import           Data.Conduit.Process
@@ -21,6 +22,7 @@ import           Network.HTTP.Types         (status200)
 import           Network.Wai
 import           Network.Wai.Predicate
 import           Network.Wai.Routing
+import           System.FilePath ( (</>) )
 
 import           Mdb.Database
 import           Mdb.Image                  (ensureFrame )
@@ -33,7 +35,7 @@ videoApp :: MediaDb -> AUTH.SessionKey IO -> Application
 videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) where
     goAuth = AUTH.request skey req
     root = prepare $ do
-        get "/:id/dash"         (continue $ goAuth . streamDash)    $ capture "id"
+        get "/:id/dash/:file"   (continue $ goAuth . streamDash)    $ capture "id" .&. capture "file"
         get "/:id/frame"        (continue $ goAuth . frame)         $ capture "id" .&. def 0 (query "ts")
         get "/:id/variants"     (continue $ goAuth . variants)      $ capture "id"
         get "/:id/stream"       (continue $ goAuth . stream)
@@ -145,7 +147,8 @@ streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 streamDirect = withFileAccess $ \f mime ->
     return $ responseFile status200 [("Content-Type", encodeUtf8 mime)] f Nothing
 
-streamDash :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
-streamDash fid = withFileAccess go fid where
-    go f mime =
-        return $ responseFile status200 [("Content-Type", encodeUtf8 mime)] f Nothing
+streamDash :: (MonadMask m, MonadIO m) => (FileId ::: FilePath) -> Authenticated m Response
+streamDash (fid ::: fname) = withFileAccess go fid where
+    go _ _ = do
+        base <- AUTH.unsafe $ asks mdbDbDir
+        return $ responseFile status200 [] (base </> "dash" </> show fid </> fname) Nothing

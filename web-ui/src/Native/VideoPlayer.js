@@ -69,6 +69,18 @@ Elm.Native.VideoPlayer.make = function(elm) {
         return cookies[name];
     }
 
+    function doAttachDash(model) {
+        return Task.asyncFunction(function(callback) {
+            setTimeout(function() {
+                var elem = document.getElementById(model.playerId);
+                var player = dashjs.MediaPlayer().create();
+                player.initialize(elem, model.videoBaseUrl, false);
+
+            }, 100);
+            return callback(Task.succeed(noOp));
+        });
+    }
+
     function doAttachHls(model) {
         return Task.asyncFunction(function(callback) {
             var elem = document.getElementById(model.playerId);
@@ -85,6 +97,7 @@ Elm.Native.VideoPlayer.make = function(elm) {
     return elm.Native.VideoPlayer.values = {
         setPlay         : F2(doSetPlay),
         goFullscreen    : doGoFullscreen,
+        attachDash      : doAttachDash,
         attachHls       : doAttachHls
     };
 };

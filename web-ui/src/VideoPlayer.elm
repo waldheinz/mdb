@@ -66,12 +66,13 @@ setVideo fid m =
                     | fileId            = fid
                     , playTime          = 0
                     , playStartTime     = 0
-                    , videoBaseUrl      = Server.videoBaseUrl fid
+                    , videoBaseUrl      = Server.videoBaseUrl fid ++ "/dash/out.mpd"
                     , videoInfo         = Nothing
                     , doSeek            = True
                     , lastRecPlayPos    = 0
                     }
-        fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+        -- fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
+        fx = attachDash m' |> Effects.task
     in
         ( m', fx )
 
@@ -136,6 +137,9 @@ goFullscreen m = Native.VideoPlayer.goFullscreen m
 attachHls : Model -> Task Effects.Never Action
 attachHls m = Native.VideoPlayer.attachHls m
 
+attachDash : Model -> Task Effects.Never Action
+attachDash m = Native.VideoPlayer.attachDash m
+
 wantControls : Model -> Bool
 wantControls m = m.mouseMoved || m.overControls
 
@@ -154,13 +158,11 @@ view aa m =
                 [ Html.video
                     [ HA.id m.playerId
                     , HA.poster <| Server.videoFrameUrl m.fileId 200
-                    , HA.controls False
-                    , HE.on "playing" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Playing))
-                    , HE.on "pause" (JD.succeed ()) (\() -> Signal.message aa (PlayStateChanged Paused))
-                    , HE.on "timeupdate" targetCurrentTime (\t -> Signal.message aa (PlayTimeChanged t))
+                    , HA.controls True
+                    , HA.autoplay False
                     ]
                     [ Html.text "Kein Video hier?" ]
-                , controls aa m
+--                , controls aa m
                 ]
             ]
 

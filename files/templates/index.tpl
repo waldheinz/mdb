@@ -106,6 +106,7 @@
     <body>
     </body>
     <script src="static/js/hls.min.js"></script>
+    <script src="static/js/dash.all.min.js"></script>
     <script type="text/javascript">
         Elm.fullscreen(Elm.Main, {
             initialPath: window.location.pathname

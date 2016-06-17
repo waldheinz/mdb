@@ -53,7 +53,7 @@ executable mdb
      pureMD5,
      regex-posix,
      resource-pool,
-     rest-core,
+     rest-core      >= 0.39,
      rest-wai,
      scrypt,
      SHA           >= 1.6,

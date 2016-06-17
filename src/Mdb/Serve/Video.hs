@@ -33,8 +33,9 @@ videoApp :: MediaDb -> AUTH.SessionKey IO -> Application
 videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) where
     goAuth = AUTH.request skey req
     root = prepare $ do
-        get "/:id/frame"        (continue $ goAuth . frame)        $ capture "id" .&. def 0 (query "ts")
-        get "/:id/variants"     (continue $ goAuth . variants)     $ capture "id"
+        get "/:id/dash"         (continue $ goAuth . streamDash)    $ capture "id"
+        get "/:id/frame"        (continue $ goAuth . frame)         $ capture "id" .&. def 0 (query "ts")
+        get "/:id/variants"     (continue $ goAuth . variants)      $ capture "id"
         get "/:id/stream"       (continue $ goAuth . stream)
             $   capture "id"
             .&. def 0 (query "t")
@@ -143,3 +144,8 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba ::: fmt) = withFileAccess go 
 streamDirect :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
 streamDirect = withFileAccess $ \f mime ->
     return $ responseFile status200 [("Content-Type", encodeUtf8 mime)] f Nothing
+
+streamDash :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
+streamDash fid = withFileAccess go fid where
+    go f mime =
+        return $ responseFile status200 [("Content-Type", encodeUtf8 mime)] f Nothing

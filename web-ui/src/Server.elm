@@ -30,7 +30,7 @@ serverBaseUrl : String
 serverBaseUrl = "" -- ^ yes, we want that relative for now
 
 apiBaseUrl : String
-apiBaseUrl = serverBaseUrl ++ "/api/0.1.0"
+apiBaseUrl = serverBaseUrl ++ "/api"
 
 defaultRequest : List (String, String) -> String -> Http.Body -> String -> Http.Request
 defaultRequest headers verb body endpoint =

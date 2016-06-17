@@ -21,6 +21,7 @@ mkHeist tmplDir = eitherT (fail . unlines) return $ do
     hc <- return HEIST.emptyHeistConfig >>=
         (HEIST.hcTemplateLocations  $ \_ -> return [HEIST.loadTemplates tmplDir]) >>=
         (HEIST.hcInterpretedSplices $ \x -> return (x <> dis)) >>=
+        (HEIST.hcNamespace (\_ -> return "")) >>=
         (HEIST.hcLoadTimeSplices $ \x -> return (x <> lts))
 
     HEIST.initHeist hc

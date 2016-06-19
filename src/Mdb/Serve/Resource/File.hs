@@ -64,7 +64,10 @@ listFiles
     => Int -- ^ offset
     -> Int -- ^ count
     -> Authenticated m [File]
-listFiles off cnt = AUTH.query "SELECT file_id, file_name, file_size FROM auth_file LIMIT ? OFFSET ?" (cnt, off)
+listFiles off cnt = AUTH.query
+    (   "SELECT file_id, file_name, file_size, file_mime "
+    <>  "FROM auth_file LIMIT ? OFFSET ?"
+    ) (cnt, off)
 
 -- | Get files assigned to a person but not part of an album.
 getRandomPersonFiles :: (MonadMask m, MonadIO m) => PersonId -> Authenticated m [File]

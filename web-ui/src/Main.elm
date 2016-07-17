@@ -21,7 +21,7 @@ import Server
 import Utils exposing ( onClick' )
 import VideoPlayer as VP
 
-port initialPath : String
+-- port initialPath : String
 
 type alias LoginModel =
     { userName  : String
@@ -243,6 +243,3 @@ app = StartApp.start
 
 main : Signal Html
 main = app.html
-
-port tasks : Signal (Task.Task Never ())
-port tasks = app.tasks

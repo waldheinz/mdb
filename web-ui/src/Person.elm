@@ -40,18 +40,17 @@ type ListAction
     = PersonSelected PersonId
     | PersonsLoaded (Result Http.Error (ApiList (PersonId, Person)))
 
-setListFilter : PersonFilter -> ListModel -> (ListModel, Effects ListAction)
+setListFilter : PersonFilter -> ListModel -> (ListModel, Cmd ListAction)
 setListFilter which m =
     let
         fs' = if which == m.personFilter then m.persons else []
     in
         ( { m | personFilter = which, persons = fs' }
-        , Server.fetchPersons which |> Task.toResult |> Task.map PersonsLoaded |> Effects.task
+        , Server.fetchPersons which |> Task.perform (Err >> PersonsLoaded) (Ok >> PersonsLoaded)
         )
 
-
-viewList : Address ListAction -> ListModel -> Html
-viewList aa m =
+viewList : ListModel -> Html ListAction
+viewList m =
     let
         onePerson (pid, p) =
             Html.div [ HA.class "col-xs-3 col-md-2" ]
@@ -73,9 +72,9 @@ updateListModel a m = case a of
 -- Edit
 ------------------------------------------------------------------------------------------------------------------------
 
-updatePerson : (Person -> Person) -> PersonId -> Person -> (Person, Effects ())
+updatePerson : (Person -> Person) -> PersonId -> Person -> (Person, Cmd ())
 updatePerson f pid p =
     let
         p' = f p
     in
-        (p', Server.putPerson pid p' |> Task.toResult |> Task.map (\_ -> ()) |> Effects.task)
+        (p', Server.putPerson pid p' |> Task.perform (\_ -> ()) (\_ -> ()))

@@ -6,6 +6,7 @@ module Page.AlbumList exposing (
 
 import Html exposing ( Html )
 import Html.Attributes as HA
+import Html.App
 
 import Album
 import Types exposing (..)
@@ -23,32 +24,32 @@ type Action
     = NoOp
     | AlbumListAction Album.ListAction
 
-noOp : Effects () -> Effects Action
-noOp = Effects.map (\() -> NoOp)
+noOp : Cmd () -> Cmd Action
+noOp = Cmd.map (\() -> NoOp)
 
-onMount : Model-> (Model, Effects Action)
+onMount : Model-> (Model, Cmd Action)
 onMount m =
     let
         (as', afx)  = Album.withListFilter AllAlbums m.albums
     in
         ( { m | albums = as' }
-        , Effects.map AlbumListAction afx
+        , Cmd.map AlbumListAction afx
         )
 
-view : Address Action -> Model -> Html
-view aa m =
+view : Model -> Html Action
+view m =
     Html.div [ HA.class "container" ]
         [ Html.h1 [ HA.class "page-lead" ] [ Html.text <| "Albums" ]
         , Html.div [ HA.class "text-center" ]
-            [ Album.listPagination (Signal.forwardTo aa AlbumListAction) m.albums ]
-        , Album.viewList (Signal.forwardTo aa AlbumListAction) m.albums
+            [ Html.App.map AlbumListAction (Album.listPagination m.albums) ]
+        , Html.App.map AlbumListAction (Album.viewList m.albums)
         ]
 
-update : Action -> Model -> (Model, Effects Action)
+update : Action -> Model -> (Model, Cmd Action)
 update a m = case a of
-    NoOp                -> (m, Effects.none)
+    NoOp                -> (m, Cmd.none)
     AlbumListAction la  ->
         let
             (al', fx)   = Album.updateList la m.albums
         in
-            ({ m | albums = al' }, Effects.map AlbumListAction fx)
+            ({ m | albums = al' }, Cmd.map AlbumListAction fx)

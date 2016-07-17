@@ -29,8 +29,8 @@ type Action
     = NoOp
     | GotList (Result Http.Error (ApiList (SerialId, Serial)))
 
-view : Address Action -> WithSeries a -> Html
-view aa wm =
+view : WithSeries a -> Html Action
+view wm =
     let
         m = wm.pageSeriesModel
         oneSeries (sid, s) =
@@ -48,14 +48,14 @@ view aa wm =
                 List.map oneSeries m.serialList
             ]
 
-onMount : WithSeries a -> (WithSeries a, Effects Action)
-onMount wm = ( wm, Server.fetchSerials AllSerials |> Task.map GotList |> Effects.task )
+onMount : WithSeries a -> (WithSeries a, Cmd Action)
+onMount wm = ( wm, Server.fetchSerials AllSerials |> Task.perform (Err >> GotList) (Ok >> GotList) )
 
-update : Action -> WithSeries a -> (WithSeries a, Effects Action)
+update : Action -> WithSeries a -> (WithSeries a, Cmd Action)
 update a wm =
     let
         m           = wm.pageSeriesModel
-        noFx x      = ( x, Effects.none )
+        noFx x      = ( x, Cmd.none )
         (m', fx)    = case a of
             NoOp                -> noFx m
             GotList (Err er)    -> Debug.log "fetching series failed" er |> \_ -> noFx m

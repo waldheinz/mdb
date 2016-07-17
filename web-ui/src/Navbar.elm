@@ -9,8 +9,8 @@ import Utils exposing ( onClick' )
 
 type Action = LogOut
 
-view : Address Action -> Maybe String -> Route -> Html
-view aa muser r =
+view : Maybe String -> Route -> Html Action
+view muser r =
     let
         userName            = Maybe.withDefault "(not logged in)" muser
         pageLink pa pr pn   =
@@ -44,7 +44,7 @@ view aa muser r =
                             [ Html.a [ HA.href "#", HA.class "dropdown-toggle", HA.attribute "data-toggle" "dropdown" ]
                                 [ Html.text userName, Html.span [ HA.class "caret"] [] ]
                             , Html.ul [ HA.class "dropdown-menu" ]
-                                [ Html.li [ ] [ Html.a [ HA.href "#", onClick' aa LogOut ] [ Html.text "log out"] ]
+                                [ Html.li [ ] [ Html.a [ HA.href "#", onClick' LogOut ] [ Html.text "log out"] ]
                                 ]
                             ]
                         ]

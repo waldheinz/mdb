@@ -1,6 +1,6 @@
 
 module Utils exposing (
-    onClick', editable
+    onClick'
     )
 
 import Html exposing ( Html )
@@ -14,18 +14,10 @@ import Json.Decode as JD
 
 -- |
 -- just like onClick, but with preventDefault set
-onClick' : Address a -> a -> Html.Attribute
-onClick' aa v =
+onClick' : a -> Html.Attribute a
+onClick' v =
     let
         do  = HE.defaultOptions
         do' = { do | preventDefault = True }
     in
-        HE.onWithOptions "click" do' JD.value (\_ -> Signal.message aa v)
-
-editable : Address String -> String -> Html
-editable aa t =
-    let
-        targetText = JD.at ["target", "innerText"] JD.string
-    in
-        Html.span [ HA.contenteditable True, HE.on "input" targetText (Signal.message aa) ]
-            [ Html.text t ]
+        HE.onWithOptions "click" do' (JD.succeed v)

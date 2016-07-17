@@ -56,8 +56,9 @@ encode route = case route of
 -- Helpers
 ------------------------------------------------------------------------------------------------------------------------
 
-clickRoute : Route -> List Html.Attribute
-clickRoute r =
+clickRoute : Route -> List (Html.Attribute never)
+clickRoute r = []
+{-
     let
         path = encode r
     in
@@ -68,8 +69,10 @@ clickRoute r =
             (JD.succeed ())
             (\() -> Signal.message TransitRouter.pushPathAddress path)
         ]
+-}
 
-goRoute : Route -> Effects ()
-goRoute r = encode r
-    |> Signal.send TransitRouter.pushPathAddress
-    |> Effects.task
+goRoute : Route -> Cmd ()
+goRoute r = Cmd.none
+--     encode r
+--    |> Signal.send TransitRouter.pushPathAddress
+--    |> Effects.task

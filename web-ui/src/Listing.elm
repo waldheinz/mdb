@@ -40,23 +40,23 @@ totalPages m =
     Maybe.map (\items -> (items - 1) // m.perPage + 1) m.totalItems |>
     Maybe.withDefault (m.currentPage + 4)
 
-pagination : Address (Action a) -> Model a -> Html
-pagination aa m =
+pagination : Model a -> Html (Action a)
+pagination m =
     let
         maxPage = totalPages m
         go p =
             Html.li [ HA.classList [ ( "active", m.currentPage == p ) ] ]
-                [ Html.a [ HA.href "#", onClick' aa (GoPage p) ] [ Html.text <| toString (p + 1) ] ]
+                [ Html.a [ HA.href "#", onClick' (GoPage p) ] [ Html.text <| toString (p + 1) ] ]
     in
         Html.nav []
             [ Html.ul [ HA.class "pagination" ] <|
                 List.map go [0..(maxPage - 1)]
             ]
 
-refresh : Model a -> Effects (Action a)
-refresh m = m.fetch (m.currentPage * m.perPage, m.perPage) |> Task.toResult |> Task.map ItemsLoaded |> Effects.task
+refresh : Model a -> Cmd (Action a)
+refresh m = m.fetch (m.currentPage * m.perPage, m.perPage) |> Task.perform (ItemsLoaded << Err) (ItemsLoaded << Ok)
 
-withFetchTask : FetchTask a -> Model a -> (Model a, Effects (Action a))
+withFetchTask : FetchTask a -> Model a -> (Model a, Cmd (Action a))
 withFetchTask ft m =
     let
         m' = { m | fetch = ft, items = [], currentPage = 0, totalItems = Nothing }
@@ -69,8 +69,8 @@ withItemCount cnt m = { m | totalItems = Just cnt }
 updateForResponse : Model a -> ApiList a -> Model a
 updateForResponse m al = { m | items = al.items }
 
-update : Action a -> Model a -> (Model a, Effects (Action a))
+update : Action a -> Model a -> (Model a, Cmd (Action a))
 update a m = case a of
-    ItemsLoaded (Err er)    -> Debug.log "error loading list items" |> \_ -> (m, Effects.none)
-    ItemsLoaded (Ok al)     -> (updateForResponse m al, Effects.none)
+    ItemsLoaded (Err er)    -> Debug.log "error loading list items" |> \_ -> (m, Cmd.none)
+    ItemsLoaded (Ok al)     -> (updateForResponse m al, Cmd.none)
     GoPage p                -> let m' = { m | currentPage = p } in (m', refresh m')

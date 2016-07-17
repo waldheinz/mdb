@@ -1,7 +1,7 @@
 
 module VideoPlayer exposing (
     Model, initialModel, setVideo, view,
-    Action, update, input
+    Action, update
     )
 
 import Json.Decode as JD
@@ -51,10 +51,10 @@ initialModel playerId =
     , lastRecPlayPos    = 0
     }
 
-input : Signal Action
-input = Time.since (3 * Time.second) (Mouse.position) |> Signal.map MouseMoved
+-- input : Signal Action
+-- input = Time.since (3 * Time.second) (Mouse.position) |> Signal.map MouseMoved
 
-setVideo : FileId -> Model -> (Model, Effects Action)
+setVideo : FileId -> Model -> (Model, Cmd Action)
 setVideo fid m =
     let
         m' = if fid == m.fileId
@@ -70,7 +70,7 @@ setVideo fid m =
                     , lastRecPlayPos    = 0
                     }
         -- fx = Server.fetchContainerForFile fid |> Task.toResult |> Task.map FetchedVideoInfo |> Effects.task
-        fx = attachDash m' |> Effects.task
+        fx = attachDash m'
     in
         ( m', fx )
 
@@ -94,7 +94,7 @@ currentTime m = case m.playState of
     Playing -> m.playStartTime + m.playTime
     Seeking -> m.playStartTime
 
-recordPlayPos : Model -> (Model, Effects Action)
+recordPlayPos : Model -> (Model, Cmd Action)
 recordPlayPos m =
     let
         t   = currentTime m
@@ -102,47 +102,47 @@ recordPlayPos m =
         m'  = { m | lastRecPlayPos = t }
     in
         if t > (m.lastRecPlayPos + 10)
-            then (m', Server.recordVideoPlay pp |> Task.toResult |> Task.map PlayPosRecorded |> Effects.task)
-            else (m, Effects.none)
+            then (m', Server.recordVideoPlay pp |> Task.perform (Err >> PlayPosRecorded) (Ok >> PlayPosRecorded))
+            else (m, Cmd.none)
 
-update : Action -> Model -> (Model, Effects Action)
+update : Action -> Model -> (Model, Cmd Action)
 update a m = case a of
-    NoOp                -> ( m, Effects.none )
-    Play                -> ( { m | doSeek = False }, setPlay m True |> Effects.task )
-    Pause               -> ( m , setPlay m False |> Effects.task )
-    PlayStateChanged s  -> ( { m | playState = s }, Effects.none )
+    NoOp                -> ( m, Cmd.none )
+    Play                -> ( { m | doSeek = False }, setPlay m True )
+    Pause               -> ( m , setPlay m False )
+    PlayStateChanged s  -> ( { m | playState = s }, Cmd.none )
     PlayTimeChanged t   -> { m | playTime = t } |> recordPlayPos
-    FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Effects.none )
-    FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Effects.none)
-    MouseMoved mm               -> ( { m | mouseMoved = mm }, Effects.none )
-    OverControls o      -> ( { m | overControls = o }, Effects.none)
-    GoFullscreen        -> (m, goFullscreen m |> Effects.task)
-    SeekDone            -> ( { m | doSeek = False }, Effects.none )
+    FetchedVideoInfo (Ok v) -> ( { m | videoInfo = Just v }, Cmd.none )
+    FetchedVideoInfo (Err er)   -> Debug.log "fetching video info failed" er |> \_ -> (m, Cmd.none)
+    MouseMoved mm               -> ( { m | mouseMoved = mm }, Cmd.none )
+    OverControls o      -> ( { m | overControls = o }, Cmd.none)
+    GoFullscreen        -> (m, goFullscreen m )
+    SeekDone            -> ( { m | doSeek = False }, Cmd.none )
     SeekTo t            ->
         let
             m' = { m | playStartTime = t, playState = Seeking, doSeek = True, lastRecPlayPos = t }
         in
-            (m' , setPlay m' True |> Effects.task )
-    PlayPosRecorded (Err ex)    -> Debug.log "recording play pos failed" ex |> \_ -> ( m , Effects.none)
-    PlayPosRecorded (Ok ())     -> ( m , Effects.none)
+            (m' , setPlay m' True )
+    PlayPosRecorded (Err ex)    -> Debug.log "recording play pos failed" ex |> \_ -> ( m , Cmd.none)
+    PlayPosRecorded (Ok ())     -> ( m , Cmd.none)
 
-setPlay : Model -> Bool -> Task Effects.Never Action
+setPlay : Model -> Bool -> Cmd Action
 setPlay m play = Native.VideoPlayer.setPlay m play
 
-goFullscreen : Model -> Task Effects.Never Action
+goFullscreen : Model -> Cmd Action
 goFullscreen m = Native.VideoPlayer.goFullscreen m
 
-attachHls : Model -> Task Effects.Never Action
+attachHls : Model -> Cmd Action
 attachHls m = Native.VideoPlayer.attachHls m
 
-attachDash : Model -> Task Effects.Never Action
+attachDash : Model -> Cmd Action
 attachDash m = Native.VideoPlayer.attachDash m
 
 wantControls : Model -> Bool
 wantControls m = m.mouseMoved || m.overControls
 
-view : Address Action -> Model -> Html
-view aa m =
+view : Model -> Html Action
+view m =
     let
         targetCurrentTime = JD.at ["target", "currentTime"] JD.float
         cursorStyle = ( "cursor", if wantControls m then "auto" else "none" )
@@ -164,22 +164,27 @@ view aa m =
                 ]
             ]
 
-controls : Address Action -> Model -> Html
-controls aa m =
+controls : Model -> Html Action
+controls m =
     let
-        playClick = onClick' aa (if m.playState == Paused then Play else Pause)
+        playClick = onClick' (if m.playState == Paused then Play else Pause)
         opacity = if wantControls m then 1 else 0
         progress duration =
             let
-                clickLocation : JD.Decoder (Int, Int) -- x and width
-                clickLocation =
-                    JD.object2 (,)
-                        (JD.at ["offsetX"] JD.int)
-                        (JD.at ["currentTarget", "clientWidth"] JD.int)
+                -- clickSeek : JD.Decoder (Int, Int) -- x and width
+                clickSeek =
+                    let
+                        pos = JD.object2 (,)
+                            (JD.at ["offsetX"] JD.int)
+                            (JD.at ["currentTarget", "clientWidth"] JD.int)
+                        seek (x, w) = SeekTo (toFloat x / toFloat w * duration)
+                    in
+                        JD.map seek pos
+
                 pct = currentTime m / duration * 100
-                seek (x, w) = Signal.message aa (SeekTo (toFloat x / toFloat w * duration))
+
             in
-                Html.div [ HA.class "video-progress", HE.on "click" clickLocation seek ]
+                Html.div [ HA.class "video-progress", HE.on "click" clickSeek ]
                     [ Html.div
                         [ HA.style [("width", toString pct ++ "%"), ("height", "100%"), ("background-color", "red" )] ]
                         []
@@ -214,8 +219,8 @@ controls aa m =
             [ Html.div
                 [ HA.class "video-controls"
                 , HA.style [ ("opacity", toString opacity) ]
-                , HE.onMouseOver aa (OverControls True)
-                , HE.onMouseLeave aa (OverControls False)
+                , HE.onMouseOver (OverControls True)
+                , HE.onMouseLeave (OverControls False)
                 ]
                 [ Html.div
                     [ HA.class "clearfix"
@@ -233,7 +238,7 @@ controls aa m =
                                 ] []
                             ]
                         , Maybe.map (\vi -> showTime vi.duration) m.videoInfo
-                        , Just <| Html.button [ onClick' aa GoFullscreen, HA.class "video-button pull-right" ]
+                        , Just <| Html.button [ onClick' GoFullscreen, HA.class "video-button pull-right" ]
                             [ Html.span [ HA.class "glyphicon glyphicon-fullscreen" ] []
                             ]
                         ]

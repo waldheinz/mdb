@@ -5,6 +5,7 @@ module Page.Album exposing (
     )
 
 import Html exposing ( Html )
+import Html.App
 import Html.Attributes as HA
 import Http
 import Task
@@ -38,16 +39,16 @@ type Action
     | PersonListAction Person.ListAction
     | GotAlbumInfo (Result Http.Error Album)
 
-noOp : Effects () -> Effects Action
-noOp = Effects.map (\() -> NoOp)
+noOp : Cmd () -> Cmd Action
+noOp = Cmd.map (\() -> NoOp)
 
-onMount : AlbumId -> Maybe FileId -> Model-> (Model, Effects Action)
+onMount : AlbumId -> Maybe FileId -> Model-> (Model, Cmd Action)
 onMount aid mfid m =
     let
         (fl', ffx)  = File.setListFilter (AlbumFiles aid) m.files
         (pl', plfx) = Person.setListFilter (AlbumPersons aid) m.persons
         a'          = if aid == m.albumId then m.album else Nothing
-        fetchAlbum  = Server.fetchAlbumInfo aid |> Task.toResult |> Task.map GotAlbumInfo |> Effects.task
+        fetchAlbum  = Server.fetchAlbumInfo aid |> Task.perform (Err >> GotAlbumInfo) (Ok >> GotAlbumInfo)
     in
         (   { m
             | albumId   = aid
@@ -56,15 +57,15 @@ onMount aid mfid m =
             , persons   = pl'
             , bigItem   = mfid
             }
-        ,   Effects.batch
-                [ Effects.map FileListAction ffx
-                , Effects.map PersonListAction plfx
+        ,   Cmd.batch
+                [ Cmd.map FileListAction ffx
+                , Cmd.map PersonListAction plfx
                 , fetchAlbum
                 ]
         )
 
-view : Address Action -> Model -> Html
-view aa m =
+view : Model -> Html Action
+view m =
     let
         albumName = case m.album of
             Nothing -> "Album " ++ toString m.albumId
@@ -75,13 +76,13 @@ view aa m =
                 [ Maybe.map bigFile m.bigItem
                 , Just <| Html.h1 [ HA.class "page-lead" ] [ Html.text albumName ]
                 , Just <| Html.div [ HA.class "text-center" ]
-                    [ File.listPagination (Signal.forwardTo aa FileListAction) m.files ]
-                , Just <| File.viewList (Signal.forwardTo aa FileListAction) m.files
+                    [ Html.App.map FileListAction (File.listPagination m.files) ]
+                , Just <| Html.App.map FileListAction (File.viewList m.files)
                 , if Person.listEmpty m.persons
                     then Nothing
                     else Just <| Html.div []
                         [ Html.h2 [] [ Html.text "Persons in this Album" ]
-                        , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
+                        , Html.App.map PersonListAction (Person.viewList m.persons)
                         ]
                 ]
 
@@ -90,17 +91,16 @@ view aa m =
                 [ Html.img
                     [ HA.src <| Server.imageUrl fid
                     , HA.class "big-image"
-
                     ] []
                 ]
     in
         fileList
 
-update : Action -> Model -> (Model, Effects Action)
+update : Action -> Model -> (Model, Cmd Action)
 update a m = case a of
-    NoOp                    -> (m, Effects.none)
+    NoOp                    -> (m, Cmd.none)
     FileListAction la       -> File.updateListModel la m.files
-        |> \(fs', ffx) -> ({ m | files = fs' }, Effects.map FileListAction ffx)
-    PersonListAction pla    -> ({ m | persons = Person.updateListModel pla m.persons }, Effects.none)
-    GotAlbumInfo (Err er)   -> Debug.log "fetching album info failed" er |> \_ -> ( m, Effects.none )
-    GotAlbumInfo (Ok a)     -> ( { m | album = Just a, files = File.setListItemCount a.fileCount m.files }, Effects.none )
+        |> \(fs', ffx) -> ({ m | files = fs' }, Cmd.map FileListAction ffx)
+    PersonListAction pla    -> ({ m | persons = Person.updateListModel pla m.persons }, Cmd.none)
+    GotAlbumInfo (Err er)   -> Debug.log "fetching album info failed" er |> \_ -> ( m, Cmd.none )
+    GotAlbumInfo (Ok a)     -> ( { m | album = Just a, files = File.setListItemCount a.fileCount m.files }, Cmd.none )

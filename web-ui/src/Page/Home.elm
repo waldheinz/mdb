@@ -4,6 +4,7 @@ module Page.Home exposing (
     )
 
 import Html exposing ( Html )
+import Html.App
 import Html.Attributes as HA
 
 import Person
@@ -22,18 +23,18 @@ type Action
 --    = NoOp
     = PersonListAction Person.ListAction
 
-onMount : Model -> (Model, Effects Action)
+onMount : Model -> (Model, Cmd Action)
 onMount m =
     let
         (pl', plfx) = Person.setListFilter AllPersons m.persons
     in
-        ({ m | persons = pl' }, Effects.map PersonListAction plfx)
+        ({ m | persons = pl' }, Cmd.map PersonListAction plfx)
 
-view : Signal.Address Action -> Model -> Html
-view aa m =
+view : Model -> Html Action
+view m =
     Html.div [ HA.class "container" ]
         [ Html.h1 [ HA.class "page-lead" ] [ Html.text "Persons" ]
-        , Person.viewList (Signal.forwardTo aa PersonListAction) m.persons
+        , Html.App.map PersonListAction (Person.viewList m.persons)
         ]
 
 update : Action -> Model -> Model

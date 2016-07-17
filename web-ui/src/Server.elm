@@ -117,29 +117,27 @@ fetchContainerForFile fid = getJson ("/file/byId/" ++ toString fid ++ "/containe
 -- Serials
 ------------------------------------------------------------------------------------------------------------------------
 
-fetchSerials : SerialFilter -> Task never (Result Http.Error (ApiList (SerialId, Serial)))
+fetchSerials : SerialFilter -> Task Http.Error (ApiList (SerialId, Serial))
 fetchSerials flt =
     let
         ep = case flt of
             AllSerials  -> "/serial"
     in
-        getJson ep (listDecoder serialListDecoder) |> Task.toResult
+        getJson ep (listDecoder serialListDecoder)
 
-fetchSerialInfo : SerialId -> Task never (Result Http.Error Serial)
-fetchSerialInfo sid = getJson ("/serial/" ++ toString sid) (serialDecoder) |> Task.toResult
+fetchSerialInfo : SerialId -> Task Http.Error Serial
+fetchSerialInfo sid = getJson ("/serial/" ++ toString sid) (serialDecoder)
 
-fetchSerialDescription : SerialId -> Task never (Result Http.Error String)
-fetchSerialDescription sid = Http.getString (apiBaseUrl ++ "/serial/" ++ toString sid ++ "/description") |> Task.toResult
+fetchSerialDescription : SerialId -> Task Http.Error String
+fetchSerialDescription sid = Http.getString (apiBaseUrl ++ "/serial/" ++ toString sid ++ "/description")
 
-fetchSeasons : SerialId -> Task never (Result Http.Error (ApiList Season))
+fetchSeasons : SerialId -> Task Http.Error (ApiList Season)
 fetchSeasons serid =
     getJson ("/serial/" ++ toString serid ++ "/season") (listDecoder seasonDecoder)
-        |> Task.toResult
 
-fetchEpisodes : SerialId -> SeasonId -> Task never (Result Http.Error (ApiList Episode))
+fetchEpisodes : SerialId -> SeasonId -> Task Http.Error (ApiList Episode)
 fetchEpisodes serId seaId =
     getJson ("/serial/" ++ toString serId ++ "/season/" ++ toString seaId ++ "/episode") (listDecoder episodeDecoder)
-        |> Task.toResult
 
 ------------------------------------------------------------------------------------------------------------------------
 -- User / Login

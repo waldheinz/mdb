@@ -5,6 +5,7 @@ module Page.Video exposing (
     )
 
 import Html exposing ( Html )
+import Html.App
 import Html.Attributes as HA
 
 import Types exposing (..)
@@ -21,30 +22,30 @@ initialModel =
     , videoModel    = V.initialModel "page-video"
     }
 
-view : Address Action -> Model -> Html
-view aa m =
+view : Model -> Html Action
+view m =
     Html.div [ HA.class "container" ]
-        [ V.view (Signal.forwardTo aa PlayerAction) m.videoModel
+        [ Html.App.map PlayerAction (V.view m.videoModel)
         ]
 
 type Action
     = NoOp
     | PlayerAction V.Action
 
-onMount : FileId -> Model -> (Model, Effects Action)
+onMount : FileId -> Model -> (Model, Cmd Action)
 onMount fid m =
     let
         (v', pfx) = V.setVideo fid m.videoModel
 
     in
-     ( { m | fileId = fid, videoModel = v' }, Effects.map PlayerAction pfx )
+     ( { m | fileId = fid, videoModel = v' }, Cmd.map PlayerAction pfx )
 
-update : Action -> Model -> (Model, Effects Action)
+update : Action -> Model -> (Model, Cmd Action)
 update a m = case a of
     PlayerAction pa ->
         let
             (p', pfx) = V.update pa m.videoModel
         in
-            ( { m | videoModel = p'}, Effects.map PlayerAction pfx )
+            ( { m | videoModel = p'}, Cmd.map PlayerAction pfx )
 
-    _               -> (m, Effects.none)
+    _               -> (m, Cmd.none)

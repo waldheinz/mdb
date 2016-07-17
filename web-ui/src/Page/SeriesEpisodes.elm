@@ -35,8 +35,8 @@ type Action
     = NoOp
     | GotList (Result Http.Error (ApiList Episode))
 
-view : Address Action -> WithEpisodes a -> Html
-view aa wm =
+view : WithEpisodes a -> Html Action
+view wm =
     let
         m = wm.pageEpisodesModel
         oneEpisode ep =
@@ -57,24 +57,24 @@ view aa wm =
                 List.map oneEpisode m.episodeList
             ]
 
-onMount : SerialId -> SeasonId -> WithEpisodes a -> (WithEpisodes a, Effects Action)
+onMount : SerialId -> SeasonId -> WithEpisodes a -> (WithEpisodes a, Cmd Action)
 onMount serId seaId wm =
     let
         m = wm.pageEpisodesModel
         l' = if (serId, seaId) == (m.serialId, m.seasonId) then m.episodeList else []
         m' = { m | serialId = serId, seasonId = seaId, episodeList = l' }
-        fx = Server.fetchEpisodes serId seaId |> Task.map GotList |> Effects.task
+        fx = Server.fetchEpisodes serId seaId |> Task.perform (Err >> GotList) (Ok >> GotList)
     in
         ( { wm | pageEpisodesModel = m' }, fx)
 
-update : Action -> WithEpisodes a -> (WithEpisodes a, Effects Action)
+update : Action -> WithEpisodes a -> (WithEpisodes a, Cmd Action)
 update a wm =
     let
         m           = wm.pageEpisodesModel
-        noFx x      = ( x, Effects.none )
+        noFx x      = ( x, Cmd.none )
         (m', fx)    = case a of
             NoOp                -> noFx m
             GotList (Err er)    -> Debug.log "fetching episodes failed" er |> \_ -> noFx m
             GotList (Ok al)     -> { m | episodeList = al.items } |> noFx
     in
-        ( { wm | pageEpisodesModel = m'}, fx )
+        ( { wm | pageEpisodesModel = m' }, fx )

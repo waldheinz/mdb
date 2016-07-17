@@ -47,15 +47,15 @@ headerText m = case m.serialInfo of
     Nothing -> ""
     Just i  -> i.serialName
 
-serialPoster : Model -> Html
+serialPoster : Model -> Html never
 serialPoster m = case m.serialInfo of
     Nothing -> Html.text "(poster)"
     Just i  -> case i.serialPoster of
         Nothing     ->  Html.text "(adasdasd)"
         Just fid    -> File.thumb File.Poster fid
 
-view : Address Action -> WithSeasons a -> Html
-view aa wm =
+view : WithSeasons a -> Html Action
+view wm =
     let
         m = wm.pageSeasonsModel
         oneSeason s =
@@ -80,7 +80,7 @@ view aa wm =
                 List.map oneSeason m.seasonList
             ]
 
-onMount : SerialId -> WithSeasons a -> (WithSeasons a, Effects Action)
+onMount : SerialId -> WithSeasons a -> (WithSeasons a, Cmd Action)
 onMount sid wm =
     let
         m               = wm.pageSeasonsModel
@@ -89,20 +89,20 @@ onMount sid wm =
             else ( [], Nothing, "" )
 
         m'              = { m | serialId = sid, seasonList = l', serialInfo = i', serialDescription = d' }
-        fetchSeasons    = Server.fetchSeasons sid |> Task.map GotList |> Effects.task
-        fetchInfo       = Server.fetchSerialInfo sid |> Task.map GotInfo |> Effects.task
-        fetchDesc       = Server.fetchSerialDescription sid |> Task.map GotDesc |> Effects.task
+        fetchSeasons    = Server.fetchSeasons sid |> Task.perform (Err >> GotList) (Ok >> GotList)
+        fetchInfo       = Server.fetchSerialInfo sid |> Task.perform (Err >> GotInfo) (Ok >> GotInfo)
+        fetchDesc       = Server.fetchSerialDescription sid |> Task.perform (Err >> GotDesc) (Ok >> GotDesc)
     in
-        ( { wm | pageSeasonsModel = m' }, Effects.batch [ fetchSeasons, fetchInfo, fetchDesc ] )
+        ( { wm | pageSeasonsModel = m' }, Cmd.batch [ fetchSeasons, fetchInfo, fetchDesc ] )
 
-update : Action -> WithSeasons a -> (WithSeasons a, Effects Action)
+update : Action -> WithSeasons a -> (WithSeasons a, Cmd Action)
 update a wm =
     let
         m           = wm.pageSeasonsModel
-        noFx x      = ( x, Effects.none )
+        noFx x      = ( x, Cmd.none )
         (m', fx)    = case a of
             NoOp                -> noFx m
-            GotDesc (Err er)    -> Debug.log "fetching seasons failed" er |> \_ -> noFx m
+            GotDesc (Err er)    -> Debug.log "fetching description failed" er |> \_ -> noFx m
             GotDesc (Ok d)      -> { m | serialDescription = d } |> noFx
             GotList (Err er)    -> Debug.log "fetching seasons failed" er |> \_ -> noFx m
             GotList (Ok al)     -> { m | seasonList = al.items } |> noFx

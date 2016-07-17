@@ -10,6 +10,7 @@ module File exposing (
     )
 
 import Html exposing ( Html )
+import Html.App exposing ( map )
 import Html.Attributes as HA
 import String
 
@@ -27,7 +28,7 @@ type AspectRatio
     | Movie
     | Poster
 
-thumb : AspectRatio -> FileId -> Html
+thumb : AspectRatio -> FileId -> Html a
 thumb aspect fid =
     let
         classes = HA.classList
@@ -70,18 +71,18 @@ setListItemCount cnt m = { m | files = Listing.withItemCount cnt m.files }
 type ListAction
     = FileList (Listing.Action File)
 
-setListFilter : WhichFiles -> ListModel -> (ListModel, Effects ListAction)
+setListFilter : WhichFiles -> ListModel -> (ListModel, Cmd ListAction)
 setListFilter flt m =
     if (flt == m.fileFilter)
-        then (m, Listing.refresh m.files |> Effects.map FileList)
+        then (m, Listing.refresh m.files |> Cmd.map FileList)
         else
             let
                 (fs', ffx)  = Listing.withFetchTask (Server.fetchFiles flt) m.files
             in
-                ( { m | fileFilter = flt, files = fs' }, Effects.map FileList ffx )
+                ( { m | fileFilter = flt, files = fs' }, Cmd.map FileList ffx )
 
-viewList : Address ListAction -> ListModel -> Html
-viewList aa m =
+viewList : ListModel -> Html ListAction
+viewList m =
     let
         oneFile f =
             let
@@ -100,9 +101,9 @@ viewList aa m =
     in
         List.map oneFile m.files.items |> Html.div [ HA.class "row" ]
 
-listPagination : Address ListAction -> ListModel -> Html
-listPagination aa m = Listing.pagination (Signal.forwardTo aa FileList) m.files
+listPagination : ListModel -> Html ListAction
+listPagination m = Html.App.map FileList (Listing.pagination m.files)
 
-updateListModel : ListAction -> ListModel -> (ListModel, Effects ListAction)
+updateListModel : ListAction -> ListModel -> (ListModel, Cmd ListAction)
 updateListModel a m = case a of
-    FileList a  -> Listing.update a m.files |> \(fs', fx) -> ( { m | files = fs' } , Effects.map FileList fx )
+    FileList a  -> Listing.update a m.files |> \(fs', fx) -> ( { m | files = fs' } , Cmd.map FileList fx )

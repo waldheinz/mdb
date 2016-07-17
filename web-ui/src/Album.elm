@@ -4,6 +4,7 @@ module Album exposing (
     )
 
 import Html exposing ( Html )
+import Html.App
 import Html.Attributes as HA
 
 import File
@@ -27,21 +28,21 @@ initialListModel =
     , direction     = "DESC"
     }
 
-withListFilter : WhichAlbums -> ListModel -> (ListModel, Effects ListAction)
+withListFilter : WhichAlbums -> ListModel -> (ListModel, Cmd ListAction)
 withListFilter flt m =
     if (flt == m.albumFilter)
-        then (m, Listing.refresh m.albums |> Effects.map AlbumListing)
+        then (m, Listing.refresh m.albums |> Cmd.map AlbumListing)
         else
             let
                 (as', afx)  = Listing.withFetchTask (Server.fetchAlbums flt m.order m.direction) m.albums
             in
-                ( { m | albumFilter = flt, albums = as' }, Effects.map AlbumListing afx )
+                ( { m | albumFilter = flt, albums = as' }, Cmd.map AlbumListing afx )
 
 type ListAction
     = AlbumListing (Listing.Action Album)
 
-viewList : Address ListAction -> ListModel -> Html
-viewList aa m =
+viewList : ListModel -> Html ListAction
+viewList m =
     let
         oneAlbum a =
             Html.div [ HA.class "col-xs-2" ]
@@ -53,9 +54,9 @@ viewList aa m =
     in
         List.map oneAlbum m.albums.items |> Html.div [ HA.class "row" ]
 
-listPagination : Address ListAction -> ListModel -> Html
-listPagination aa m = Listing.pagination (Signal.forwardTo aa AlbumListing) m.albums
+listPagination : ListModel -> Html ListAction
+listPagination m = Html.App.map AlbumListing (Listing.pagination m.albums)
 
-updateList : ListAction -> ListModel -> (ListModel, Effects ListAction)
+updateList : ListAction -> ListModel -> (ListModel, Cmd ListAction)
 updateList a m = case a of
-    AlbumListing la -> Listing.update la m.albums |> \(as', fx) -> ( { m | albums = as' }, Effects.map AlbumListing fx )
+    AlbumListing la -> Listing.update la m.albums |> \(as', fx) -> ( { m | albums = as' }, Cmd.map AlbumListing fx )

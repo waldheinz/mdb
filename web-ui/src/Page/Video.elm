@@ -1,13 +1,11 @@
 
-module Page.Video (
+module Page.Video exposing (
     Model, initialModel, view,
     Action(PlayerAction), onMount, update
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Signal exposing ( Address )
 
 import Types exposing (..)
 import VideoPlayer as V

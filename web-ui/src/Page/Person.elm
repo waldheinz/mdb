@@ -1,13 +1,11 @@
 
-module Page.Person (
+module Page.Person exposing (
     Model, Action, view, update, onMount, initialModel
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Http
-import Signal
 import Task
 
 import Album exposing (ListAction(..))

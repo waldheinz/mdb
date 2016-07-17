@@ -1,5 +1,5 @@
 
-module Server (
+module Server exposing (
     -- * Persons
     fetchPerson, fetchPersons, putPerson,
 
@@ -17,7 +17,7 @@ module Server (
 
     -- * Serials
     fetchSerials, fetchSerialInfo, fetchSerialDescription, fetchSeasons, fetchEpisodes
-    ) where
+    )
 
 import Http
 import Json.Decode as JD exposing ( (:=) )

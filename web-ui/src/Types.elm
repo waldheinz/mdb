@@ -1,5 +1,5 @@
 
-module Types (
+module Types exposing (
     -- * Api Lists
     ApiList, listDecoder,
 
@@ -21,7 +21,7 @@ module Types (
     SerialId, Serial, serialDecoder, serialListDecoder, SerialFilter(..),
     SeasonId, Season, seasonDecoder,
     EpisodeId, Episode, episodeDecoder
-    ) where
+    )
 
 import Json.Decode as JD exposing ( (:=) )
 import Json.Encode as JE

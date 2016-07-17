@@ -1,14 +1,12 @@
 
-module Page.Album (
+module Page.Album exposing (
     Model, initialModel, view,
     Action, update, onMount
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Http
-import Signal exposing ( Address )
 import Task
 
 import File exposing ( withImageRouter )

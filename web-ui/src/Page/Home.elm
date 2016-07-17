@@ -1,9 +1,8 @@
 
-module Page.Home (
+module Page.Home exposing (
     Model, initialModel, onMount, Action, view, update
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 

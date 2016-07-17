@@ -1,12 +1,10 @@
 
-module Album (
+module Album exposing (
     ListModel, initialListModel, withListFilter, ListAction, updateList, viewList, listPagination
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Signal exposing ( Address )
 
 import File
 import Listing

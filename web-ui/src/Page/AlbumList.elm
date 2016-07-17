@@ -1,13 +1,11 @@
 
-module Page.AlbumList (
+module Page.AlbumList exposing (
     Model, initialModel, view,
     Action, update, onMount
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Signal exposing ( Address )
 
 import Album
 import Types exposing (..)

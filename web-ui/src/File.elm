@@ -1,5 +1,5 @@
 
-module File (
+module File exposing (
     -- * Files
     AspectRatio(..), thumb,
 
@@ -7,12 +7,10 @@ module File (
     ListModel, mkListModel, withImageRouter, setListItemCount,
     ListAction, viewList, listPagination,
     updateListModel, setListFilter
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Signal exposing ( Address )
 import String
 
 import Listing

@@ -1,14 +1,12 @@
 
-module Page.Series (
+module Page.Series exposing (
     Model, WithSeries, initialModel,
     Action, view, update, onMount
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Http
-import Signal exposing ( Address )
 import Task
 
 import File

@@ -1,18 +1,16 @@
 
-module VideoPlayer (
+module VideoPlayer exposing (
     Model, initialModel, setVideo, view,
     Action, update, input
-    ) where
+    )
 
 import Json.Decode as JD
 import Json.Encode as JE
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Mouse
-import Signal exposing ( Address, Signal )
 import String
 import Task exposing ( Task )
 import Time

@@ -1,14 +1,12 @@
 
-module Listing (
+module Listing exposing (
     Model, FetchTask, mkModel, pagination,
     Action, withFetchTask, withItemCount, refresh, update
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Http
-import Signal exposing ( Address )
 import Task exposing ( Task )
 
 import Utils exposing ( onClick' )

@@ -1,15 +1,11 @@
 
-module Main ( main ) where
+module Main exposing ( main )
 
-import Effects exposing ( Effects, Never )
 import Html exposing ( Html )
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
 import Task
-import Signal
-import StartApp
-import TransitRouter exposing ( WithRoute, getTransition )
 
 import Navbar
 import Page.Album

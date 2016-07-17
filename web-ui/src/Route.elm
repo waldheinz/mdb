@@ -1,14 +1,12 @@
 
-module Route (
+module Route exposing (
     Route(..), encode, decode,
 
     -- * Helpers
     clickRoute, goRoute
-    ) where
+    )
 
-import Effects exposing ( Effects )
 import RouteParser exposing (..)
-import TransitRouter
 
 import Html
 import Html.Attributes as HA

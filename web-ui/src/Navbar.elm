@@ -1,11 +1,8 @@
 
-module Navbar (
-    Action(..), view
-    ) where
+module Navbar exposing ( Action(..), view )
 
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Signal exposing ( Address )
 
 import Route exposing ( Route(..), clickRoute )
 import Utils exposing ( onClick' )

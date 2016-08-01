@@ -19,7 +19,6 @@ data-files:
     files/htdocs/js/*.min.js
     files/htdocs/js/*.all.min.js
     files/htdocs/js/*.js
-    files/templates/*.tpl
     files/sql/*.sql
 
 executable mdb

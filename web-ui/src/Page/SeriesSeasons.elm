@@ -12,7 +12,7 @@ import Task
 import File
 import Server
 import Types exposing (..)
-import Route exposing ( clickRoute )
+import Route exposing ( clickRoute_ )
 
 type alias Model =
     { seasonList        : List Season
@@ -36,6 +36,7 @@ type Action
     | GotList (Result Http.Error (ApiList Season))
     | GotInfo (Result Http.Error Serial)
     | GotDesc (Result Http.Error String)
+    | RouteMsg Route.Msg
 
 seasonName : SeasonId -> String
 seasonName sid = case sid of
@@ -60,7 +61,7 @@ view wm =
         m = wm.pageSeasonsModel
         oneSeason s =
             Html.div [ HA.class "col-xs-4 col-md-2" ]
-                [ Html.a ( HA.class "thumbnail" :: (clickRoute <| Route.SeriesEpisodes s.seasonSerial s.seasonId))
+                [ Html.a ( HA.class "thumbnail" :: (clickRoute' RouteMsg <| Route.SeriesEpisodes s.seasonSerial s.seasonId))
                     [ File.thumb File.Poster (Maybe.withDefault 0 s.seasonPoster)
                     , Html.span [ HA.class "item-name" ]
                         [ Html.text <| seasonName s.seasonId ]
@@ -108,5 +109,6 @@ update a wm =
             GotList (Ok al)     -> { m | seasonList = al.items } |> noFx
             GotInfo (Err er)    -> Debug.log "fetching serial info faild" er |> \_ -> noFx m
             GotInfo (Ok i)      -> { m | serialInfo = Just i } |> noFx
+            RouteMsg msg        -> ( m, Route.handleMsg msg )
     in
         ( { wm | pageSeasonsModel = m' }, fx )

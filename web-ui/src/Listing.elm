@@ -9,7 +9,7 @@ import Html.Attributes as HA
 import Http
 import Task exposing ( Task )
 
-import Utils exposing ( onClick' )
+import Utils exposing ( onClick_ )
 import Types exposing ( .. )
 
 type alias FetchTask a = (Int, Int) -> Task Http.Error (ApiList a)
@@ -46,11 +46,11 @@ pagination m =
         maxPage = totalPages m
         go p =
             Html.li [ HA.classList [ ( "active", m.currentPage == p ) ] ]
-                [ Html.a [ HA.href "#", onClick' (GoPage p) ] [ Html.text <| toString (p + 1) ] ]
+                [ Html.a [ HA.href "#", onClick_ (GoPage p) ] [ Html.text <| toString (p + 1) ] ]
     in
         Html.nav []
             [ Html.ul [ HA.class "pagination" ] <|
-                List.map go [0..(maxPage - 1)]
+                List.map go <| List.range 0 (maxPage - 1)
             ]
 
 refresh : Model a -> Cmd (Action a)
@@ -59,9 +59,9 @@ refresh m = m.fetch (m.currentPage * m.perPage, m.perPage) |> Task.perform (Item
 withFetchTask : FetchTask a -> Model a -> (Model a, Cmd (Action a))
 withFetchTask ft m =
     let
-        m' = { m | fetch = ft, items = [], currentPage = 0, totalItems = Nothing }
+        m2 = { m | fetch = ft, items = [], currentPage = 0, totalItems = Nothing }
     in
-        (m', refresh m')
+        (m2, refresh m2)
 
 withItemCount : Int -> Model a -> Model a
 withItemCount cnt m = { m | totalItems = Just cnt }
@@ -73,4 +73,4 @@ update : Action a -> Model a -> (Model a, Cmd (Action a))
 update a m = case a of
     ItemsLoaded (Err er)    -> Debug.log "error loading list items" |> \_ -> (m, Cmd.none)
     ItemsLoaded (Ok al)     -> (updateForResponse m al, Cmd.none)
-    GoPage p                -> let m' = { m | currentPage = p } in (m', refresh m')
+    GoPage p                -> let m2 = { m | currentPage = p } in (m2, refresh m2)

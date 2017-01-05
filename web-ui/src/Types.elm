@@ -23,7 +23,7 @@ module Types exposing (
     EpisodeId, Episode, episodeDecoder
     )
 
-import Json.Decode as JD exposing ( (:=) )
+import Json.Decode as JD
 import Json.Encode as JE
 
 type alias ApiList a =
@@ -33,10 +33,10 @@ type alias ApiList a =
     }
 
 listDecoder : JD.Decoder a -> JD.Decoder (ApiList a)
-listDecoder dec = JD.object3 ApiList
-    ( "offset"  := JD.int )
-    ( "count"   := JD.int )
-    ( "items"   := JD.list dec )
+listDecoder dec = JD.map3 ApiList
+    ( JD.field "offset" JD.int )
+    ( JD.field "count"  JD.int )
+    ( JD.field "items"  <| JD.list dec )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
@@ -54,12 +54,12 @@ type PersonFilter
     | AlbumPersons AlbumId  -- ^ persons in that album
 
 personDecoder : JD.Decoder Person
-personDecoder = JD.object2 Person
-    ( "personName"      := JD.string )
-    ( "personPortrait"  := fileIdDecoder |> JD.maybe )
+personDecoder = JD.map2 Person
+    ( JD.field "personName"     JD.string )
+    ( JD.field "personPortrait" fileIdDecoder |> JD.maybe )
 
 personListDecoder : JD.Decoder (PersonId, Person)
-personListDecoder = JD.object2 (,) ( "personId" := JD.int ) personDecoder
+personListDecoder = JD.map2 (,) ( JD.field "personId" JD.int ) personDecoder
 
 encodePerson : PersonId -> Person -> JE.Value
 encodePerson pid p = JE.object
@@ -85,11 +85,11 @@ type alias Album =
     }
 
 albumDecoder : JD.Decoder Album
-albumDecoder = JD.object4 Album
-    ( "albumId"     := JD.int )
-    ( "albumName"   := JD.string )
-    ( "albumPoster" := fileIdDecoder |> JD.maybe )
-    ( "fileCount"   := JD.int )
+albumDecoder = JD.map4 Album
+    ( JD.field "albumId"        JD.int )
+    ( JD.field "albumName"      JD.string )
+    ( JD.field "albumPoster"    fileIdDecoder |> JD.maybe )
+    ( JD.field "fileCount"      JD.int )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Files
@@ -111,11 +111,11 @@ type alias File =
     }
 
 fileDecoder : JD.Decoder File
-fileDecoder = JD.object4 File
-    ( "fileId"      := fileIdDecoder )
-    ( "filePath"    := JD.string )
-    ( "fileSize"    := JD.int )
-    ( "fileMime"    := JD.string )
+fileDecoder = JD.map4 File
+    ( JD.field "fileId"     fileIdDecoder )
+    ( JD.field "filePath"   JD.string )
+    ( JD.field "fileSize"   JD.int )
+    ( JD.field "fileMime"   JD.string )
 
 type WhichFiles
     = AllFiles
@@ -132,9 +132,9 @@ type alias Container =
     }
 
 containerDecoder : JD.Decoder Container
-containerDecoder = JD.object2 Container
-    ( "duration"    := JD.float )
-    ( "format"      := JD.string )
+containerDecoder = JD.map2 Container
+    ( JD.field "duration"   JD.float )
+    ( JD.field "format"     JD.string )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Serials
@@ -151,12 +151,12 @@ type alias Serial =
     }
 
 serialDecoder : JD.Decoder Serial
-serialDecoder = JD.object2 Serial
-    ( "serialName"      := JD.string )
-    ( "serialPoster"    := fileIdDecoder |> JD.maybe )
+serialDecoder = JD.map2 Serial
+    ( JD.field "serialName"     JD.string )
+    ( JD.field "serialPoster"   fileIdDecoder |> JD.maybe )
 
 serialListDecoder : JD.Decoder (SerialId, Serial)
-serialListDecoder = JD.object2 (,) ( "serialId" := serialIdDecoder ) serialDecoder
+serialListDecoder = JD.map2 (,) ( JD.field "serialId" serialIdDecoder ) serialDecoder
 
 type SerialFilter = AllSerials
 
@@ -174,10 +174,10 @@ type alias Season =
     }
 
 seasonDecoder : JD.Decoder Season
-seasonDecoder = JD.object3 Season
-    ( "seasonId"        := seasonIdDecoder )
-    ( "seasonSerialId"  := serialIdDecoder )
-    ( "seasonPoster"    := fileIdDecoder |> JD.maybe )
+seasonDecoder = JD.map3 Season
+    ( JD.field "seasonId"       seasonIdDecoder )
+    ( JD.field "seasonSerialId" serialIdDecoder )
+    ( JD.field "seasonPoster"   fileIdDecoder |> JD.maybe )
 
 -- episodes
 
@@ -195,9 +195,9 @@ type alias Episode =
     }
 
 episodeDecoder : JD.Decoder Episode
-episodeDecoder = JD.object5 Episode
-    ( "episodeSerialId" := serialIdDecoder )
-    ( "episodeSeasonId" := seasonIdDecoder )
-    ( "episodeId"       := episodeIdDecoder )
-    ( "episodeTitle"    := JD.string )
-    ( "episodeFile"     := fileIdDecoder |> JD.maybe )
+episodeDecoder = JD.map5 Episode
+    ( JD.field "episodeSerialId"    serialIdDecoder )
+    ( JD.field "episodeSeasonId"    seasonIdDecoder )
+    ( JD.field "episodeId"          episodeIdDecoder )
+    ( JD.field "episodeTitle"       JD.string )
+    ( JD.field "episodeFile"        fileIdDecoder |> JD.maybe )

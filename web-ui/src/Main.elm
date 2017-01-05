@@ -3,7 +3,6 @@ module Main exposing ( main )
 
 import Navigation
 import Html exposing ( Html )
-import Html.App
 import Html.Attributes as HA
 import Html.Events as HE
 import Http
@@ -20,7 +19,7 @@ import Page.SeriesSeasons exposing ( WithSeasons )
 import Page.Video
 import Route exposing ( Route(..) )
 import Server
-import Utils exposing ( onClick' )
+import Utils exposing ( onClick_ )
 import VideoPlayer as VP
 
 -- port initialPath : String
@@ -76,48 +75,49 @@ type Action
     | NoOp
 
 mountRoute : Route -> Model -> (Model, Cmd Action)
-mountRoute route m = case route of
-    Route.Home                  ->
-        let
-            (hp', hpfx) = Page.Home.onMount m.homePageModel
-        in
-            ( { m | homePageModel = hp' }, Cmd.map PageHomeAction hpfx )
+mountRoute route m =
+    case route of
+        Route.Home                  ->
+            let
+                (hp', hpfx) = Page.Home.onMount m.homePageModel
+            in
+                ( { m | homePageModel = hp' }, Cmd.map PageHomeAction hpfx )
 
-    Route.AlbumList ->
-        let
-            (al', fx) = Page.AlbumList.onMount m.albumListPageModel
-        in
-            ( { m | albumListPageModel = al' } , Cmd.map PageAlbumListAction fx)
+        Route.AlbumList ->
+            let
+                (al', fx) = Page.AlbumList.onMount m.albumListPageModel
+            in
+                ( { m | albumListPageModel = al' } , Cmd.map PageAlbumListAction fx)
 
-    Route.Person pid            ->
-        let
-            (pp', ppfx) = Page.Person.onMount pid m.personPageModel
-        in
-            ( { m | personPageModel = pp' }, ppfx |> Cmd.map PagePersonAction )
+        Route.Person pid            ->
+            let
+                (pp', ppfx) = Page.Person.onMount pid m.personPageModel
+            in
+                ( { m | personPageModel = pp' }, ppfx |> Cmd.map PagePersonAction )
 
-    Route.Album aid mfid    ->
-        let
-            (ap', apfx) = Page.Album.onMount aid mfid m.albumPageModel
-        in
-            ( { m | albumPageModel = ap' }, Cmd.map PageAlbumAction apfx)
+        Route.Album aid mfid    ->
+            let
+                (ap', apfx) = Page.Album.onMount aid mfid m.albumPageModel
+            in
+                ( { m | albumPageModel = ap' }, Cmd.map PageAlbumAction apfx)
 
-    Route.Series ->
-        let
-            (m', psfx)  = Page.Series.onMount m
-        in
-            (m', Cmd.map PageSeriesAction psfx)
+        Route.Series ->
+            let
+                (m', psfx)  = Page.Series.onMount m
+            in
+                (m', Cmd.map PageSeriesAction psfx)
 
-    Route.SeriesSeasons sid ->
-        Page.SeriesSeasons.onMount sid m |> \(m', fx) -> (m', Cmd.map PageSeasonsAction fx)
+        Route.SeriesSeasons sid ->
+            Page.SeriesSeasons.onMount sid m |> \(m', fx) -> (m', Cmd.map PageSeasonsAction fx)
 
-    Route.SeriesEpisodes r a ->
-        Page.SeriesEpisodes.onMount r a m |> \(m', fx) -> (m', Cmd.map PageEpisodesAction fx)
+        Route.SeriesEpisodes r a ->
+            Page.SeriesEpisodes.onMount r a m |> \(m', fx) -> (m', Cmd.map PageEpisodesAction fx)
 
-    Route.Video fid ->
-        let
-            (vp', pvfx) = Page.Video.onMount fid m.videoPageModel
-        in
-            ( { m | videoPageModel = vp' }, Cmd.map PageVideoAction pvfx)
+        Route.Video fid ->
+            let
+                (vp', pvfx) = Page.Video.onMount fid m.videoPageModel
+            in
+                ( { m | videoPageModel = vp' }, Cmd.map PageVideoAction pvfx)
 
 update : Action -> Model -> (Model, Cmd Action)
 update a m = case a of
@@ -168,6 +168,7 @@ update a m = case a of
 
     NavbarAction (Navbar.LogOut) ->
         ({ m | userName = Nothing }, Server.doLogout |> Task.perform (\_ -> NoOp) (\_ -> NoOp) )
+    NavbarAction (Navbar.RouteMsg msg) -> (m, Route.handleMsg msg)
 
 loginPage : LoginModel -> Html Action
 loginPage m =
@@ -184,7 +185,7 @@ loginPage m =
                 , Html.input
                     [ HA.type' "password", HA.class "form-control", HA.id "mdbPassword" , HE.onInput SetLoginPass ] []
                 ]
-            , Html.button [ HA.type' "button", HA.class "btn btn-primary pull-right", onClick' DoLogin ]
+            , Html.button [ HA.type' "button", HA.class "btn btn-primary pull-right", onClick_ DoLogin ]
                 [ Html.text "login" ]
             ]
         ]
@@ -220,10 +221,10 @@ init route =
         (m, Cmd.batch [ checkLogin, rfx ] )
 
 main : Program Never
-main = Navigation.program (Navigation.makeParser (\_ -> Home))
+main = Navigation.program Route.routeParser
     { init          = init
     , update        = update
-    , urlUpdate     = mountRoute
+    , urlUpdate     = \r m -> mountRoute r { m | currentRoute = r }
     , view          = view
     , subscriptions = \_ -> Sub.none
     }

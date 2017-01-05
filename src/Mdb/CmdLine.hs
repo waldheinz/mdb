@@ -5,6 +5,7 @@ module Mdb.CmdLine (
     OptFile(..), ScanFlags(..), AssignTarget(..), parseCommandLine
     ) where
 
+import           Data.Monoid ( (<>) )
 import           Options.Applicative
 
 import           Mdb.Types

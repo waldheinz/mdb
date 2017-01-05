@@ -5,7 +5,6 @@ module Page.Video exposing (
     )
 
 import Html exposing ( Html )
-import Html.App
 import Html.Attributes as HA
 
 import Types exposing (..)

@@ -10,7 +10,7 @@ import Http
 import Task
 
 import File
-import Route exposing ( clickRoute )
+import Route exposing ( clickRoute_ )
 import Server
 import Types exposing (..)
 
@@ -34,6 +34,7 @@ initialModel =
 type Action
     = NoOp
     | GotList (Result Http.Error (ApiList Episode))
+    | RouteMsg Route.Msg
 
 view : WithEpisodes a -> Html Action
 view wm =
@@ -41,7 +42,7 @@ view wm =
         m = wm.pageEpisodesModel
         oneEpisode ep =
             let
-                onClick = Maybe.map (Route.Video >> clickRoute) ep.fileId |>  Maybe.withDefault []
+                onClick = Maybe.map (Route.Video >> clickRoute' RouteMsg) ep.fileId |>  Maybe.withDefault []
             in
                 Html.div [ HA.class "col-xs-4 col-md-2" ]
                     [ Html.a (HA.class "thumbnail" :: onClick )
@@ -76,5 +77,6 @@ update a wm =
             NoOp                -> noFx m
             GotList (Err er)    -> Debug.log "fetching episodes failed" er |> \_ -> noFx m
             GotList (Ok al)     -> { m | episodeList = al.items } |> noFx
+            RouteMsg msg        -> ( m , Route.handleMsg msg )
     in
         ( { wm | pageEpisodesModel = m' }, fx )

@@ -10,7 +10,6 @@ module File exposing (
     )
 
 import Html exposing ( Html )
-import Html.App exposing ( map )
 import Html.Attributes as HA
 import String
 
@@ -70,6 +69,7 @@ setListItemCount cnt m = { m | files = Listing.withItemCount cnt m.files }
 
 type ListAction
     = FileList (Listing.Action File)
+    | RouteMsg Route.Msg
 
 setListFilter : WhichFiles -> ListModel -> (ListModel, Cmd ListAction)
 setListFilter flt m =
@@ -94,7 +94,7 @@ viewList m =
                     else clickRoute (Route.Video fid)
 
             in
-                Html.div [ HA.class "col-xs-3 col-md-2" ]
+                Html.App.map RouteMsg <| Html.div [ HA.class "col-xs-3 col-md-2" ]
                     [ Html.a ( HA.class "thumbnail" :: clickWhat )
                         [ thumb Square fid ]
                     ]
@@ -106,4 +106,5 @@ listPagination m = Html.App.map FileList (Listing.pagination m.files)
 
 updateListModel : ListAction -> ListModel -> (ListModel, Cmd ListAction)
 updateListModel a m = case a of
-    FileList a  -> Listing.update a m.files |> \(fs', fx) -> ( { m | files = fs' } , Cmd.map FileList fx )
+    FileList a      -> Listing.update a m.files |> \(fs', fx) -> ( { m | files = fs' } , Cmd.map FileList fx )
+    RouteMsg msg    -> (m, Route.handleMsg msg)

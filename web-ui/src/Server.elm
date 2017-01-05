@@ -1,7 +1,7 @@
 
 module Server exposing (
     -- * Persons
-    fetchPerson, fetchPersons, putPerson,
+    fetchPerson, fetchPersons, -- putPerson,
 
     -- * Albums
     fetchAlbums, fetchAlbumInfo,
@@ -20,7 +20,7 @@ module Server exposing (
     )
 
 import Http
-import Json.Decode as JD exposing ( (:=) )
+import Json.Decode as JD
 import Json.Encode as JE
 import Task exposing ( Task )
 
@@ -32,23 +32,29 @@ serverBaseUrl = "" -- ^ yes, we want that relative for now
 apiBaseUrl : String
 apiBaseUrl = serverBaseUrl ++ "/api"
 
-defaultRequest : List (String, String) -> String -> Http.Body -> String -> Http.Request
-defaultRequest headers verb body endpoint =
-    { verb      = verb
-    , headers   = ( "Accept", "application/json" ) :: headers
+defaultRequest : List (String, String) -> String -> Http.Body -> String -> Http.Expect a -> Http.Request a
+defaultRequest headers verb body endpoint expect = Http.request
+    { method    = verb
+    , headers   = Http.header "Accept" "application/json" :: List.map (\(a, b) -> Http.header a b) headers
     , url       = apiBaseUrl ++ endpoint
     , body      = body
+    , expect    = expect
+    , timeout   = Nothing
+    , withCredentials   = True
     }
 
-defaultGetRequest : String -> Http.Request
-defaultGetRequest = defaultRequest [] "GET" Http.empty
+defaultGetRequest : String -> Http.Request ()
+defaultGetRequest = defaultRequest [] "GET" Http.emptyBody
 
-defaultPutRequest : JE.Value -> String -> Http.Request
-defaultPutRequest value = JE.encode 0 value |> Http.string
-    |> defaultRequest [ ( "Content-Type", "application/json" ) ] "PUT"
+defaultPutRequest : JE.Value -> String -> Http.Request ()
+defaultPutRequest value = defaultRequest [ ( "Content-Type", "application/json" ) ] "PUT" (Http.jsonBody value)
 
 getJson : String -> JD.Decoder a -> Task Http.Error a
-getJson ep dec = defaultGetRequest ep |> Http.send Http.defaultSettings |> Http.fromJson dec
+getJson ep dec =
+    let
+        dr = defaultGetRequest ep
+    in
+        Http.toTask { dr | expect = Http.expectJson dec }
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Persons
@@ -66,9 +72,9 @@ fetchPersons which =
 fetchPerson : PersonId -> Task Http.Error Person
 fetchPerson pid = getJson ("/person/byId/" ++ toString pid) personDecoder
 
-putPerson : PersonId -> Person -> Task Http.RawError Http.Response
-putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toString pid)
-    |> Http.send Http.defaultSettings
+-- putPerson : PersonId -> Person -> Task Http.RawError Http.Response
+-- putPerson pid p = defaultPutRequest (encodePerson pid p) ("/person/byId/" ++ toString pid)
+--    |> Http.toTask
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Albums
@@ -155,10 +161,11 @@ doLogin l =
             { verb      = "POST"
             , headers   = [ ("Content-Type", "application/json" ) ]
             , url       = apiBaseUrl ++ "/user/self/login"
-            , body      = JE.encode 0 json |> Http.string
+            , body      = Http.jsonBody json
+            , expect    = Http.expectJson decoder
             }
     in
-        Http.send Http.defaultSettings req |> Http.fromJson decoder
+        Http.toTask req
 
 doLogout : Task Http.Error ()
 doLogout =
@@ -167,10 +174,11 @@ doLogout =
             { verb      = "POST"
             , headers   = [ ("Content-Type", "application/json" ) ]
             , url       = apiBaseUrl ++ "/user/self/logout"
-            , body      = Http.empty
+            , body      = Http.emptyBody
+            , expect    = Http.expectString (\_ -> Ok ())
             }
     in
-        Http.send Http.defaultSettings req |> Http.fromJson (JD.succeed ())
+        Http.toTask req
 
 recordVideoPlay : JE.Value -> Task Http.Error ()
 recordVideoPlay v =
@@ -179,10 +187,11 @@ recordVideoPlay v =
             { verb      = "POST"
             , headers   = [ ("Content-Type", "application/json" ) ]
             , url       = apiBaseUrl ++ "/user/self/videoPlay"
-            , body      = JE.encode 0 v |> Http.string
+            , body      = Http.jsonBody v
+            , expect    = Http.expectString (\_ -> Ok ())
             }
     in
-        Http.send Http.defaultSettings req |> Http.fromJson (JD.succeed ())
+        Http.toTask req
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Media

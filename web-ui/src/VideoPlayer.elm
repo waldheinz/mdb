@@ -17,8 +17,8 @@ import Time
 
 import Server
 import Types exposing (..)
-import Utils exposing ( onClick' )
-import Native.VideoPlayer
+import Utils exposing ( onClick_ )
+-- import Native.VideoPlayer
 
 type PlayState = Playing | Paused | Seeking
 

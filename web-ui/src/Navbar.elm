@@ -5,15 +5,17 @@ import Html exposing ( Html )
 import Html.Attributes as HA
 
 import Route exposing ( Route(..), clickRoute )
-import Utils exposing ( onClick' )
+import Utils exposing ( onClick_ )
 
-type Action = LogOut
+type Action
+    = LogOut
+    | RouteMsg Route.Msg
 
 view : Maybe String -> Route -> Html Action
 view muser r =
     let
         userName            = Maybe.withDefault "(not logged in)" muser
-        pageLink pa pr pn   =
+        pageLink pa pr pn   = Html.map RouteMsg <|
             Html.li [ HA.classList [ ( "active", pa ) ] ]
                 [ Html.a (clickRoute pr) [ Html.text pn ] ]
 
@@ -22,7 +24,7 @@ view muser r =
             [ Html.div [ HA.class "container-fluid" ]
                 [ Html.div [ HA.class "navbar-header" ]
                     [ Html.button
-                        [ HA.type' "button"
+                        [ HA.type_ "button"
                         , HA.class "navbar-toggle collapsed"
                         , HA.attribute "data-toggle" "collapse"
                         , HA.attribute "data-target" "#mdb-navbar"
@@ -44,7 +46,7 @@ view muser r =
                             [ Html.a [ HA.href "#", HA.class "dropdown-toggle", HA.attribute "data-toggle" "dropdown" ]
                                 [ Html.text userName, Html.span [ HA.class "caret"] [] ]
                             , Html.ul [ HA.class "dropdown-menu" ]
-                                [ Html.li [ ] [ Html.a [ HA.href "#", onClick' LogOut ] [ Html.text "log out"] ]
+                                [ Html.li [ ] [ Html.a [ HA.href "#", onClick_ LogOut ] [ Html.text "log out"] ]
                                 ]
                             ]
                         ]

@@ -4,7 +4,6 @@ module Page.Home exposing (
     )
 
 import Html exposing ( Html )
-import Html.App
 import Html.Attributes as HA
 
 import Person

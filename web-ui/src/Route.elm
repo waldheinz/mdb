@@ -3,7 +3,7 @@ module Route exposing (
     Route(..), encode, decode,
 
     -- * Helpers
-    clickRoute, goRoute
+    Msg, clickRoute, clickRoute_, handleMsg
     )
 
 import RouteParser exposing (..)
@@ -12,6 +12,7 @@ import Html
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
+import Navigation as NAV
 import Types exposing ( .. )
 
 type Route
@@ -52,13 +53,21 @@ encode route = case route of
     SeriesEpisodes r a      -> "/series/" ++ toString r ++ "/season/" ++ toString a
     Video fid               -> "/video/" ++ toString fid
 
+-- routeParser =
+--    (NAV.makeParser (\_ -> Home))
+
 ------------------------------------------------------------------------------------------------------------------------
 -- Helpers
 ------------------------------------------------------------------------------------------------------------------------
 
-clickRoute : Route -> List (Html.Attribute never)
-clickRoute r = []
-{-
+type Msg
+    = GoRoute Route
+
+clickRoute : Route -> List (Html.Attribute Msg)
+clickRoute = clickRoute_ identity
+
+clickRoute_ : (Msg -> a) -> Route -> List (Html.Attribute a)
+clickRoute_ wrap r =
     let
         path = encode r
     in
@@ -66,13 +75,9 @@ clickRoute r = []
         , HE.onWithOptions
             "click"
             { stopPropagation = True, preventDefault = True }
-            (JD.succeed ())
-            (\() -> Signal.message TransitRouter.pushPathAddress path)
+            (JD.succeed (wrap (GoRoute r)))
         ]
--}
 
-goRoute : Route -> Cmd ()
-goRoute r = Cmd.none
---     encode r
---    |> Signal.send TransitRouter.pushPathAddress
---    |> Effects.task
+handleMsg : Msg -> Cmd never
+handleMsg msg = case msg of
+    GoRoute r -> NAV.newUrl (encode r)

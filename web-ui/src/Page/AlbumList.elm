@@ -6,7 +6,6 @@ module Page.AlbumList exposing (
 
 import Html exposing ( Html )
 import Html.Attributes as HA
-import Html.App
 
 import Album
 import Types exposing (..)

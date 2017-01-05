@@ -1,10 +1,9 @@
 
 module Utils exposing (
-    onClick'
+    onClick_
     )
 
 import Html exposing ( Html )
-import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as JD
 
@@ -14,10 +13,10 @@ import Json.Decode as JD
 
 -- |
 -- just like onClick, but with preventDefault set
-onClick' : a -> Html.Attribute a
-onClick' v =
+onClick_ : a -> Html.Attribute a
+onClick_ v =
     let
         do  = HE.defaultOptions
-        do' = { do | preventDefault = True }
+        do2 = { do | preventDefault = True }
     in
-        HE.onWithOptions "click" do' (JD.succeed v)
+        HE.onWithOptions "click" do2 (JD.succeed v)

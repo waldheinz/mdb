@@ -1,15 +1,20 @@
 
 module Route exposing (
-    Route(..), encode, parse
+    Route(..), parse, clickRoute, go
     )
 
+import Json.Decode as JD
+import Html
+import Html.Attributes as HA
+import Html.Events as HE
 import UrlParser exposing (..)
 
 import Navigation as NAV
 import Types exposing ( .. )
 
 type Route
-    = Home
+    = NotFound NAV.Location
+    | Home
     | AlbumList
     | Album AlbumId (Maybe FileId)
     | Person PersonId
@@ -20,8 +25,8 @@ type Route
 
 parse : NAV.Location -> Route
 parse loc = case parsePath route loc of
-    Just r -> r
-    Nothing -> Home
+    Just r  -> r
+    Nothing -> NotFound loc
 
 route : Parser (Route -> a) a
 route = oneOf
@@ -30,6 +35,7 @@ route = oneOf
 
 encode : Route -> String
 encode route = case route of
+    NotFound loc            -> "/404"
     Home                    -> "/"
     AlbumList               -> "/albums"
     Album aid Nothing       -> "/album/" ++ toString aid
@@ -47,14 +53,8 @@ encode route = case route of
 -- Helpers
 ------------------------------------------------------------------------------------------------------------------------
 
-type Msg
-    = GoRoute Route
-{-
-clickRoute : Route -> List (Html.Attribute Msg)
-clickRoute = clickRoute_ identity
-
-clickRoute_ : (Msg -> a) -> Route -> List (Html.Attribute a)
-clickRoute_ wrap r =
+clickRoute : Route -> List (Html.Attribute Route)
+clickRoute r =
     let
         path = encode r
     in
@@ -62,9 +62,8 @@ clickRoute_ wrap r =
         , HE.onWithOptions
             "click"
             { stopPropagation = True, preventDefault = True }
-            (JD.succeed (wrap (GoRoute r)))
+            (JD.succeed r)
         ]
--}
-handleMsg : Msg -> Cmd never
-handleMsg msg = case msg of
-    GoRoute r -> NAV.newUrl (encode r)
+
+go : Route -> Cmd never
+go r = NAV.newUrl (encode r)

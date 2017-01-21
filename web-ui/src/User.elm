@@ -75,7 +75,8 @@ update msg wm fc = case msg of
 
 loggedIn : Model -> Bool
 loggedIn m = case m of
-    _ -> False
+    LoggedIn _  -> True
+    _           -> False
 
 loginView : LoginModel -> Html Msg
 loginView m =

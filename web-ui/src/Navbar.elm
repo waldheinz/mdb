@@ -18,6 +18,9 @@ view muser r =
         pageLink pa pr pn   = Html.map GoTo <| Html.li
             [ HA.classList [ ( "active", pa ) ] ]
             [ Html.a (clickRoute pr) [ Html.text pn ] ]
+        isAlbumList         = case r of
+            AlbumList _ -> True
+            _           -> False
 
     in
         Html.div [ HA.class "navbar navbar-default" ]
@@ -37,9 +40,9 @@ view muser r =
                     ]
                 , Html.div [ HA.class "collapse navbar-collapse", HA.id "mdb-navbar" ]
                     [ Html.ul [ HA.class "nav navbar-nav" ]
-                        [ pageLink (r == Home)      Home        "Home"
-                        , pageLink (r == Series)    Series      "Series"
-                        , pageLink (r == AlbumList) AlbumList   "Albums"
+                        [ pageLink (r == Home)      Home            "Home"
+                        , pageLink (r == Series)    Series          "Series"
+                        , pageLink isAlbumList      (AlbumList 0)   "Albums"
                         ]
                     , Html.ul [ HA.class "nav navbar-nav navbar-right" ]
                         [ Html.li [ HA.class "dropdown" ]

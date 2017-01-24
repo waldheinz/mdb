@@ -15,7 +15,7 @@ import Types exposing ( .. )
 type Route
     = NotFound NAV.Location
     | Home
-    | AlbumList
+    | AlbumList Int
     | Album AlbumId (Maybe FileId)
     | Person PersonId
     | Series                            -- ^ series listing
@@ -31,13 +31,14 @@ parse loc = case parsePath route loc of
 route : Parser (Route -> a) a
 route = oneOf
     [ map Home top
+    , map AlbumList (s "/albums/page" </> int)
     ]
 
 encode : Route -> String
 encode route = case route of
     NotFound loc            -> "/404"
     Home                    -> "/"
-    AlbumList               -> "/albums"
+    AlbumList pg            -> "/albums/page/" ++ toString (pg + 1)
     Album aid Nothing       -> "/album/" ++ toString aid
     Album aid (Just fid)    -> "/album/" ++ toString aid ++ "/file/" ++ toString fid
     Person pid              -> "/person/" ++ toString pid
@@ -45,9 +46,6 @@ encode route = case route of
     SeriesSeasons sid       -> "/series/" ++ toString sid
     SeriesEpisodes r a      -> "/series/" ++ toString r ++ "/season/" ++ toString a
     Video fid               -> "/video/" ++ toString fid
-
--- routeParser =
---    (NAV.makeParser (\_ -> Home))
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Helpers

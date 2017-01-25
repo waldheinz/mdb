@@ -11,8 +11,9 @@ import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import           Data.String ( fromString )
 import qualified Data.Vault.Lazy as V
-import           Network.Wai ( Application )
-import           Network.Wai.Application.Static ( defaultFileServerSettings, staticApp )
+import           Network.HTTP.Types.Status ( status200 )
+import           Network.Wai ( Application, responseFile )
+import           Network.Wai.Application.Static ( defaultWebAppSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
 import           Network.Wai.Handler.WebSockets ( websocketsOr )
 import           Network.Wai.Session as S
@@ -64,17 +65,27 @@ doServe = do
 
 mkApp :: (MonadMask m, MonadIO m) => MediaDb -> SessionKey IO -> m Application
 mkApp mdb skey = do
-    static  <- staticFiles
-    return $ mapUrls $
-                mount "api"     (mapUrls $
-                    mount "image"   (imageApp mdb skey)
-                <|> mount "thumb"   (thumbApp mdb skey)
-                <|> mount "video"   (videoApp mdb skey)
-                <|> mountRoot (apiApp mdb skey)
-                )
-            <|> mountRoot static
+    res <- mkResources
+    index <- mkIndex
 
-staticFiles :: MonadIO m => m Application
-staticFiles = liftIO $ do
+    return $ mapUrls $
+            mount "api"     (mapUrls $
+                mount "image"   (imageApp mdb skey)
+            <|> mount "thumb"   (thumbApp mdb skey)
+            <|> mount "video"   (videoApp mdb skey)
+            <|> mountRoot (apiApp mdb skey)
+            )
+        <|> mount "res" res
+        <|> mountRoot   index
+
+mkResources :: MonadIO m => m Application
+mkResources = liftIO $ do
     dir <- getDataDir
-    return $ staticApp (defaultFileServerSettings $ fromString $ dir ++ "/files/htdocs")
+    return $ staticApp (defaultWebAppSettings $ fromString $ dir ++ "/files/htdocs/res")
+
+mkIndex :: MonadIO m => m Application
+mkIndex = liftIO $ do
+    dir <- getDataDir
+    return $ \_ respond -> do
+        respond $ responseFile status200 [ ] (fromString $ dir ++ "/files/htdocs/index.html") Nothing
+    -- staticApp (defaultFileServerSettings $ fromString $ dir ++ "/files/htdocs")

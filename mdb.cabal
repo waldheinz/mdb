@@ -13,12 +13,12 @@ build-type:          Custom
 cabal-version:       >=1.10
 
 data-files:
-    files/htdocs/css/*.css
-    files/htdocs/css/*.min.css
     files/htdocs/index.html
-    files/htdocs/js/*.min.js
-    files/htdocs/js/*.all.min.js
-    files/htdocs/js/*.js
+    files/htdocs/res/css/*.css
+    files/htdocs/res/css/*.min.css
+    files/htdocs/res/js/*.min.js
+    files/htdocs/res/js/*.all.min.js
+    files/htdocs/res/js/*.js
     files/sql/*.sql
 
 executable mdb

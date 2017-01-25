@@ -86,6 +86,5 @@ mkResources = liftIO $ do
 mkIndex :: MonadIO m => m Application
 mkIndex = liftIO $ do
     dir <- getDataDir
-    return $ \_ respond -> do
+    return $ \_ respond ->
         respond $ responseFile status200 [ ] (fromString $ dir ++ "/files/htdocs/index.html") Nothing
-    -- staticApp (defaultFileServerSettings $ fromString $ dir ++ "/files/htdocs")

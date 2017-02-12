@@ -18,11 +18,11 @@ data Album = Album
     { albumId       :: ! AlbumId
     , albumName     :: ! T.Text
     , albumPoster   :: Maybe FileId
-    , fileCount     :: ! Int
+--    , fileCount     :: ! Int
     } deriving ( Generic, Show )
 
 instance FromRow Album where
-    fromRow = Album <$> field <*> field <*> field <*> field
+    fromRow = Album <$> field <*> field <*> field -- <*> field
 
 instance ToJSON Album where
   toJSON = gtoJson

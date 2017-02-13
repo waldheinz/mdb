@@ -9,9 +9,10 @@ import Distribution.Simple.Setup
 main :: IO ()
 main = defaultMainWithHooks simpleUserHooks
     { hookedPrograms    = [ simpleProgram "elm" ]
-    , postBuild         = myPostBuild
+--    , postBuild         = myPostBuild
     }
 
+{-
 myPostBuild :: Args -> BuildFlags -> PackageDescription -> LocalBuildInfo -> IO ()
 myPostBuild _ bf _ lbi =
     runDbProgram (buildVerbose bf) (simpleProgram "elm") (withPrograms lbi)
@@ -20,7 +21,7 @@ myPostBuild _ bf _ lbi =
         , "web-ui/src/Main.elm"
         , "--output", "files/htdocs/js/mdb.js"
         ]
-{-
+
 myCopy :: PackageDescription -> LocalBuildInfo -> UserHooks -> CopyFlags -> IO ()
 myCopy pd lbi uh cf = do
     print $ dataFiles pd

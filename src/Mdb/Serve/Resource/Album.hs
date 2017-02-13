@@ -38,8 +38,8 @@ posterQuery :: Query
 posterQuery =
     "COALESCE(" <>
         "a.album_poster," <>
-            "(SELECT file_id FROM auth_file WHERE file_name = " <>
-                "(SELECT MIN(file.file_name) FROM album_file af NATURAL JOIN file WHERE af.album_id = a.album_id))" <>
+            "(SELECT file_id FROM auth_file NATURAL JOIN album_file af " <>
+                "WHERE af.album_id = a.album_id ORDER BY auth_file.file_name LIMIT 1)" <>
     ") "
 
 fileCountQuery :: Query

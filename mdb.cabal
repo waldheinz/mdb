@@ -29,9 +29,11 @@ executable mdb
   build-depends:
      base >=4.6,
      aeson,
+     attoparsec,
      base16-bytestring,
      blaze-builder,
      bytestring    >= 0.10,
+     bytestring-conversion,
      conduit,
      conduit-extra,
      cookie,

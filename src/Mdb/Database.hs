@@ -191,7 +191,9 @@ dbExecute_ :: (MonadMask m, MonadIO m) => SQL.Query -> MDB m ()
 dbExecute_ q = withConnection (\c -> liftIO $! SQL.execute_ c q)
 
 dbQuery :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m [r]
-dbQuery q r = withConnection $ \c -> liftIO $! SQL.query c q r
+dbQuery q r = withConnection $ \c -> liftIO $! do
+    putStrLn $ show q
+    SQL.query c q r
 
 dbQueryOne :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m (Either T.Text r)
 dbQueryOne q p = dbQuery q p >>= \ xs -> return $! case xs of

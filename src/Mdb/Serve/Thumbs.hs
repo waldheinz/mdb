@@ -1,5 +1,5 @@
 
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, TypeOperators #-}
 
 module Mdb.Serve.Thumbs (
     thumbApp
@@ -11,10 +11,11 @@ import           Control.Monad.Trans.Except
 import           Data.Text.Encoding              (encodeUtf8Builder)
 import           Network.HTTP.Types              (status200, status400)
 import           Network.Wai
+import           Network.Wai.Predicate
 import           Network.Wai.Routing
 
 import           Mdb.Database
-import           Mdb.Image                       (ensureThumb)
+import           Mdb.Image                       (ThumbSize(..), ensureThumb)
 import           Mdb.Serve.Auth                  as AUTH
 import           Mdb.Serve.Utils                 (withFileAccess)
 import           Mdb.Types
@@ -23,12 +24,12 @@ thumbApp :: MediaDb -> AUTH.SessionKey IO -> Application
 thumbApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) where
     goAuth = AUTH.request skey req
     root = prepare $
-        get "/medium/:fid"        (continue $ goAuth . fileThumb)        $ capture "fid"
+        get "/:size/:fid" (continue $ goAuth . fileThumb) $ capture "size" .&. capture "fid"
 
-fileThumb :: (MonadMask m, MonadIO m) => FileId -> Authenticated m Response
-fileThumb fid = withFileAccess go fid where
+fileThumb :: (MonadMask m, MonadIO m) => ThumbSize ::: FileId -> Authenticated m Response
+fileThumb (ts ::: fid) = withFileAccess go fid where
     go filePath fileMime = AUTH.unsafe $ do
-        etf <- runExceptT $ ensureThumb fid filePath fileMime
+        etf <- runExceptT $ ensureThumb ts fid filePath fileMime
         case etf of
             Left msg -> return $ responseBuilder status400
                 [ ( "Content-Type", "text/plain; charset=utf8")

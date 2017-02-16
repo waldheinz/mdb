@@ -29,7 +29,7 @@ import           Text.Regex.Posix
 import qualified Mdb.CmdLine                 as CMD
 import           Mdb.Database
 import           Mdb.Database.File           (fileMime)
-import           Mdb.Image                   (ensureThumb, thumbFileName)
+import           Mdb.Image                   (ThumbSize(..), ensureThumb, thumbFileName)
 import           Mdb.Types
 
 doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
@@ -77,16 +77,20 @@ scanFile flags fn = do
 
             f <- fileById fid
 
-            when (CMD.scanThumbs flags) $ do
-                tfn <- thumbFileName fn
-                te  <- liftIO $ doesFileExist tfn
-                unless te $ do
-                    liftIO $ putStrLn $ "creatig thumb for " ++ fn
-                    et <- runExceptT $ ensureThumb fid fn (fileMime f)
+            when (CMD.scanThumbs flags) $
+                let
+                    checkThumb ts = do
+                        tfn <- thumbFileName ts fn
+                        te  <- liftIO $ doesFileExist tfn
+                        unless te $ do
+                            liftIO $ putStrLn $ "creatig thumb for " ++ fn
+                            et <- runExceptT $ ensureThumb ts fid fn (fileMime f)
 
-                    case et of
-                        Left msg    -> liftIO $ putStrLn $ T.unpack $ "error: " <> msg
-                        Right tn    -> liftIO $ putStrLn $ "generated as " ++ tn
+                            case et of
+                                Left msg    -> liftIO $ putStrLn $ T.unpack $ "error: " <> msg
+                                Right tn    -> liftIO $ putStrLn $ "generated as " ++ tn
+                in
+                    mapM_ checkThumb [Small, Medium, Large]
 
             when ("video" `T.isPrefixOf` fileMime f) $ do
                 assignSeriesEpisode fn fid

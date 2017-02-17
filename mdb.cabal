@@ -22,60 +22,84 @@ data-files:
     files/sql/*.sql
 
 executable mdb
-  main-is:             Main.hs
-  ghc-options:         -Wall -threaded -with-rtsopts=-N
-  -- other-modules:
-  -- other-extensions:
-  build-depends:
-     base >=4.6,
-     aeson,
-     attoparsec,
-     base16-bytestring,
-     blaze-builder,
-     bytestring    >= 0.10,
-     bytestring-conversion,
-     conduit,
-     conduit-extra,
-     cookie,
-     directory     >= 1.2,
-     either,
-     exceptions,
-     filepath      >= 1.3,
-     ffmpeg-light  >= 0.8,
-     generic-aeson,
-     http-conduit,
-     http-types,
-     imagemagick,
-     json-schema,
-     mime-types,
-     monad-control,
-     mtl,
-     optparse-applicative,
-     process,
-     pureMD5,
-     regex-posix,
-     resource-pool,
-     rest-core      >= 0.39,
-     rest-wai,
-     scrypt,
-     SHA           >= 1.6,
-     sqlite-simple >= 0.4,
-     text          >= 0.11,
-     transformers,
-     transformers-base,
-     unix,
-     utf8-string,
-     vault,
-     wai,
-     wai-app-static,
-     wai-extra,
-     wai-predicates,
-     wai-routing,
-     wai-session,
-     wai-websockets,
-     warp,
-     websockets,
-     xml
+    main-is:             Main.hs
+    ghc-options:         -Wall -threaded -with-rtsopts=-N
+    hs-source-dirs:      src
+    default-language:    Haskell2010
+    other-modules:
+        Mdb.Album
+        Mdb.CmdLine
+        Mdb.Database
+        Mdb.Database.Album
+        Mdb.Database.File
+        Mdb.Database.Person
+        Mdb.Database.User
+        Mdb.File
+        Mdb.Image
+        Mdb.Serve
+        Mdb.Serve.Auth
+        Mdb.Serve.Image
+        Mdb.Serve.Resource.Album
+        Mdb.Serve.Resource.File
+        Mdb.Serve.Resource.Person
+        Mdb.Serve.Resource.Serial
+        Mdb.Serve.Resource.User
+        Mdb.Serve.Resource.Utils
+        Mdb.Serve.RestApi
+        Mdb.Serve.Thumbs
+        Mdb.Serve.Utils
+        Mdb.Serve.Video
+        Mdb.Serve.VideoWs
+        Mdb.TvShow
+        Mdb.Types
 
-  hs-source-dirs:      src
-  default-language:    Haskell2010
+    build-depends:
+        base >=4.6,
+        aeson,
+        attoparsec,
+        base16-bytestring,
+        blaze-builder,
+        bytestring    >= 0.10,
+        bytestring-conversion,
+        conduit,
+        conduit-extra,
+        cookie,
+        directory     >= 1.2,
+        either,
+        exceptions,
+        filepath      >= 1.3,
+        ffmpeg-light  >= 0.8,
+        generic-aeson,
+        http-conduit,
+        http-types,
+        imagemagick,
+        json-schema,
+        mime-types,
+        monad-control,
+        mtl,
+        optparse-applicative,
+        process,
+        pureMD5,
+        regex-posix,
+        resource-pool,
+        rest-core      >= 0.39,
+        rest-wai,
+        scrypt,
+        SHA           >= 1.6,
+        sqlite-simple >= 0.4,
+        text          >= 0.11,
+        transformers,
+        transformers-base,
+        unix,
+        utf8-string,
+        vault,
+        wai,
+        wai-app-static,
+        wai-extra,
+        wai-predicates,
+        wai-routing,
+        wai-session,
+        wai-websockets,
+        warp,
+        websockets,
+        xml

@@ -100,6 +100,14 @@ genThumbs :: MonadIO m => FilePath -> [(ThumbSize, FilePath)] -> MDB m ()
 genThumbs _ [] = return ()
 genThumbs src missing = liftIO $ IM.localGenesis $ do
     (_,wand) <- IM.magickWand
+
+    -- give a hint about the maximum required image size, allows for faster JPEG decode
+    let
+        maxSize     = maximum $ map (thumbPixels . fst) missing
+        sizeOption  = T.pack $ show maxSize ++ "x" ++ show maxSize
+
+    IM.setOption wand "jpeg:size" sizeOption
+
     IM.readImage wand $ fromString src
     w <- IM.getImageWidth wand
     h <- IM.getImageHeight wand

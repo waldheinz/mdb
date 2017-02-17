@@ -62,7 +62,7 @@ ensureThumb ts fid filePath fileMime = do
 ensureThumbs :: (MonadMask m, MonadIO m) => FileId -> FilePath -> T.Text -> ExceptT T.Text (MDB m) ()
 ensureThumbs fid filePath fileMime = do
     src <- thumbSource fid filePath fileMime
-    lift $ missingThumbs src [Small, Medium, Large] >>= genThumbs src
+    lift $ missingThumbs src [Large, Medium, Small] >>= genThumbs src
 
 thumbSource
     :: (MonadIO m, MonadMask m)

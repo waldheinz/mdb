@@ -126,9 +126,10 @@ stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: ba ::: fmt) = w
 
             transcode = case fmt of
                 "mkv"   ->
-                    " -c:v libx264 -preset veryfast -tune zerolatency" ++
+                    " -c:v libx264 -preset veryfast" ++
                     " -maxrate " ++ show maxrate ++ "k" ++
                     " -bufsize " ++ show bufsize ++ "k" ++
+                    " -crf 26" ++
                     " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                     " -f matroska"
 

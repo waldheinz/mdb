@@ -45,6 +45,7 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
             .&. def 720 (query "rv")
             .&. def 2000 (query "maxrate")
             .&. def 4000 (query "bufsize")
+            .&. def 28 (query "crf")
             .&. def 96 (query "ba")
             .&. def "mkv" (query "format")
         get "/:id/hls"          (continue $ goAuth . hls)
@@ -112,9 +113,9 @@ frame (fid ::: ts) = withFileAccess go fid where
         return $ responseFile status200 [("Content-Type", "image/jpeg")] outFile Nothing
 
 stream
-    :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int ::: Int ::: String)
+    :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int ::: Int ::: Int ::: String)
     -> Authenticated m Response
-stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: ba ::: fmt) = withFileAccess go fid where
+stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: crf ::: ba ::: fmt) = withFileAccess go fid where
     go p _ = do
         let
             input =
@@ -129,7 +130,7 @@ stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: ba ::: fmt) = w
                     " -c:v libx264 -preset veryfast" ++
                     " -maxrate " ++ show maxrate ++ "k" ++
                     " -bufsize " ++ show bufsize ++ "k" ++
-                    " -crf 26" ++
+                    " -crf " ++ show crf ++
                     " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                     " -f matroska"
 

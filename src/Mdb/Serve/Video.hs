@@ -43,9 +43,10 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
             .&. def 0 (query "t")
             .&. opt (query "end")
             .&. def 720 (query "rv")
-            .&. def 4000 (query "bv")
+            .&. def 2000 (query "maxrate")
+            .&. def 4000 (query "bufsize")
             .&. def 96 (query "ba")
-            .&. def "webm" (query "format")
+            .&. def "mkv" (query "format")
         get "/:id/hls"          (continue $ goAuth . hls)
             $ capture "id" .&. def 480 (query "rv") .&. def 2000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
@@ -111,9 +112,9 @@ frame (fid ::: ts) = withFileAccess go fid where
         return $ responseFile status200 [("Content-Type", "image/jpeg")] outFile Nothing
 
 stream
-    :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int ::: String)
+    :: (MonadMask m, MonadIO m) => (FileId ::: Double ::: Maybe Double ::: Int ::: Int ::: Int ::: Int ::: String)
     -> Authenticated m Response
-stream (fid ::: start ::: end ::: rv ::: bv ::: ba ::: fmt) = withFileAccess go fid where
+stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: ba ::: fmt) = withFileAccess go fid where
     go p _ = do
         let
             input =
@@ -125,12 +126,16 @@ stream (fid ::: start ::: end ::: rv ::: bv ::: ba ::: fmt) = withFileAccess go 
 
             transcode = case fmt of
                 "mkv"   ->
-                    " -c:v libx264 -preset veryfast -b:v " ++ show bv ++ "k " ++
+                    " -c:v libx264 -preset veryfast -tune zerolatency" ++
+                    " -maxrate " ++ show maxrate ++ "k" ++
+                    " -bufsize " ++ show bufsize ++ "k" ++
                     " -c:a libfdk_aac -b:a " ++ show ba ++ "k " ++
                     " -f matroska"
 
                 _       -> -- webm
-                    " -c:v vp8 -quality realtime -cpu-used 10 -threads 4 -slices 4 -b:v " ++ show bv ++ "k" ++
+                    " -c:v vp8 -quality realtime -cpu-used 10 -threads 4 -slices 4" ++
+                    " -maxrate " ++ show maxrate ++ "k" ++
+                    " -bufsize " ++ show bufsize ++ "k" ++
                     " -c:a libvorbis  -b:a " ++ show ba ++ "k" ++
                     " -f webm"
 

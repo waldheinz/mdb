@@ -2,9 +2,10 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Mdb.Serve.Resource.File ( WithFile, fileResource, Container(..), Stream(..) ) where
+module Mdb.Serve.Resource.File ( WithFile, fileResource, Container(..), Stream(..), PlayTime(..) ) where
 
 import           Control.Monad.Catch        (MonadMask)
+import Control.Monad.Except ( throwError )
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Reader       (ReaderT)
 import           Control.Monad.Trans.Class  (lift)
@@ -35,16 +36,19 @@ fileResource :: (MonadMask m, MonadIO m) => Resource (Authenticated m) (WithFile
 fileResource = mkResourceReader
     { R.name        = "file"
     , R.description = "Access file info"
-    , R.schema      = withListing AllFiles schemas
+    , R.schema      = withListing AllFiles $ named
+        [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
+        , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
+        , ( "byId"          , singleBy read)
+        ]
     , R.list        = fileListHandler
     , R.get         = Nothing
-    , R.selects     = [ ( "container", getContainerInfo )]
-    } where
-        schemas = named
-            [ ( "inAlbum"       , listingBy (FilesInAlbum . read) )
-            , ( "personNoAlbum" , listingBy (PersonNoAlbum . read) )
-            , ( "byId"          , singleBy read)
-            ]
+    , R.selects     =
+        [ ( "container",    getContainerInfo )
+        , ( "playTime",     getPlayTime )
+        ]
+    }
+
 fileListHandler :: (MonadMask m, MonadIO m) => FileListSelector -> ListHandler (Authenticated m)
 fileListHandler which = mkOrderedListing jsonO handler where
     handler (r, o, d) = case which of
@@ -126,3 +130,36 @@ getContainerInfo = mkIdHandler jsonO handler where
             "FROM stream WHERE file_id=?") (Only fid)
 
         return $ Container d fmt ss
+
+------------------------------------------------------------------------------------------------------------------------
+-- Play Time
+------------------------------------------------------------------------------------------------------------------------
+
+data PlayTime = PlayTime
+    { totalTime :: Double
+    , playPos   :: Double
+    , finished  :: Bool
+    } deriving ( Generic, Show )
+
+instance ToJSON PlayTime where
+    toJSON = gtoJson
+
+instance JSONSchema PlayTime where
+    schema = gSchema
+
+getPlayTime :: (MonadMask m, MonadIO m) => Handler (WithFile m)
+getPlayTime = mkIdHandler jsonO handler where
+    handler :: (MonadMask m, MonadIO m) => () -> FileId -> ExceptT Reason_ (WithFile m) PlayTime
+    handler () fid = do
+        muid <- lift . lift $ AUTH.userId
+        case muid of
+            Nothing -> throwError NotAllowed
+            Just uid -> do
+                (Only d) <- ExceptT $ lift $ AUTH.queryOne
+                    "SELECT container_duration FROM container WHERE file_id=?" (Only fid)
+
+                (p, f) <- ExceptT $ lift $ AUTH.queryOne
+                    "SELECT last_play_pos, seen_complete FROM user_video_play WHERE file_id=? AND user_id=?"
+                    (fid, uid)
+
+                return $ PlayTime d p f

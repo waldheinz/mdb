@@ -11,6 +11,7 @@ import           Control.Monad.Except
 import           Control.Monad.Trans.Reader ( ReaderT, asks, runReaderT )
 import qualified Crypto.Scrypt as SCRYPT
 import           Data.ByteString ( ByteString )
+import           Data.List ( find )
 import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
 import qualified Data.Vault.Lazy as V
@@ -100,7 +101,20 @@ request skey req (Authenticated f) =
         Nothing -> fail "no session storage found"
         Just sess@(getUser, _) -> getUser () >>= \muid -> case muid of
                 Just (Just uid) -> withUserViews uid $ runReaderT f (sess, UserAuth uid)
-                _               -> runReaderT f (sess, NoAuth)
+                _               -> do
+                    let
+                        msid = fmap snd $ find (\(pname, _) -> pname == "session_id") $ WAI.queryString req
+
+                    case msid of
+                        Nothing -> runReaderT f (sess, NoAuth)
+                        Just sid -> do
+                            xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
+                            case xs of
+                                []              -> runReaderT f (sess, NoAuth)
+                                (Only uid : _)  -> withUserViews uid $ runReaderT f (sess, UserAuth uid)
+
+
+
 
 
 query :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]

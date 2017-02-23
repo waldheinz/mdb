@@ -119,7 +119,7 @@ stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: crf ::: ba ::: 
     go p _ = do
         let
             input =
-                "ffmpeg -nostdin -loglevel quiet" ++
+                "ffmpeg -nostdin -loglevel quiet -copyts" ++
                 " -ss " ++ show start ++
                 " -i \"" ++ p ++ "\"" ++
                 maybe "" (\l -> " -to " ++ show l) end ++

@@ -29,6 +29,7 @@ import           Mdb.Image                  (ensureFrame )
 import           Mdb.Serve.Auth             (Authenticated)
 import qualified Mdb.Serve.Auth             as AUTH
 import           Mdb.Serve.Utils            (withFileAccess)
+import qualified Mdb.Serve.TranscodeSpec    as SPEC
 import           Mdb.Types
 
 videoApp :: MediaDb -> AUTH.SessionKey IO -> Application
@@ -51,6 +52,7 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
         get "/:id/hls"          (continue $ goAuth . hls)
             $ capture "id" .&. def 480 (query "rv") .&. def 2000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
+        get "/:id/transcode" ( continue $ goAuth . transcoded) $ capture "id" .&. query "spec"
 
 segmentDuration :: Int
 segmentDuration = 10
@@ -159,3 +161,44 @@ streamDash (fid ::: fname) = withFileAccess go fid where
     go _ _ = do
         base <- AUTH.unsafe $ asks mdbDbDir
         return $ responseFile status200 [] (base </> "dash" </> show fid </> fname) Nothing
+
+------------------------------------------------------------------------------------------------------------------------
+-- Transcoding
+------------------------------------------------------------------------------------------------------------------------
+
+transcoded :: (MonadMask m, MonadIO m) => FileId ::: SPEC.TranscodeSpec -> Authenticated m Response
+transcoded (fid ::: spec) = withFileAccess doit fid where
+    doit file _ = do
+        let
+            streams = SPEC.streams spec
+            idxStreams = zip ([0..] :: [Int]) $ map (\(SPEC.Stream _ x) -> x) streams
+            streamMap = concatMap go streams where
+                go (SPEC.Stream src _ ) = "-map 0:" ++ show src ++ " "
+
+            streamOpts = concatMap go idxStreams where
+                go (i, SPEC.CopyVideo)  = "-c:v:" ++ show i ++ " copy "
+                go (i, SPEC.CopyAudio)  = "-c:a:" ++ show i ++ " copy "
+                go (i, SPEC.TranscodeH264 (SPEC.VideoSpecH264 mr bs crf w)) =
+                    " -vf scale=-2:" ++ show w ++
+                    " -c:v:" ++ show i ++
+                    " libx264 -preset superfast" ++
+                    " -maxrate " ++ show mr ++ "k" ++
+                    " -bufsize " ++ show bs ++ "k" ++
+                    " -crf " ++ show crf ++ " "
+
+                go (i, SPEC.TranscodeAAC (SPEC.AudioSpecAAC br)) = "-c:a:" ++ show i ++
+                    " libfdk_aac -b:a " ++ show br ++ "k "
+
+            (format, mime) = case SPEC.container spec of
+                SPEC.Matroska    -> ("matroska", "video/webm")
+
+            prefix = "ffmpeg -nostdin -loglevel quiet -copyts "
+            input = " -i \"" ++ file ++ "\" "
+            cmd = prefix ++ input ++ streamMap ++ streamOpts ++ "-f " ++ format ++ " -"
+
+        liftIO $ putStrLn $ show spec
+        liftIO $ putStrLn cmd
+
+        return $ responseStream status200 [ ("Content-Type", mime) ] $ \write flush -> do
+            void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
+            flush

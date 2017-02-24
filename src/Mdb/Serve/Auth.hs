@@ -113,10 +113,6 @@ request skey req (Authenticated f) =
                                 []              -> runReaderT f (sess, NoAuth)
                                 (Only uid : _)  -> withUserViews uid $ runReaderT f (sess, UserAuth uid)
 
-
-
-
-
 query :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]
 query q p = Authenticated $ asks snd >>= \mauth -> case mauth of
     NoAuth          -> fail "not authorized"

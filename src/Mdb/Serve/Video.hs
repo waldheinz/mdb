@@ -11,8 +11,7 @@ import           Control.Monad              (void)
 import           Control.Monad.Catch        (MonadMask)
 import           Control.Monad.IO.Class     (MonadIO, liftIO)
 import           Control.Monad.Reader.Class ( asks )
-import           Control.Monad.Trans.Class  (lift)
-import           Data.Conduit
+import qualified Data.Conduit.List as CL
 import           Data.Conduit.Process
 import           Data.Fixed (divMod')
 import           Data.Monoid                ((<>))
@@ -146,7 +145,7 @@ stream (fid ::: start ::: end ::: rv ::: maxrate ::: bufsize ::: crf ::: ba ::: 
             cmd = input ++ transcode ++ " -"
 
             str write flush = do
-                void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
+                void $ sourceCmdWithConsumer cmd (CL.mapM_ $ \bs -> write (fromByteString bs))
                 flush
 
         liftIO $ putStrLn cmd
@@ -200,5 +199,5 @@ transcoded (fid ::: spec) = withFileAccess doit fid where
         liftIO $ putStrLn cmd
 
         return $ responseStream status200 [ ("Content-Type", mime) ] $ \write flush -> do
-            void $ sourceCmdWithConsumer cmd $ awaitForever $ \bs -> lift $ write (fromByteString bs) >> flush
+            void $ sourceCmdWithConsumer cmd (CL.mapM_ $ \bs -> write (fromByteString bs))
             flush

@@ -179,11 +179,11 @@ transcoded (fid ::: spec) = withFileAccess doit fid where
                 go (i, SPEC.CopyAudio)  = "-c:a:" ++ show i ++ " copy "
                 go (i, SPEC.TranscodeH264 (SPEC.VideoSpecH264 mr bs crf w)) =
                     " -vf scale=-2:" ++ show w ++
-                    " -c:v:" ++ show i ++
-                    " libx264 -preset superfast" ++
-                    " -maxrate " ++ show mr ++ "k" ++
-                    " -bufsize " ++ show bs ++ "k" ++
-                    " -crf " ++ show crf ++ " "
+                    " -c:v:" ++ show i ++ " libx264" ++
+                    " -preset:" ++ show i ++ " superfast" ++
+                    " -maxrate:" ++ show i ++ " " ++ show mr ++ "k" ++
+                    " -bufsize:" ++ show i ++ " " ++ show bs ++ "k" ++
+                    " -crf:" ++ show i ++ " " ++ show crf ++ " "
 
                 go (i, SPEC.TranscodeAAC (SPEC.AudioSpecAAC br)) = "-c:a:" ++ show i ++
                     " libfdk_aac -b:a " ++ show br ++ "k "

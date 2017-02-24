@@ -62,11 +62,12 @@ instance FromJSON Stream where
     parseJSON (Object v)    = Stream <$> v .: "source" <*> v .: "with"
     parseJSON x             = typeMismatch "Stream" x
 
-data Container =
-    Matroska
+data Container = Matroska | MP4
     deriving ( Show )
+
 instance FromJSON Container where
     parseJSON (String "mkv") = pure Matroska
+    parseJSON (String "mp4") = pure MP4
     parseJSON x = typeMismatch "Container" x
 
 data TranscodeSpec = TranscodeSpec

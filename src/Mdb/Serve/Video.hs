@@ -189,7 +189,8 @@ transcoded (fid ::: spec) = withFileAccess doit fid where
                     " libfdk_aac -b:a " ++ show br ++ "k "
 
             (format, mime) = case SPEC.container spec of
-                SPEC.Matroska    -> ("matroska", "video/webm")
+                SPEC.Matroska   -> ("matroska", "video/matroska")
+                SPEC.MP4        -> ("mp4", "video/mp4")
 
             prefix = "ffmpeg -nostdin -loglevel quiet -copyts "
             input = " -i \"" ++ file ++ "\" "

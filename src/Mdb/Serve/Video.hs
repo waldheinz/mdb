@@ -51,7 +51,7 @@ videoApp mdb skey req respond = runMDB' mdb $ route root req (liftIO . respond) 
         get "/:id/hls"          (continue $ goAuth . hls)
             $ capture "id" .&. def 480 (query "rv") .&. def 2000 (query "bv") .&. def 64 (query "ba")
         get "/:id/streamDirect" (continue $ goAuth . streamDirect) $ capture "id"
-        get "/:id/transcode" ( continue $ goAuth . transcoded) $ capture "id" .&. query "spec"
+        get "/:id/transcode" ( continue $ goAuth . transcoded) $ capture "id" .&. query "spec" .&. def 0 (query "t")
 
 segmentDuration :: Int
 segmentDuration = 10
@@ -165,8 +165,8 @@ streamDash (fid ::: fname) = withFileAccess go fid where
 -- Transcoding
 ------------------------------------------------------------------------------------------------------------------------
 
-transcoded :: (MonadMask m, MonadIO m) => FileId ::: SPEC.TranscodeSpec -> Authenticated m Response
-transcoded (fid ::: spec) = withFileAccess doit fid where
+transcoded :: (MonadMask m, MonadIO m) => FileId ::: SPEC.TranscodeSpec ::: Double -> Authenticated m Response
+transcoded (fid ::: spec ::: start) = withFileAccess doit fid where
     doit file _ = do
         let
             streams = SPEC.streams spec
@@ -192,7 +192,7 @@ transcoded (fid ::: spec) = withFileAccess doit fid where
                 SPEC.Matroska   -> ("-f matroska", "video/matroska")
                 SPEC.MP4        -> ("-f mp4 -movflags frag_keyframe+empty_moov", "video/mp4")
 
-            prefix = "ffmpeg -nostdin -loglevel quiet -copyts "
+            prefix = "ffmpeg -nostdin -loglevel quiet -copyts -ss " ++ show start
             input = " -i \"" ++ file ++ "\" "
             cmd = prefix ++ input ++ streamMap ++ streamOpts ++ format ++ " -"
 

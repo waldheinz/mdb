@@ -66,10 +66,5 @@ doPerson (CMD.SetPersonPortrait pid fid) = DB.dbExecute
     "UPDATE person SET person_portrait = ? WHERE person_id = ?"
     (fid, pid)
 
-doInit :: (LOG.MonadLogger m, MonadIO m) => Maybe FilePath -> m ()
-doInit mp = do
-  p <- case mp of
-    Just ap -> return ap
-    Nothing -> liftIO $ getCurrentDirectory
-
-  DB.initDb p
+doInit :: (LOG.MonadLoggerIO m) => Maybe FilePath -> m ()
+doInit mp = maybe (liftIO $ getCurrentDirectory) return mp >>= DB.initDb

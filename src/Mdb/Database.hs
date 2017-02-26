@@ -54,6 +54,7 @@ dbDir base = base </> ".mdb"
 
 data MediaDb = MediaDb
     { mdbConnPool :: Either (Pool SQL.Connection) SQL.Connection
+    , mdbLogger   :: LOG.Loc -> LOG.LogSource -> LOG.LogLevel -> LOG.LogStr -> IO ()
     , mdbBasePath :: ! FilePath
     , mdbDbDir    :: ! FilePath
     }
@@ -68,16 +69,21 @@ newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
         , MonadMask
         , MonadReader MediaDb
         , MonadThrow
-        , LOG.MonadLogger
         )
 
-runMDB :: (MonadIO m, MonadMask m) => FilePath -> MDB m a -> m a
-runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT $! unMDB act)
+instance MonadIO m => LOG.MonadLogger (MDB m) where
+    monadLoggerLog loc logsrc lvl msg = asks mdbLogger >>= \logger -> liftIO $ logger loc logsrc lvl (LOG.toLogStr msg)
+
+instance MonadIO m => LOG.MonadLoggerIO (MDB m) where
+    askLoggerIO = asks mdbLogger
+
+runMDB :: (LOG.MonadLoggerIO m, MonadMask m) => FilePath -> MDB m a -> m a
+runMDB dbf act = bracket (openDb dbf) closeDb (runReaderT $! unMDB act)
 
 runMDB' :: MediaDb -> MDB m a -> m a
 runMDB' db f = f `seq` runReaderT (unMDB f) db
 
-findDbAndRun :: (MonadMask m, MonadIO m, LOG.MonadLogger m) => Maybe FilePath -> MDB m a -> m a
+findDbAndRun :: (MonadMask m, LOG.MonadLoggerIO m) => Maybe FilePath -> MDB m a -> m a
 findDbAndRun mp act = maybe goFind goCheck mp where
     goCheck p = do
         x <- if isRelative p
@@ -115,7 +121,7 @@ dbTables =
     , "user_video_play"
     ]
 
-initDb :: (LOG.MonadLogger m, MonadIO m) =>  FilePath -> m ()
+initDb :: (LOG.MonadLoggerIO m) =>  FilePath -> m ()
 initDb p = do
     LOG.logInfoN $ "initializing mdb in " <> T.pack (dbDir p)
 
@@ -126,29 +132,31 @@ initDb p = do
             SQL.withConnection (dbDir p </> "index.db") $ \c ->
                 forM_ dbTables $ \table -> do
                     initFn <- getDataFileName $ "files/sql/create-table-" ++ table ++ ".sql"
-                    putStrLn $ "creating table " ++ table
                     q <- TIO.readFile initFn
                     SQL.execute_ c $ SQL.Query q
 
-openDb :: MonadIO m => FilePath -> m MediaDb
+openDb :: (LOG.MonadLoggerIO m, MonadIO m) => FilePath -> m MediaDb
 openDb dir = do
+    logger <- LOG.askLoggerIO
+
     let
         create = do
             c <- SQL.open ("file:" ++ dir </> "index.db?cache=shared")
             SQL.execute_ c "PRAGMA foreign_keys = ON"
             SQL.execute_ c "PRAGMA journal_mode = WAL"
-            putStrLn "opened a connection"
+            LOG.runLoggingT (LOG.logDebugN "opened a DB connection") logger
             return c
 
-        close c = SQL.close c >> putStrLn "closed a connection"
+        close c = SQL.close c >> LOG.runLoggingT (LOG.logDebugN "closed a DB connection") logger
         destroyWait = fromRational 30
         stripes = 1
         perStripe = 16
 
     pool <- liftIO $ createPool create close stripes destroyWait perStripe
-    return $ MediaDb (Left pool) (takeDirectory dir) dir
+    logFun <- LOG.askLoggerIO
+    return $ MediaDb (Left pool) logFun (takeDirectory dir) dir
 
-closeDb :: MonadIO m => MediaDb -> m ()
+closeDb :: (LOG.MonadLogger m, MonadIO m) => MediaDb -> m ()
 closeDb db = case mdbConnPool db of
     Left pool   -> liftIO (destroyAllResources pool)
     Right _     -> return ()
@@ -188,9 +196,9 @@ dbExecute_ :: (MonadMask m, MonadIO m) => SQL.Query -> MDB m ()
 dbExecute_ q = withConnection (\c -> liftIO $! SQL.execute_ c q)
 
 dbQuery :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m [r]
-dbQuery q r = withConnection $ \c -> liftIO $! do
-    putStrLn $ show q
-    SQL.query c q r
+dbQuery q r = withConnection $ \c -> do
+    LOG.logDebugN $ SQL.fromQuery q
+    liftIO $ SQL.query c q r
 
 dbQueryOne :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m (Either T.Text r)
 dbQueryOne q p = dbQuery q p >>= \ xs -> return $! case xs of
@@ -272,7 +280,7 @@ addPerson name = dbExecute
     (SQL.Only name) >> dbLastRowId
 
 -- | Get all files assigned to a person.
-getPersonFiles :: (MonadMask m, MonadIO m) => PersonId -> MDB m [File]
+getPersonFiles :: (MonadMask m, MonadIO m, LOG.MonadLogger m) => PersonId -> MDB m [File]
 getPersonFiles pid = dbQuery
     (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
     <>  "NATURAL JOIN person_file "

@@ -5,6 +5,8 @@ module Mdb.CmdLine (
     OptFile(..), ScanFlags(..), AssignTarget(..), parseCommandLine
     ) where
 
+import qualified Control.Monad.Logger as LOG
+import           Data.List ( find, intersperse )
 import           Data.Monoid ( (<>) )
 import           Options.Applicative
 
@@ -179,19 +181,41 @@ modeParser = subparser
     )
 
 data MdbOptions = MdbOptions
-    { rootDir :: Maybe FilePath -- ^ root of the MDB tree (the directory containing the ".mdb" directory)
-    , mode    :: Mode
+    { logLevel  :: LOG.LogLevel
+    , rootDir   :: Maybe FilePath -- ^ root of the MDB tree (the directory containing the ".mdb" directory)
+    , mode      :: Mode
     } deriving ( Show )
+
+levelMap :: [ ( String, LOG.LogLevel ) ]
+levelMap =
+    [ ( "debug" , LOG.LevelDebug )
+    , ( "info"  , LOG.LevelInfo )
+    , ( "warn"  , LOG.LevelWarn )
+    , ( "error" , LOG.LevelError )
+    ]
+
+parseLevel :: ReadM LOG.LogLevel
+parseLevel = eitherReader go where
+    go s = maybe (Left $ "valid levels: " ++ valid) Right $ fmap snd (find (\(ss, _) -> s == ss) levelMap)
+    valid = concat $ intersperse ", " $ map fst levelMap
 
 parseCommandLine :: IO MdbOptions
 parseCommandLine = execParser opts
     where
         opts = info (helper <*> cmdLineParser)
             ( fullDesc
-            <>  progDesc "Print a greeting for TARGET"
-            <>  header "hello - a test for optparse-applicative"
+            <>  progDesc "Manage your media files"
+            <>  header "mdb - Media DataBase"
             )
 
         cmdLineParser = MdbOptions
-            <$> optional (strOption ( long "root" <> metavar "DIR" <> help "Specify base directory" ))
+            <$> option parseLevel
+                (   value LOG.LevelInfo
+                <>  showDefaultWith (\l -> maybe "<don't know>" fst $ find (\(_, x) -> x == l) levelMap)
+                <>  long "verbose"
+                <>  short 'v'
+                <>  metavar "LEVEL"
+                <>  help "Specify log level"
+                )
+            <*> optional (strOption ( long "root" <> metavar "DIR" <> help "Specify base directory" ))
             <*> modeParser

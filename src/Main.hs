@@ -29,9 +29,10 @@ main = withMagickWandGenesis $ liftIO $ do
     opts <- CMD.parseCommandLine
 
     let
-        mroot = CMD.rootDir opts
+        mroot       = CMD.rootDir opts
+        logFilter   = LOG.filterLogger (\_ l -> l >= CMD.logLevel opts)
 
-    LOG.runStderrLoggingT $ case CMD.mode opts of
+    LOG.runStderrLoggingT $ logFilter $ case CMD.mode opts of
         CMD.ModeAlbum opt           -> DB.findDbAndRun mroot $ doAlbum opt
         CMD.ModeFile op rec fs      -> DB.findDbAndRun mroot $ doFile op rec fs
         CMD.ModePerson op           -> DB.findDbAndRun mroot $ doPerson op

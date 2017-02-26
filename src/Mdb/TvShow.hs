@@ -24,7 +24,7 @@ import           Network.HTTP.Client.Conduit (Manager, Response, httpLbs,
 import           Network.HTTP.Conduit        (HttpException)
 import           System.Directory            (createDirectoryIfMissing)
 import           System.FilePath             (splitDirectories, takeDirectory,
-                                              takeExtension)
+                                              takeExtension, dropTrailingPathSeparator)
 import qualified Text.XML.Light              as XML
 
 import           Mdb.CmdLine                 (OptTvShow (..))
@@ -62,7 +62,7 @@ scanShow :: (MonadMask m, MonadIO m) => String -> FilePath -> ReaderT Manager (M
 scanShow lang showDir = runEitherT $ do
     let
         dirs = splitDirectories showDir
-        dirName = last dirs
+        dirName = dropTrailingPathSeparator $ last dirs
 
     esid <- lift . lift $ do
         rel <- relFile showDir

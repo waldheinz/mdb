@@ -7,7 +7,9 @@ module Main (
 
 import           Codec.FFmpeg ( initFFmpeg )
 import           Control.Exception ( bracket_ )
-import           Control.Monad.IO.Class ( liftIO )
+import           Control.Monad.Catch (MonadMask)
+import           Control.Monad.IO.Class ( MonadIO, liftIO )
+import qualified Control.Monad.Logger   as LOG
 import qualified Crypto.Scrypt as SCRYPT
 import qualified Data.ByteString as BS
 import           System.Directory ( getCurrentDirectory )
@@ -29,7 +31,7 @@ main = withMagickWandGenesis $ liftIO $ do
     let
         mroot = CMD.rootDir opts
 
-    case CMD.mode opts of
+    LOG.runStderrLoggingT $ case CMD.mode opts of
         CMD.ModeAlbum opt           -> DB.findDbAndRun mroot $ doAlbum opt
         CMD.ModeFile op rec fs      -> DB.findDbAndRun mroot $ doFile op rec fs
         CMD.ModePerson op           -> DB.findDbAndRun mroot $ doPerson op
@@ -38,7 +40,7 @@ main = withMagickWandGenesis $ liftIO $ do
         CMD.ModeServe               -> DB.findDbAndRun mroot SERVE.doServe
         CMD.ModeUser (CMD.AddUser n)-> DB.findDbAndRun mroot $ doAddUser n
 
-doAddUser :: String -> DB.MDB IO ()
+doAddUser :: (MonadMask m, MonadIO m) => String -> DB.MDB m ()
 doAddUser name = do
     let
         withEcho :: Bool -> IO a -> IO a
@@ -57,17 +59,17 @@ doAddUser name = do
     DB.dbExecute "INSERT INTO user(user_name, user_pass_scrypt) VALUES (?, ?)" (name, SCRYPT.getEncryptedPass hashed)
     DB.dbLastRowId >>= \uid -> liftIO $ putStrLn $ "User " ++ name ++ " added with id " ++ show uid
 
-doPerson :: CMD.OptPerson -> DB.MDB IO ()
+doPerson :: (MonadMask m, MonadIO m) => CMD.OptPerson -> DB.MDB m ()
 doPerson (CMD.AddPerson n) = DB.addPerson n >>= \pid ->
     liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
 doPerson (CMD.SetPersonPortrait pid fid) = DB.dbExecute
     "UPDATE person SET person_portrait = ? WHERE person_id = ?"
     (fid, pid)
 
-doInit :: Maybe FilePath -> IO ()
+doInit :: (LOG.MonadLogger m, MonadIO m) => Maybe FilePath -> m ()
 doInit mp = do
   p <- case mp of
     Just ap -> return ap
-    Nothing -> getCurrentDirectory
+    Nothing -> liftIO $ getCurrentDirectory
 
   DB.initDb p

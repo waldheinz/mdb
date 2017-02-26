@@ -30,6 +30,7 @@ module Mdb.Database (
 import           Control.Monad          (forM_, liftM)
 import           Control.Monad.Catch    (MonadCatch, MonadMask, MonadThrow,
                                          bracket)
+import qualified Control.Monad.Logger   as LOG
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, ReaderT, ask, asks, local,
                                          runReaderT)
@@ -67,6 +68,7 @@ newtype MDB m a = MDB { unMDB :: ReaderT MediaDb m a }
         , MonadMask
         , MonadReader MediaDb
         , MonadThrow
+        , LOG.MonadLogger
         )
 
 runMDB :: (MonadIO m, MonadMask m) => FilePath -> MDB m a -> m a
@@ -75,25 +77,20 @@ runMDB dbf act = bracket (liftIO $ openDb dbf) (liftIO . closeDb) (runReaderT $!
 runMDB' :: MediaDb -> MDB m a -> m a
 runMDB' db f = f `seq` runReaderT (unMDB f) db
 
-findDbAndRun :: (MonadMask m, MonadIO m) => Maybe FilePath -> MDB m a -> m a
-findDbAndRun mp act = do
-    let
-        goCheck p = do
-            x <- if isRelative p
-                then liftIO getCurrentDirectory >>= \here -> return $ here </> p
-                else return p
+findDbAndRun :: (MonadMask m, MonadIO m, LOG.MonadLogger m) => Maybe FilePath -> MDB m a -> m a
+findDbAndRun mp act = maybe goFind goCheck mp where
+    goCheck p = do
+        x <- if isRelative p
+            then liftIO getCurrentDirectory >>= \here -> return $ here </> p
+            else return p
 
-            liftIO (doesDirectoryExist $ dbDir x) >>= \ok -> if ok
-                then runMDB (dbDir x) act
-                else fail $ "no db directory found at \"" ++ p ++ "\", maybe try \"mdb init\"?"
+        liftIO (doesDirectoryExist $ dbDir x) >>= \ok -> if ok
+            then runMDB (dbDir x) act
+            else fail $ "no db directory found at \"" ++ p ++ "\", maybe try \"mdb init\"?"
 
-        goFind = liftIO findDbFolder >>= \x -> case x of
-            Nothing  -> liftIO $ fail "no db directory found, maybe try \"mdb init\"?"
-            Just dbf -> runMDB dbf act
-
-    case mp of
-        Nothing -> goFind
-        Just p  -> goCheck p
+    goFind = liftIO findDbFolder >>= \x -> case x of
+        Nothing  -> fail "no db directory found, maybe try \"mdb init\"?"
+        Just dbf -> runMDB dbf act
 
 dbTables :: [String]
 dbTables =
@@ -118,11 +115,11 @@ dbTables =
     , "user_video_play"
     ]
 
-initDb :: FilePath -> IO ()
+initDb :: (LOG.MonadLogger m, MonadIO m) =>  FilePath -> m ()
 initDb p = do
-    putStrLn $ "initializing mdb in " ++ dbDir p
+    LOG.logInfoN $ "initializing mdb in " <> T.pack (dbDir p)
 
-    doesDirectoryExist (dbDir p) >>= \ex -> if ex
+    liftIO $ doesDirectoryExist (dbDir p) >>= \ex -> if ex
         then fail "directory does already exist"
         else do
             createDirectory $ dbDir p

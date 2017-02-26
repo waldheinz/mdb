@@ -32,7 +32,7 @@ import           Mdb.Database.File           (fileMime)
 import           Mdb.Image                   (ensureThumbs)
 import           Mdb.Types
 
-doFile :: CMD.OptFile -> Bool -> [FilePath] -> MDB IO ()
+doFile :: (MonadMask m, MonadIO m) => CMD.OptFile -> Bool -> [FilePath] -> MDB m ()
 doFile (CMD.FileAssign tgts) rec fs = do
     let
         prepare (ps, as, ts) tgt = case tgt of

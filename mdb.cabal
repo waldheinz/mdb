@@ -76,6 +76,7 @@ executable mdb
         json-schema,
         mime-types,
         monad-control,
+        monad-logger,
         mtl,
         optparse-applicative,
         process,

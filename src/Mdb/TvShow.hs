@@ -18,7 +18,7 @@ import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import           Data.Text.Encoding          (decodeUtf8)
 import           Network.HTTP.Client.Conduit (Manager, Response, httpLbs,
-                                              parseUrl, responseBody,
+                                              parseUrlThrow, responseBody,
                                               withManager)
 import           Network.HTTP.Conduit        (HttpException)
 import           System.Directory            (createDirectoryIfMissing)
@@ -43,7 +43,7 @@ tvDbApiBase = tvDbBase ++ "api/"
 authBase :: String
 authBase = tvDbApiBase  ++ tvDbApiKey ++ "/"
 
-doMode :: OptTvShow -> MDB IO ()
+doMode :: (MonadMask m, MonadIO m) => OptTvShow -> MDB m ()
 doMode (AssignTvShow lang folders) = withManager $ mapM_ go folders where
     go folder = scanShow lang folder >>= \x -> case x of
         Left msg    -> liftIO $ putStrLn $ T.unpack $ "error: " <> msg
@@ -57,7 +57,7 @@ xmlBody resp = case (XML.parseXMLDoc . decodeUtf8 . BSL.toStrict . responseBody)
     Nothing     -> left "failed to parse response as XML"
     Just xml    -> right xml
 
-scanShow :: String -> FilePath -> ReaderT Manager (MDB IO) (Either T.Text ())
+scanShow :: (MonadMask m, MonadIO m) => String -> FilePath -> ReaderT Manager (MDB m) (Either T.Text ())
 scanShow lang showDir = runEitherT $ do
     let
         dirs = splitDirectories showDir
@@ -74,7 +74,7 @@ scanShow lang showDir = runEitherT $ do
         Left _              -> do
             liftIO $ putStrLn $ "fetching info for \"" ++ last dirs ++ "\""
 
-            xml <- parseUrl (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
+            xml <- parseUrlThrow (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
                 >>= httpLbs >>= xmlBody
 
             case XML.findChildren (eName "Series") xml of
@@ -82,7 +82,7 @@ scanShow lang showDir = runEitherT $ do
                 [x] -> assign lang showDir x
                 xs  -> pick xs dirName lang >>= assign lang showDir
 
-pick :: [XML.Element] -> String -> String -> EitherT T.Text (ReaderT Manager (MDB IO)) XML.Element
+pick :: Monad m => [XML.Element] -> String -> String -> EitherT T.Text (ReaderT Manager (MDB m)) XML.Element
 pick els dirName lang = do
     let
         lCase           = map toLower
@@ -143,7 +143,7 @@ updateSeries showId = do
     (tvDbId, lang) <- EitherT $ lift $ dbQueryOne
         "SELECT series_tvdb_id, series_lang FROM series WHERE series_id = ?" (Only showId)
 
-    fullXml <- parseUrl (authBase ++ "series/" ++ show (tvDbId :: Int64) ++ "/all/" ++ (lang :: String) ++ ".xml")
+    fullXml <- parseUrlThrow (authBase ++ "series/" ++ show (tvDbId :: Int64) ++ "/all/" ++ (lang :: String) ++ ".xml")
                 >>= httpLbs >>= xmlBody
 
     series <- childElem "Series" fullXml
@@ -200,7 +200,7 @@ updateSeries showId = do
                             <>  "WHERE series_id = ? AND series_season_number = ?") (fid, showId, seasonId)
 
     seasonIds <- mapM oneEpisode $ XML.findChildren (eName "Episode") fullXml
-    bannersXml <- parseUrl (authBase ++ "series/" ++ show tvDbId ++ "/banners.xml")
+    bannersXml <- parseUrlThrow (authBase ++ "series/" ++ show tvDbId ++ "/banners.xml")
                 >>= httpLbs >>= xmlBody
 
     mapM_ (onePoster $ parseBanners bannersXml) (nub seasonIds)
@@ -219,7 +219,7 @@ updateImage destFile banner = do
     liftIO $ putStrLn $ "fetching image " ++ pUrl
 
     success <- try $ do
-        resp <- parseUrl pUrl >>= httpLbs
+        resp <- parseUrlThrow pUrl >>= httpLbs
         liftIO $ BSL.writeFile dstFile (responseBody resp)
 
     case success of

@@ -15,17 +15,14 @@ import           Network.HTTP.Types.Status ( status200 )
 import           Network.Wai ( Application, responseFile )
 import           Network.Wai.Application.Static ( defaultWebAppSettings, staticApp )
 import qualified Network.Wai.Handler.Warp as WARP
-import           Network.Wai.Handler.WebSockets ( websocketsOr )
 import           Network.Wai.Session as S
 import           Network.Wai.UrlMap ( mapUrls, mount, mountRoot )
-import qualified Network.WebSockets as WS
 import qualified Web.Cookie as COOK
 
 import Mdb.Serve.Auth ( SessionKey )
 import Mdb.Serve.Image
 import Mdb.Serve.Thumbs ( thumbApp )
 import Mdb.Serve.Video
-import Mdb.Serve.VideoWs ( videoWsApp )
 import Mdb.Database
 import Paths_mdb ( getDataDir )
 import Mdb.Serve.RestApi ( apiApp )
@@ -59,9 +56,7 @@ doServe = do
         sessMiddleware = S.withSession sstore cname setc skey
 
     app <- mkApp db skey
-    liftIO $ WARP.run 8080 $ mapUrls $
-        mount "videows" (websocketsOr WS.defaultConnectionOptions videoWsApp undefined) <|>
-        mountRoot (sessMiddleware app)
+    liftIO $ WARP.run 8080 $ sessMiddleware app
 
 mkApp :: (MonadMask m, MonadIO m) => MediaDb -> SessionKey IO -> m Application
 mkApp mdb skey = do

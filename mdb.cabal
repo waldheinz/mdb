@@ -49,7 +49,6 @@ executable mdb
         Mdb.Serve.Thumbs
         Mdb.Serve.Utils
         Mdb.Serve.Video
-        Mdb.Serve.VideoWs
         Mdb.TvShow
         Mdb.Types
 
@@ -99,7 +98,5 @@ executable mdb
         wai-predicates,
         wai-routing,
         wai-session,
-        wai-websockets,
         warp,
-        websockets,
         xml

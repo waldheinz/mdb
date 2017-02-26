@@ -5,6 +5,7 @@ module Mdb.TvShow ( doMode ) where
 
 import           Control.Monad.Catch         (MonadMask, try)
 import           Control.Monad.IO.Class      (MonadIO, liftIO)
+import qualified Control.Monad.Logger as LOG
 import           Control.Monad.Reader.Class  (asks)
 import           Control.Monad.Trans.Class   (lift)
 import           Control.Monad.Trans.Either
@@ -46,7 +47,7 @@ authBase = tvDbApiBase  ++ tvDbApiKey ++ "/"
 doMode :: (MonadMask m, MonadIO m) => OptTvShow -> MDB m ()
 doMode (AssignTvShow lang folders) = withManager $ mapM_ go folders where
     go folder = scanShow lang folder >>= \x -> case x of
-        Left msg    -> liftIO $ putStrLn $ T.unpack $ "error: " <> msg
+        Left msg    -> LOG.logErrorN $ msg
         Right ()    -> return ()
 
 eName :: String -> XML.QName
@@ -68,11 +69,12 @@ scanShow lang showDir = runEitherT $ do
         dbQueryOne "SELECT series_id, series_name FROM series WHERE ? LIKE (series_root || '%')" (Only rel)
 
     case esid of
-        Right (serId, name) -> liftIO $ putStrLn $ showDir ++ ": already assigned to \""
-                                                ++ name ++ "\" (" ++ show (serId :: SerialId) ++ ")"
+        Right (serId, name) ->
+            lift $ LOG.logInfoN $ T.pack showDir <> ": already assigned to \"" <>
+                                                name <> "\" (" <> T.pack (show (serId :: SerialId)) <> ")"
 
         Left _              -> do
-            liftIO $ putStrLn $ "fetching info for \"" ++ last dirs ++ "\""
+            lift $ LOG.logInfoN $ "fetching info for \"" <> T.pack (last dirs) <> "\""
 
             xml <- parseUrlThrow (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
                 >>= httpLbs >>= xmlBody
@@ -121,7 +123,7 @@ assign lang showDir xml = do
                     (relDir, name, desc, tvdb_id, relDir, lang)
                 dbLastRowId
 
-            liftIO $ putStrLn $ "inserted as \"" ++ name ++ "\" with ID " ++ show showId
+            lift $ LOG.logInfoN $ "inserted as \"" <> T.pack name <> "\" with ID " <> T.pack (show showId)
             updateSeries showId
 
 childElem :: Monad m => T.Text -> XML.Element -> EitherT T.Text m XML.Element
@@ -155,11 +157,10 @@ updateSeries showId = do
         "UPDATE series SET series_name = ?, series_description = ? WHERE series_id = ?"
         (seriesName, seriesDesc, showId)
 
-
     mposterId <- lift $ runEitherT $ updateImage ("posters/" ++ show showId) seriesPoster
-    case mposterId of
-        Left _      -> liftIO $ putStrLn "fetching poster image failed"
-        Right fid   -> lift . lift $ dbExecute "UPDATE series SET series_poster = ? WHERE series_id = ?" (fid, showId)
+    lift . lift $ case mposterId of
+        Left x      -> LOG.logWarnN $ "fetching poster image failed: " <> x
+        Right fid   -> dbExecute "UPDATE series SET series_poster = ? WHERE series_id = ?" (fid, showId)
 
     let
         oneEpisode exml = do
@@ -192,12 +193,14 @@ updateSeries showId = do
                     let
                         (SeasonPoster _ _ path) = last xs
 
-                    pid <- lift $ runEitherT $ updateImage ("posters/" ++ show showId ++ "-" ++ show seasonId) path
-                    case pid of
-                        Left _      -> liftIO $ putStrLn "fetching poster image failed"
-                        Right fid   -> lift . lift $ dbExecute
-                            (   "UPDATE series_season SET series_season_poster = ? "
-                            <>  "WHERE series_id = ? AND series_season_number = ?") (fid, showId, seasonId)
+                    lift $ do
+                        pid <- runEitherT $ updateImage ("posters/" ++ show showId ++ "-" ++ show seasonId) path
+
+                        lift $ case pid of
+                            Left x      -> LOG.logWarnN $ "fetching poster image failed: " <> x
+                            Right fid   -> dbExecute
+                                (   "UPDATE series_season SET series_season_poster = ? "
+                                <>  "WHERE series_id = ? AND series_season_number = ?") (fid, showId, seasonId)
 
     seasonIds <- mapM oneEpisode $ XML.findChildren (eName "Episode") fullXml
     bannersXml <- parseUrlThrow (authBase ++ "series/" ++ show tvDbId ++ "/banners.xml")
@@ -216,7 +219,7 @@ updateImage destFile banner = do
         pUrl    = tvDbBase ++ "banners/"++ banner
 
     liftIO $ createDirectoryIfMissing True dstPath
-    liftIO $ putStrLn $ "fetching image " ++ pUrl
+    lift $ LOG.logInfoN $ "fetching image " <> T.pack pUrl
 
     success <- try $ do
         resp <- parseUrlThrow pUrl >>= httpLbs

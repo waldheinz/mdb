@@ -47,6 +47,7 @@ executable mdb
         Mdb.Serve.Resource.Utils
         Mdb.Serve.RestApi
         Mdb.Serve.Thumbs
+        Mdb.Serve.TranscodeSpec
         Mdb.Serve.Utils
         Mdb.Serve.Video
         Mdb.TvShow

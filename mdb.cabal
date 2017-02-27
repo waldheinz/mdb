@@ -90,6 +90,7 @@ executable mdb
         SHA           >= 1.6,
         sqlite-simple >= 0.4,
         text          >= 0.11,
+        time,
         transformers,
         transformers-base,
         unix,

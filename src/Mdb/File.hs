@@ -19,11 +19,13 @@ import           Data.Digest.Pure.SHA        (bytestringDigest, sha1)
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import           Data.Text.Encoding          (decodeUtf8)
+import           Data.Time.Clock             (UTCTime)
+import           Data.Time.Clock.POSIX       (posixSecondsToUTCTime)
 import           Network.Mime                (defaultMimeLookup)
 import           System.Directory            (doesDirectoryExist, doesFileExist,
                                               getDirectoryContents)
 import           System.FilePath             ((</>))
-import           System.Posix.Files          (fileSize, getFileStatus)
+import           System.Posix.Files          (fileSize, getFileStatus, modificationTimeHiRes)
 import           Text.Regex.Posix
 
 import qualified Mdb.CmdLine                 as CMD
@@ -91,14 +93,14 @@ scanFile flags fn = do
 ignoreFile :: FilePath -> Bool
 ignoreFile d = d == "." || d == ".." || d == ".mdb"
 
-addFile :: (MonadMask m, MonadIO m) => (FilePath, Integer, T.Text) -> MDB m FileId
-addFile (absPath, fs, mime) = do
+addFile :: (MonadMask m, MonadIO m) => (FilePath, Integer, T.Text, UTCTime) -> MDB m FileId
+addFile (absPath, fs, mime, mtime) = do
     relPath <- relFile absPath
     dbExecute
-        (   "INSERT OR REPLACE INTO file (file_id, file_name, file_size, file_mime) "
-        <>  "VALUES ((SELECT file_id FROM file WHERE file_name = ?), ?, ?, ?)"
+        (   "INSERT OR REPLACE INTO file (file_id, file_name, file_size, file_mime, file_last_modified) "
+        <>  "VALUES ((SELECT file_id FROM file WHERE file_name = ?), ?, ?, ?, ?)"
         )
-        (relPath, relPath, fs, mime)
+        (relPath, relPath, fs, mime, mtime)
     dbLastRowId
 
 filteredContents :: MonadIO m => FilePath -> m [FilePath]
@@ -121,10 +123,14 @@ withFiles f rec fp = unless (ignoreFile fp) $ do
 
 checkFile :: (MonadMask m, MonadIO m) => FilePath -> MDB m (Either T.Text FileId)
 checkFile fn = flip catchIOError
-    (\e -> (\x -> return $ Left $ T.pack $ "caught: " ++ show x) (e :: IOException))
-    $ do
-        sz <- liftIO $ fromIntegral . fileSize <$> getFileStatus fn
-        Right <$> addFile (fn, sz, decodeUtf8 $ defaultMimeLookup $ T.pack fn)
+    (\e -> (\x -> return $ Left $ T.pack $ "caught: " ++ show x) (e :: IOException)) $ do
+        fs <- liftIO $ getFileStatus fn
+        let
+            sz      = fromIntegral $ fileSize fs
+            mtime   = posixSecondsToUTCTime $ modificationTimeHiRes fs
+            mime    = decodeUtf8 $ defaultMimeLookup $ T.pack fn
+
+        Right <$> addFile (fn, sz, mime, mtime)
 
 assignSeriesEpisode :: (MonadMask m, MonadIO m) => FilePath -> FileId -> MDB m ()
 assignSeriesEpisode fn fid = do

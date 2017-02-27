@@ -5,7 +5,7 @@
 module Mdb.Database (
     MediaDb, findDbFolder, initDb, mdbBasePath, mdbDbDir,
     MDB, runMDB, runMDB', findDbAndRun, withTransaction,
-    isolate,
+    isolate, withConnection,
 
     -- * files
     fileById, hasFile, fileIdFromName, assignFilePerson,

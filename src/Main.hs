@@ -39,7 +39,7 @@ main = withMagickWandGenesis $ liftIO $ do
         CMD.ModePerson op           -> DB.findDbAndRun mroot $ doPerson op
         CMD.ModeInit                -> doInit mroot
         CMD.ModeServe               -> DB.findDbAndRun mroot SERVE.doServe
-        CMD.ModeStatus              -> DB.findDbAndRun mroot STATUS.doStatus
+        CMD.ModeStatus op           -> DB.findDbAndRun mroot $ STATUS.doStatus op
         CMD.ModeTvShow op           -> DB.findDbAndRun mroot $ TV.doMode op
         CMD.ModeUser (CMD.AddUser n)-> DB.findDbAndRun mroot $ doAddUser n
 

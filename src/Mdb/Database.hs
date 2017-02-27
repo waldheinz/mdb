@@ -141,7 +141,7 @@ openDb dir = do
 
     let
         create = do
-            c <- SQL.open ("file:" ++ dir </> "index.db?cache=shared")
+            c <- SQL.open ("file:" ++ dir </> "index.db")
             SQL.execute_ c "PRAGMA foreign_keys = ON"
             SQL.execute_ c "PRAGMA journal_mode = WAL"
             LOG.runLoggingT (LOG.logDebugN "opened a DB connection") logger

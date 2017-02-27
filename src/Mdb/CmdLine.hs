@@ -1,7 +1,7 @@
 
 module Mdb.CmdLine (
     MdbOptions(..),
-    Mode(..), OptAlbum(..), OptPerson(..), OptUser(..), OptTvShow(..),
+    Mode(..), OptAlbum(..), OptPerson(..), OptUser(..), OptStatus(..), OptTvShow(..),
     OptFile(..), ScanFlags(..), AssignTarget(..), parseCommandLine
     ) where
 
@@ -18,7 +18,7 @@ data Mode
     | ModeFile OptFile Bool [FilePath]
     | ModePerson OptPerson
     | ModeServe
-    | ModeStatus
+    | ModeStatus OptStatus
     | ModeTvShow OptTvShow
     | ModeUser OptUser
     deriving ( Show )
@@ -104,7 +104,7 @@ fileOptions = ModeFile <$> cmd <*> rec <*> files where
 fileScanFlags :: Parser ScanFlags
 fileScanFlags = ScanFlags
         <$> switch ( long "sha1" <> help "calculate SHA1 for files" )
-        <*> switch (long "thumbs" <> help "generate thumbnails" )
+        <*> switch ( long "thumbs" <> help "generate thumbnails" )
 
 fileAssign :: Parser OptFile
 fileAssign = FileAssign <$> some (p <|> np <|> a <|> na <|> tag) where
@@ -170,8 +170,15 @@ serveOptions = pure ModeServe
 -- Status
 ------------------------------------------------------------------------------------------------------------------------
 
+data OptStatus = OptStatus
+    { removeMissing :: Bool
+    } deriving ( Show )
+
+optStatusParser :: Parser OptStatus
+optStatusParser = OptStatus <$> switch ( long "remove" <> help "remove missing files from DB" )
+
 statusOptions :: Parser Mode
-statusOptions = pure ModeStatus
+statusOptions = ModeStatus <$> optStatusParser
 
 ------------------------------------------------------------------------------------------------------------------------
 -- User

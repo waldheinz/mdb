@@ -57,7 +57,6 @@ executable mdb
     build-depends:
         base >=4.6,
         aeson,
-        async,
         attoparsec,
         base16-bytestring,
         blaze-builder,

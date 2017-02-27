@@ -4,12 +4,10 @@
 module Mdb.Status ( doStatus ) where
 
 import           Control.Concurrent.Async ( async, wait, waitAny )
-import           Control.Monad ( unless )
 import           Control.Monad.Catch (MonadMask)
 import           Control.Monad.IO.Class ( MonadIO, liftIO )
-import           Control.Monad.Logger ( logInfoN, logWarnN, logDebugN )
+import           Control.Monad.Logger ( logWarnN, logDebugN )
 import           Control.Monad.Reader ( ask )
-import qualified Database.SQLite.Simple as SQL
 import           Data.List ( delete )
 import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
@@ -25,10 +23,13 @@ doStatus = withFiles (mapM_ checkFile)
 
 type FileInfo = (FileId, FilePath)
 
+batchSize :: Int
+batchSize = 1000
+
 withFiles :: (MonadIO m, MonadMask m) => ([FileInfo] -> MDB IO ()) -> MDB m ()
 withFiles f = go (0 :: Int) [] where
     go offset as = do
-        fs <- dbQuery "SELECT file_id, file_name FROM file LIMIT 100 OFFSET ?" (SQL.Only offset)
+        fs <- dbQuery "SELECT file_id, file_name FROM file LIMIT ? OFFSET ?" (batchSize, offset)
         if (null fs)
             then do
                 logDebugN $ "waiting for " <> (T.pack $ show $ length as) <> " tasks"
@@ -43,10 +44,10 @@ withFiles f = go (0 :: Int) [] where
 
                 mdb <- ask
                 a <- liftIO $ async $ (runMDB' mdb $ f fs)
-                go (offset + 100) (a : as')
+                go (offset + batchSize) (a : as')
 
 checkFile :: MonadIO m => FileInfo -> MDB m ()
-checkFile (fid, fp) = do
+checkFile (_, fp) = do
     efs <- liftIO $ tryIOError $ getFileStatus fp
     case efs of
         Left ioe    -> logWarnN $ T.pack ( show ioe )

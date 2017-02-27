@@ -19,6 +19,7 @@ import           System.IO
 import qualified Mdb.CmdLine  as CMD
 import qualified Mdb.Database as DB
 import qualified Mdb.Serve as SERVE
+import qualified Mdb.Status as STATUS
 import qualified Mdb.TvShow as TV
 import           Mdb.File
 import           Mdb.Album ( doAlbum )
@@ -37,8 +38,9 @@ main = withMagickWandGenesis $ liftIO $ do
         CMD.ModeFile op rec fs      -> DB.findDbAndRun mroot $ doFile op rec fs
         CMD.ModePerson op           -> DB.findDbAndRun mroot $ doPerson op
         CMD.ModeInit                -> doInit mroot
-        CMD.ModeTvShow op           -> DB.findDbAndRun mroot $ TV.doMode op
         CMD.ModeServe               -> DB.findDbAndRun mroot SERVE.doServe
+        CMD.ModeStatus              -> DB.findDbAndRun mroot STATUS.doStatus
+        CMD.ModeTvShow op           -> DB.findDbAndRun mroot $ TV.doMode op
         CMD.ModeUser (CMD.AddUser n)-> DB.findDbAndRun mroot $ doAddUser n
 
 doAddUser :: (MonadMask m, MonadIO m) => String -> DB.MDB m ()

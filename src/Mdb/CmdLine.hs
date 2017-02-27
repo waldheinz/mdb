@@ -18,12 +18,17 @@ data Mode
     | ModeFile OptFile Bool [FilePath]
     | ModePerson OptPerson
     | ModeServe
+    | ModeStatus
     | ModeTvShow OptTvShow
     | ModeUser OptUser
     deriving ( Show )
 
 initOptions :: Parser Mode
 initOptions = pure ModeInit
+
+------------------------------------------------------------------------------------------------------------------------
+-- Tv Show
+------------------------------------------------------------------------------------------------------------------------
 
 data OptTvShow
     = AssignTvShow
@@ -54,6 +59,10 @@ albumOptions = ModeAlbum
             (AlbumCreate <$> strArgument ( metavar "NAME" ) )
             (progDesc "create album") )
         )
+
+------------------------------------------------------------------------------------------------------------------------
+-- File
+------------------------------------------------------------------------------------------------------------------------
 
 data AssignTarget
     = AssignPerson PersonId
@@ -128,6 +137,10 @@ fileAssign = FileAssign <$> some (p <|> np <|> a <|> na <|> tag) where
         <>  metavar "NAME"
         )
 
+------------------------------------------------------------------------------------------------------------------------
+-- Person
+------------------------------------------------------------------------------------------------------------------------
+
 data OptPerson
     = AddPerson String
     | SetPersonPortrait PersonId FileId
@@ -146,8 +159,23 @@ personOptions = ModePerson
             )
         )
 
+------------------------------------------------------------------------------------------------------------------------
+-- Serve
+------------------------------------------------------------------------------------------------------------------------
+
 serveOptions :: Parser Mode
 serveOptions = pure ModeServe
+
+------------------------------------------------------------------------------------------------------------------------
+-- Status
+------------------------------------------------------------------------------------------------------------------------
+
+statusOptions :: Parser Mode
+statusOptions = pure ModeStatus
+
+------------------------------------------------------------------------------------------------------------------------
+-- User
+------------------------------------------------------------------------------------------------------------------------
 
 data OptUser
     = AddUser String
@@ -164,7 +192,9 @@ userOptions = ModeUser
 
 modeParser :: Parser Mode
 modeParser = subparser
-    (   command "file" (info (helper <*> fileOptions)
+    (   command "album" (info (helper <*> albumOptions)
+            ( progDesc "Manage albums" ) )
+    <>  command "file" (info (helper <*> fileOptions)
             ( progDesc "Manage files in the database" ))
     <>  command "init" (info (helper <*> initOptions)
             ( progDesc "Initialize database" ))
@@ -174,8 +204,8 @@ modeParser = subparser
             ( progDesc "Manage TV serials"))
     <>  command "serve" (info (helper <*> serveOptions)
             ( progDesc "Start HTTP server" ))
-    <>  command "album" (info (helper <*> albumOptions)
-            ( progDesc "Manage albums" ) )
+    <>  command "status" (info (helper <*> statusOptions)
+            ( progDesc "Verify integrity of database"))
     <>  command "user" (info (helper <*> userOptions)
             ( progDesc "Manage Users" ))
     )

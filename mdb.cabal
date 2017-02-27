@@ -50,6 +50,7 @@ executable mdb
         Mdb.Serve.TranscodeSpec
         Mdb.Serve.Utils
         Mdb.Serve.Video
+        Mdb.Status
         Mdb.TvShow
         Mdb.Types
 

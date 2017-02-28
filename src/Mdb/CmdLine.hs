@@ -12,10 +12,14 @@ import           Options.Applicative
 
 import           Mdb.Types
 
+------------------------------------------------------------------------------------------------------------------------
+-- Top-Level Cmdline
+------------------------------------------------------------------------------------------------------------------------
+
 data Mode
-    = ModeInit
-    | ModeAlbum OptAlbum
+    = ModeAlbum OptAlbum
     | ModeFile OptFile Bool [FilePath]
+    | ModeInit
     | ModePerson OptPerson
     | ModeServe
     | ModeStatus OptStatus
@@ -26,39 +30,80 @@ data Mode
 initOptions :: Parser Mode
 initOptions = pure ModeInit
 
-------------------------------------------------------------------------------------------------------------------------
--- Tv Show
-------------------------------------------------------------------------------------------------------------------------
 
-data OptTvShow
-    = AssignTvShow
-        { tvShowLanguage :: String
-        , tvShowFolders  :: [FilePath]
-        } deriving ( Show )
+modeParser :: Parser Mode
+modeParser = subparser
+    (   command "album" (info (helper <*> albumOptions)
+            ( progDesc "Manage albums" ) )
+    <>  command "file" (info (helper <*> fileOptions)
+            ( progDesc "Manage files in the database" ))
+    <>  command "init" (info (helper <*> initOptions)
+            ( progDesc "Initialize database" ))
+    <>  command "person" (info (helper <*> personOptions)
+            ( progDesc "Manage persons in the database" ))
+    <>  command "serial" (info (helper <*> tvShowOptions)
+            ( progDesc "Manage TV serials"))
+    <>  command "serve" (info (helper <*> serveOptions)
+            ( progDesc "Start HTTP server" ))
+    <>  command "status" (info (helper <*> statusOptions)
+            ( progDesc "Verify integrity of database"))
+    <>  command "user" (info (helper <*> userOptions)
+            ( progDesc "Manage Users" ))
+    )
 
-tvShowOptions :: Parser Mode
-tvShowOptions = ModeTvShow
-    <$> subparser
-        ( command "assign"
-            ( info
-                ( AssignTvShow
-                    <$> strArgument ( metavar "LANG" <> help "Language to use" )
-                    <*> some (strArgument ( metavar "FOLDERS..." <> help "Specify TV show folders" ))
-                ) ( progDesc "assign TV shows to folders" )
+data MdbOptions = MdbOptions
+    { logLevel  :: LOG.LogLevel
+    , rootDir   :: Maybe FilePath -- ^ root of the MDB tree (the directory containing the ".mdb" directory)
+    , mode      :: Mode
+    } deriving ( Show )
+
+levelMap :: [ ( String, LOG.LogLevel ) ]
+levelMap =
+    [ ( "debug" , LOG.LevelDebug )
+    , ( "info"  , LOG.LevelInfo )
+    , ( "warn"  , LOG.LevelWarn )
+    , ( "error" , LOG.LevelError )
+    ]
+
+parseLevel :: ReadM LOG.LogLevel
+parseLevel = eitherReader go where
+    go s = maybe (Left $ "valid levels: " ++ valid) Right $ fmap snd (find (\(ss, _) -> s == ss) levelMap)
+    valid = concat $ intersperse ", " $ map fst levelMap
+
+parseCommandLine :: IO MdbOptions
+parseCommandLine = execParser opts
+    where
+        opts = info (helper <*> cmdLineParser)
+            ( fullDesc
+            <>  progDesc "Manage your media files"
+            <>  header "mdb - Media DataBase"
             )
-        )
+
+        cmdLineParser = MdbOptions
+            <$> option parseLevel
+                (   value LOG.LevelInfo
+                <>  showDefaultWith (\l -> maybe "<don't know>" fst $ find (\(_, x) -> x == l) levelMap)
+                <>  long "verbose"
+                <>  short 'v'
+                <>  metavar "LEVEL"
+                <>  help "Specify log level"
+                )
+            <*> optional (strOption ( long "root" <> metavar "DIR" <> help "Specify base directory" ))
+            <*> modeParser
+
+------------------------------------------------------------------------------------------------------------------------
+-- Album
+------------------------------------------------------------------------------------------------------------------------
 
 data OptAlbum
     = AlbumCreate String
+    | AlbumRemoveEmpty
     deriving ( Show )
 
 albumOptions :: Parser Mode
-albumOptions = ModeAlbum
-    <$> subparser
-        (   command "create"    ( info
-            (AlbumCreate <$> strArgument ( metavar "NAME" ) )
-            (progDesc "create album") )
-        )
+albumOptions = ModeAlbum <$> (create <|> removeEmpty) where
+    create = AlbumCreate <$> strOption ( long "create" <> metavar "NAME" <> help "create empty album" )
+    removeEmpty = flag' AlbumRemoveEmpty ( long "remove-empty" <> help "remove all empty albums" )
 
 ------------------------------------------------------------------------------------------------------------------------
 -- File
@@ -181,6 +226,28 @@ statusOptions :: Parser Mode
 statusOptions = ModeStatus <$> optStatusParser
 
 ------------------------------------------------------------------------------------------------------------------------
+-- Tv Show
+------------------------------------------------------------------------------------------------------------------------
+
+data OptTvShow
+    = AssignTvShow
+        { tvShowLanguage :: String
+        , tvShowFolders  :: [FilePath]
+        } deriving ( Show )
+
+tvShowOptions :: Parser Mode
+tvShowOptions = ModeTvShow
+    <$> subparser
+        ( command "assign"
+            ( info
+                ( AssignTvShow
+                    <$> strArgument ( metavar "LANG" <> help "Language to use" )
+                    <*> some (strArgument ( metavar "FOLDERS..." <> help "Specify TV show folders" ))
+                ) ( progDesc "assign TV shows to folders" )
+            )
+        )
+
+------------------------------------------------------------------------------------------------------------------------
 -- User
 ------------------------------------------------------------------------------------------------------------------------
 
@@ -196,63 +263,3 @@ userOptions = ModeUser
                 ( progDesc "add a new user for the web UI, will prompt for the password" )
             )
         )
-
-modeParser :: Parser Mode
-modeParser = subparser
-    (   command "album" (info (helper <*> albumOptions)
-            ( progDesc "Manage albums" ) )
-    <>  command "file" (info (helper <*> fileOptions)
-            ( progDesc "Manage files in the database" ))
-    <>  command "init" (info (helper <*> initOptions)
-            ( progDesc "Initialize database" ))
-    <>  command "person" (info (helper <*> personOptions)
-            ( progDesc "Manage persons in the database" ))
-    <>  command "serial" (info (helper <*> tvShowOptions)
-            ( progDesc "Manage TV serials"))
-    <>  command "serve" (info (helper <*> serveOptions)
-            ( progDesc "Start HTTP server" ))
-    <>  command "status" (info (helper <*> statusOptions)
-            ( progDesc "Verify integrity of database"))
-    <>  command "user" (info (helper <*> userOptions)
-            ( progDesc "Manage Users" ))
-    )
-
-data MdbOptions = MdbOptions
-    { logLevel  :: LOG.LogLevel
-    , rootDir   :: Maybe FilePath -- ^ root of the MDB tree (the directory containing the ".mdb" directory)
-    , mode      :: Mode
-    } deriving ( Show )
-
-levelMap :: [ ( String, LOG.LogLevel ) ]
-levelMap =
-    [ ( "debug" , LOG.LevelDebug )
-    , ( "info"  , LOG.LevelInfo )
-    , ( "warn"  , LOG.LevelWarn )
-    , ( "error" , LOG.LevelError )
-    ]
-
-parseLevel :: ReadM LOG.LogLevel
-parseLevel = eitherReader go where
-    go s = maybe (Left $ "valid levels: " ++ valid) Right $ fmap snd (find (\(ss, _) -> s == ss) levelMap)
-    valid = concat $ intersperse ", " $ map fst levelMap
-
-parseCommandLine :: IO MdbOptions
-parseCommandLine = execParser opts
-    where
-        opts = info (helper <*> cmdLineParser)
-            ( fullDesc
-            <>  progDesc "Manage your media files"
-            <>  header "mdb - Media DataBase"
-            )
-
-        cmdLineParser = MdbOptions
-            <$> option parseLevel
-                (   value LOG.LevelInfo
-                <>  showDefaultWith (\l -> maybe "<don't know>" fst $ find (\(_, x) -> x == l) levelMap)
-                <>  long "verbose"
-                <>  short 'v'
-                <>  metavar "LEVEL"
-                <>  help "Specify log level"
-                )
-            <*> optional (strOption ( long "root" <> metavar "DIR" <> help "Specify base directory" ))
-            <*> modeParser

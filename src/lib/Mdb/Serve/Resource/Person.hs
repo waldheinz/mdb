@@ -57,7 +57,7 @@ personOrder (Just o)    = case o of
 personListHandler :: (MonadMask m, MonadIO m) => PersonSelector -> ListHandler (Authenticated m)
 personListHandler which = mkOrderedListing jsonO handler where
     handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (Authenticated m) [Person]
-    handler (r, o, d) = lift $ case which of
+    handler (r, o, d) = ExceptT $ lift $ case which of
         AllPersons  -> AUTH.query
                         (   "SELECT person_id, person_name, person_portrait FROM auth_person "
                         <>  "ORDER BY " <> personOrder o <> " " <> sortDir d <> " "

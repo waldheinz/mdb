@@ -5,7 +5,7 @@
 module Mdb.Serve.Resource.File ( WithFile, fileResource, Container(..), Stream(..), PlayTime(..) ) where
 
 import           Control.Monad.Catch        (MonadMask)
-import           Control.Monad.Except ( throwError )
+import Control.Monad.Except ( throwError )
 import           Control.Monad.IO.Class     (MonadIO)
 import           Control.Monad.Reader       (ReaderT)
 import           Control.Monad.Trans.Class  (lift)
@@ -22,7 +22,7 @@ import qualified Rest.Resource              as R
 
 import           Mdb.Database
 import           Mdb.Database.File          (File)
--- import           Mdb.Serve.Auth             as AUTH
+import           Mdb.Serve.Auth             as AUTH
 import           Mdb.Types
 
 data FileListSelector
@@ -125,7 +125,7 @@ getContainerInfo = mkIdHandler jsonO handler where
         (d, fmt) <- ExceptT $ lift $ AUTH.queryOne
             "SELECT container_duration, container_format FROM container WHERE file_id=?" (Only fid)
 
-        ss <- lift . AUTH.query
+        ss <- lift . lift $ AUTH.query
             ("SELECT stream_id, stream_media_type, stream_codec, stream_bit_rate, stream_width, stream_height " <>
             "FROM stream WHERE file_id=?") (Only fid)
 

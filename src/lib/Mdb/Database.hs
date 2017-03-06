@@ -8,14 +8,14 @@ module Mdb.Database (
     isolate, withConnection,
 
     -- * files
-    fileById, hasFile, fileIdFromName, assignFilePerson,
+    hasFile, fileIdFromName, assignFilePerson,
     fileAbs, relFile, assignFileAlbum,
 
     -- * videos / streams
     setContainerInfo,
 
     -- * persons
-    addPerson, getPersonFiles,
+    addPerson,
 
     -- * albums
     addAlbum,
@@ -27,9 +27,9 @@ module Mdb.Database (
     dbExecute, dbExecute_, dbQuery, dbQueryOne, dbQuery_, dbLastRowId, SQL.Only(..)
   ) where
 
-import           Control.Monad          (forM_, liftM)
-import           Control.Monad.Catch    (MonadCatch, MonadMask, MonadThrow,
-                                         bracket)
+import           Control.Monad          (forM_)
+import           Control.Monad.Catch    (Exception, MonadCatch, MonadMask, MonadThrow,
+                                         catch, bracket, throwM)
 import qualified Control.Monad.Logger   as LOG
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Reader   (MonadReader, ReaderT, ask, asks, local,
@@ -39,18 +39,25 @@ import           Data.Monoid            ((<>))
 import           Data.Pool              (Pool, createPool, destroyAllResources, takeResource, putResource)
 import qualified Data.Text              as T
 import qualified Data.Text.IO           as TIO
+import           Data.Typeable          ( Typeable )
 import qualified Database.SQLite.Simple as SQL
 import           System.Directory       (createDirectory, doesDirectoryExist,
                                          getCurrentDirectory)
 import           System.FilePath        (isRelative, makeRelative,
                                          takeDirectory, (</>))
 
-import           Mdb.Database.File      (File)
 import           Mdb.Types
 import           Paths_mdb
 
 dbDir :: FilePath -> FilePath
 dbDir base = base </> ".mdb"
+
+data MdbError
+    = MdbErrorMissing
+    | MdbErrorMultiple
+    deriving ( Show, Typeable )
+
+instance Exception MdbError
 
 data MediaDb = MediaDb
     { mdbConnPool :: Either (Pool SQL.Connection) SQL.Connection
@@ -200,11 +207,11 @@ dbQuery q r = withConnection $ \c -> do
     LOG.logDebugN $ SQL.fromQuery q
     liftIO $ SQL.query c q r
 
-dbQueryOne :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m (Either T.Text r)
-dbQueryOne q p = dbQuery q p >>= \ xs -> return $! case xs of
-        []  -> Left "query returned no result but one was expected"
-        [a] -> Right a
-        _   -> Left "query returned multiple results but only one was expected"
+dbQueryOne :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> MDB m r
+dbQueryOne q p = dbQuery q p >>= \ xs -> case xs of
+    [a] -> return a
+    []  -> throwM MdbErrorMissing
+    _   -> throwM MdbErrorMultiple
 
 dbQuery_ :: (MonadMask m, MonadIO m, SQL.FromRow r) => SQL.Query -> MDB m [r]
 dbQuery_ q = withConnection $ \c -> liftIO $! SQL.query_ c q
@@ -238,11 +245,6 @@ hasFile p = do
         "SELECT EXISTS(SELECT 1 FROM file WHERE file_name=? LIMIT 1)"
         (SQL.Only relPath)
     return $ (SQL.fromOnly . head) r
-
-fileById :: (MonadMask m, MonadIO m) => FileId -> MDB m File
-fileById fid = liftM head $ dbQuery
-        "SELECT file_id, file_name, file_size, file_mime FROM file WHERE file_id=?"
-        (SQL.Only fid)
 
 setContainerInfo :: (MonadMask m, MonadIO m) => FileId -> String -> Double -> MDB m ()
 setContainerInfo fid fmtName duration = dbExecute
@@ -279,14 +281,6 @@ addPerson name = dbExecute
     "INSERT INTO person (person_name) VALUES (?)"
     (SQL.Only name) >> dbLastRowId
 
--- | Get all files assigned to a person.
-getPersonFiles :: (MonadMask m, MonadIO m, LOG.MonadLogger m) => PersonId -> MDB m [File]
-getPersonFiles pid = dbQuery
-    (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM file f "
-    <>  "NATURAL JOIN person_file "
-    <>  "WHERE person_file.person_id = ?" )
-    (SQL.Only pid)
-
 ----------------------------------------------------------
 -- albums
 ----------------------------------------------------------
@@ -295,9 +289,8 @@ addAlbum :: (MonadMask m, MonadIO m) => String -> MDB m AlbumId
 addAlbum name = dbExecute "INSERT INTO album (album_name) VALUES (?)" (SQL.Only name) >> dbLastRowId
 
 ensureTag :: (MonadMask m, MonadIO m) => String -> MDB m TagId
-ensureTag tag = withTransaction $
-    dbQueryOne "SELECT tag_id FROM tag WHERE tag_name = ?" (SQL.Only tag) >>= \mtid -> case mtid of
-        Right (SQL.Only tid)    -> return tid
-        Left _                  -> do
-            dbExecute "INSERT INTO tag(tag_name) VALUES (?)" (SQL.Only tag)
-            dbLastRowId
+ensureTag tag = withTransaction $ fetch `catch` insert where
+    fetch = dbQueryOne "SELECT tag_id FROM tag WHERE tag_name = ?" (SQL.Only tag) >>= \(SQL.Only tid) -> return tid
+    insert e = case e of
+        MdbErrorMissing -> dbExecute "INSERT INTO tag(tag_name) VALUES (?)" (SQL.Only tag) >> dbLastRowId
+        _               -> throwM e

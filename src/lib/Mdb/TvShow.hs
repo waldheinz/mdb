@@ -66,14 +66,14 @@ scanShow lang showDir = runEitherT $ do
 
     esid <- lift . lift $ do
         rel <- relFile showDir
-        dbQueryOne "SELECT series_id, series_name FROM series WHERE ? LIKE (series_root || '%')" (Only rel)
+        dbQuery "SELECT series_id, series_name FROM series WHERE ? LIKE (series_root || '%')" (Only rel)
 
     case esid of
-        Right (serId, name) ->
+        [(serId, name)] ->
             lift $ LOG.logInfoN $ T.pack showDir <> ": already assigned to \"" <>
                                                 name <> "\" (" <> T.pack (show (serId :: SerialId)) <> ")"
 
-        Left _              -> do
+        _              -> do
             lift $ LOG.logInfoN $ "fetching info for \"" <> T.pack (last dirs) <> "\""
 
             xml <- parseUrlThrow (tvDbApiBase ++ "GetSeries.php?seriesname=" ++ dirName ++ "&language=" ++ lang)
@@ -142,7 +142,7 @@ readChild name xml = textChild name xml >>= \str -> case reads str of
 
 updateSeries :: (MonadIO m, MonadMask m) => Int64 ->  EitherT T.Text (ReaderT Manager (MDB m)) ()
 updateSeries showId = do
-    (tvDbId, lang) <- EitherT $ lift $ dbQueryOne
+    (tvDbId, lang) <- lift . lift $ dbQueryOne
         "SELECT series_tvdb_id, series_lang FROM series WHERE series_id = ?" (Only showId)
 
     fullXml <- parseUrlThrow (authBase ++ "series/" ++ show (tvDbId :: Int64) ++ "/all/" ++ (lang :: String) ++ ".xml")

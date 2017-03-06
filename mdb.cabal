@@ -31,7 +31,6 @@ library
         Mdb.CmdLine
         Mdb.Database
         Mdb.Database.Album
-        Mdb.Database.File
         Mdb.Database.Person
         Mdb.Database.User
         Mdb.File

@@ -13,6 +13,7 @@ import           Control.Monad.IO.Class      (MonadIO, liftIO)
 import           Control.Monad.Reader.Class  (ask)
 import           Control.Monad.Trans.Class   (lift)
 import           Control.Monad.Trans.Except
+import qualified Database.SQLite.Simple      as SQL
 import qualified Data.ByteString.Base16.Lazy as HEX
 import qualified Data.ByteString.Lazy        as BSL
 import           Data.Digest.Pure.SHA        (bytestringDigest, sha1)
@@ -30,7 +31,6 @@ import           Text.Regex.Posix
 
 import qualified Mdb.CmdLine                 as CMD
 import           Mdb.Database
-import           Mdb.Database.File           (fileMime)
 import           Mdb.Image                   (ensureThumbs)
 import           Mdb.Types
 
@@ -77,13 +77,14 @@ scanFile flags fn = do
                 dbExecute "UPDATE file SET file_sha1=? WHERE file_id=?" (hash, fid)
                 liftIO $ putStrLn $ fn ++ ":" ++ show (HEX.encode hash)
 
-            f <- fileById fid
 
-            when (CMD.scanThumbs flags) $ runExceptT (ensureThumbs fid fn (fileMime f)) >>= \et -> case et of
+            (SQL.Only mime) <- dbQueryOne "SELECT file_mime FROM file WHERE file_id = ?" (SQL.Only fid)
+
+            when (CMD.scanThumbs flags) $ runExceptT (ensureThumbs fid fn mime) >>= \et -> case et of
                 Left msg -> liftIO $ putStrLn $ T.unpack $ "thumb generation failed: " <> msg
                 Right () -> return ()
 
-            when ("video" `T.isPrefixOf` fileMime f) $ do
+            when ("video" `T.isPrefixOf` mime) $ do
                 assignSeriesEpisode fn fid
                 mdb <- ask
                 liftIO $ catchIOError
@@ -148,14 +149,14 @@ assignSeriesEpisode fn fid = do
             return ()
 
     -- check if this file is within some series root and has a name we understand
-    esid <- dbQueryOne "SELECT series_id FROM series WHERE ? LIKE (series_root || '%')" (Only rel)
+    esid <- dbQuery "SELECT series_id FROM series WHERE ? LIKE (series_root || '%')" (Only rel)
     case esid of
-        Left _              -> return ()
-        Right (Only serId)  -> case rel =~ regex of
+        [(Only serId)]  -> case rel =~ regex of
             [[_, seaIds, epIds]] -> case (reads seaIds, reads epIds) of
                 ([(seaId, _)], [(epId, _)]) -> assign serId seaId epId
                 _   -> noParse
             _  -> noParse
+        _              -> return ()
 
 addVideoInfo :: FilePath -> FileId -> MDB IO ()
 addVideoInfo fn fid = FFM.withAvFile fn $ do

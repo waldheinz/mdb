@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Mdb.Serve.Resource.File ( WithFile, fileResource, Container(..), Stream(..), PlayTime(..) ) where
+module Mdb.Serve.Resource.File ( WithFile, fileResource, File(..), Container(..), Stream(..), PlayTime(..) ) where
 
 import           Control.Monad.Catch        (MonadMask)
 import Control.Monad.Except ( throwError )
@@ -21,9 +21,27 @@ import           Rest
 import qualified Rest.Resource              as R
 
 import           Mdb.Database
-import           Mdb.Database.File          (File)
 import           Mdb.Serve.Auth             as AUTH
 import           Mdb.Types
+
+data File = File
+    { fileId   :: ! FileId
+    , filePath :: ! FilePath
+    , fileSize :: ! Integer
+    , fileMime :: ! T.Text
+    } deriving ( Generic, Show )
+
+instance FromRow File where
+    fromRow = File <$> field <*> field <*> field <*> field
+
+instance ToJSON File where
+    toJSON = gtoJson
+
+instance FromJSON File where
+    parseJSON = gparseJson
+
+instance JSONSchema File where
+    schema = gSchema
 
 data FileListSelector
     = AllFiles

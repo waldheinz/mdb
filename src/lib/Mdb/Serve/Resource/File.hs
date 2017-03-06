@@ -26,13 +26,12 @@ import           Mdb.Types
 
 data File = File
     { fileId   :: ! FileId
-    , filePath :: ! FilePath
     , fileSize :: ! Integer
     , fileMime :: ! T.Text
     } deriving ( Generic, Show )
 
 instance FromRow File where
-    fromRow = File <$> field <*> field <*> field <*> field
+    fromRow = File <$> field <*> field <*> field
 
 instance ToJSON File where
     toJSON = gtoJson
@@ -73,7 +72,7 @@ fileListHandler which = mkOrderedListing jsonO handler where
         AllFiles            -> lift $ listFiles (offset r) (count r)
         FilesInAlbum aid    -> lift $
             AUTH.query
-                (   "SELECT f.file_id, f.file_name, f.file_size, file_mime FROM auth_file f "
+                (   "SELECT f.file_id, f.file_size, file_mime FROM auth_file f "
                 <>  "NATURAL JOIN album_file "
                 <>  "WHERE album_file.album_id = ? "
                 <>  "ORDER BY f.file_name ASC "
@@ -87,14 +86,14 @@ listFiles
     -> Int -- ^ count
     -> Authenticated m [File]
 listFiles off cnt = AUTH.query
-    (   "SELECT file_id, file_name, file_size, file_mime "
+    (   "SELECT file_id, file_size, file_mime "
     <>  "FROM auth_file LIMIT ? OFFSET ?"
     ) (cnt, off)
 
 -- | Get files assigned to a person but not part of an album.
 getRandomPersonFiles :: (MonadMask m, MonadIO m) => PersonId -> Authenticated m [File]
 getRandomPersonFiles pid = AUTH.query
-    (   "SELECT DISTINCT f.file_id, f.file_name, f.file_size, f.file_mime FROM auth_file f "
+    (   "SELECT DISTINCT f.file_id, f.file_size, f.file_mime FROM auth_file f "
     <>  "NATURAL JOIN person_file "
     <>  "WHERE person_file.person_id = ? AND NOT EXISTS ("
     <>      "SELECT 1 FROM auth_album a NATURAL JOIN person_file NATURAL JOIN album_file WHERE person_file.person_id = ? AND album_file.file_id = f.file_id "

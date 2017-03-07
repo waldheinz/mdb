@@ -24,7 +24,7 @@ import qualified Rest.Resource              as R
 
 import           Mdb.Database
 import           Mdb.Serve.Auth             as AUTH
-import           Mdb.Serve.Resource.Utils   (PlayTime(..), sortDir)
+import           Mdb.Serve.Resource.Utils   (PlayProgress(..), sortDir)
 import           Mdb.Types
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -147,13 +147,13 @@ getSeason = mkIdHandler jsonO handler where
 ------------------------------------------------------------------------------------------------------------------------
 
 data Episode = Episode
-    { episodeSerialId :: SerialId
-    , episodeSeasonId :: SeasonId
-    , episodeId       :: EpisodeId
-    , episodeTitle    :: T.Text
-    , episodeFile     :: Maybe FileId
-    , episodeDuration :: Maybe Double
-    , episodePlay     :: Maybe PlayTime
+    { episodeSerialId   :: SerialId
+    , episodeSeasonId   :: SeasonId
+    , episodeId         :: EpisodeId
+    , episodeTitle      :: T.Text
+    , episodeFile       :: Maybe FileId
+    , episodeDuration   :: Maybe Double
+    , episodeProgress   :: Maybe PlayProgress
     } deriving ( Generic, Show )
 
 instance ToJSON Episode where
@@ -191,6 +191,6 @@ episodeList () = mkOrderedListing jsonO handler where
             <>  "LIMIT ? OFFSET ?" ) (muid, serId, seaId, count r, offset r)
 
         let
-            mkPT mpp mc = PlayTime <$> mpp <*> mc
+            mkPT mpp mc = PlayProgress <$> mpp <*> mc
 
         return $ map (\(n, t, f, md, mpp, mc) -> Episode serId seaId n t f md (mkPT mpp mc)) xs

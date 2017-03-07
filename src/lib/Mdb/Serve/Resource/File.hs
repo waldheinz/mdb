@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Mdb.Serve.Resource.File ( WithFile, fileResource, File(..), Container(..), Stream(..), PlayTime(..) ) where
+module Mdb.Serve.Resource.File ( WithFile, fileResource, File(..), Container(..), Stream(..) ) where
 
 import           Control.Monad.Catch        (MonadMask)
 import Control.Monad.Except ( throwError )
@@ -22,7 +22,7 @@ import qualified Rest.Resource              as R
 
 import           Mdb.Database
 import           Mdb.Serve.Auth             as AUTH
-import           Mdb.Serve.Resource.Utils   (PlayTime(..))
+import           Mdb.Serve.Resource.Utils   (PlayProgress(..))
 import           Mdb.Types
 
 data File = File

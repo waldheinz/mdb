@@ -2,7 +2,7 @@
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-module Mdb.Serve.Resource.Utils ( PlayTime(..), sortDir ) where
+module Mdb.Serve.Resource.Utils ( PlayProgress(..), sortDir ) where
 
 import           Database.SQLite.Simple     (Query)
 import           Data.Aeson
@@ -14,13 +14,13 @@ sortDir :: Maybe String -> Query
 sortDir (Just "DESC")   = "DESC"
 sortDir _               = "ASC"
 
-data PlayTime = PlayTime
-    { playPos   :: Double
-    , finished  :: Bool
+data PlayProgress = PlayProgress
+    { playProgressPos       :: Double
+    , playProgressFinished  :: Bool
     } deriving ( Generic, Show )
 
-instance ToJSON PlayTime where
+instance ToJSON PlayProgress where
     toJSON = gtoJson
 
-instance JSONSchema PlayTime where
+instance JSONSchema PlayProgress where
     schema = gSchema

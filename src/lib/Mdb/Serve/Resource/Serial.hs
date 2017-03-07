@@ -24,7 +24,7 @@ import qualified Rest.Resource              as R
 
 import           Mdb.Database
 import           Mdb.Serve.Auth             as AUTH
-import           Mdb.Serve.Resource.Utils   (sortDir)
+import           Mdb.Serve.Resource.Utils   (PlayTime(..), sortDir)
 import           Mdb.Types
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -152,6 +152,8 @@ data Episode = Episode
     , episodeId       :: EpisodeId
     , episodeTitle    :: T.Text
     , episodeFile     :: Maybe FileId
+    , episodeDuration :: Maybe Double
+    , episodePlay     :: Maybe PlayTime
     } deriving ( Generic, Show )
 
 instance ToJSON Episode where
@@ -161,7 +163,7 @@ instance JSONSchema Episode where
   schema = gSchema
 
 episodeOrder :: Maybe String -> Query
-episodeOrder _     = "series_episode_number"
+episodeOrder _     = "se.series_episode_number"
 
 episodeResource :: (MonadMask m, MonadIO m) => Resource (WithSeason m) (WithSeason m) SeasonId () Void
 episodeResource = mkResourceId
@@ -175,12 +177,20 @@ episodeList :: (MonadMask m, MonadIO m) => () -> ListHandler (WithSeason m)
 episodeList () = mkOrderedListing jsonO handler where
     handler :: (MonadMask m, MonadIO m) => (Range, Maybe String, Maybe String) -> ExceptT Reason_ (WithSeason m) [Episode]
     handler (r, o, d) = lift $ do
-        serId    <- lift ask
-        seaId    <- ask
+        serId   <- lift ask
+        seaId   <- ask
+        muid    <- lift . lift $ AUTH.userId
         xs <- lift . lift $ AUTH.query
-            (   "SELECT series_episode_number, series_episode_title, file_id FROM series_episode "
-            <>  "WHERE series_id = ? AND series_season_number = ?"
+            (   "SELECT se.series_episode_number, se.series_episode_title, se.file_id, "
+            <>      "c.container_duration, uvp.last_play_pos, uvp.seen_complete "
+            <>  "FROM series_episode AS se "
+            <>  "LEFT JOIN user_video_play AS uvp ON se.file_id = uvp.file_id AND uvp.user_id = ? "
+            <>  "LEFT JOIN container AS c ON se.file_id = c.file_id "
+            <>  "WHERE se.series_id = ? AND se.series_season_number = ? "
             <>  "ORDER BY " <> episodeOrder o <> " " <> sortDir d <> " "
-            <>  "LIMIT ? OFFSET ?" ) (serId, seaId, count r, offset r)
+            <>  "LIMIT ? OFFSET ?" ) (muid, serId, seaId, count r, offset r)
 
-        return $ map (\(n, t, f) -> Episode serId seaId n t f) xs
+        let
+            mkPT mpp mc = PlayTime <$> mpp <*> mc
+
+        return $ map (\(n, t, f, md, mpp, mc) -> Episode serId seaId n t f md (mkPT mpp mc)) xs

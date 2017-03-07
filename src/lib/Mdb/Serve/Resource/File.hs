@@ -22,16 +22,18 @@ import qualified Rest.Resource              as R
 
 import           Mdb.Database
 import           Mdb.Serve.Auth             as AUTH
+import           Mdb.Serve.Resource.Utils   (PlayTime(..))
 import           Mdb.Types
 
 data File = File
-    { fileId   :: ! FileId
-    , fileSize :: ! Integer
-    , fileMime :: ! T.Text
+    { fileId        :: ! FileId
+    , fileSize      :: ! Integer
+    , fileMime      :: ! T.Text
+    , fileDuration  :: Maybe Double
     } deriving ( Generic, Show )
 
 instance FromRow File where
-    fromRow = File <$> field <*> field <*> field
+    fromRow = File <$> field <*> field <*> field <*> field
 
 instance ToJSON File where
     toJSON = gtoJson
@@ -62,7 +64,6 @@ fileResource = mkResourceReader
     , R.get         = Nothing
     , R.selects     =
         [ ( "container",    getContainerInfo )
-        , ( "playTime",     getPlayTime )
         ]
     }
 
@@ -72,7 +73,8 @@ fileListHandler which = mkOrderedListing jsonO handler where
         AllFiles            -> lift $ listFiles (offset r) (count r)
         FilesInAlbum aid    -> lift $
             AUTH.query
-                (   "SELECT f.file_id, f.file_size, file_mime FROM auth_file f "
+                (   "SELECT f.file_id, f.file_size, file_mime, c.container_duration FROM auth_file f "
+                <>  "LEFT JOIN container AS c ON f.file_id = c.file_id "
                 <>  "NATURAL JOIN album_file "
                 <>  "WHERE album_file.album_id = ? "
                 <>  "ORDER BY f.file_name ASC "
@@ -147,36 +149,3 @@ getContainerInfo = mkIdHandler jsonO handler where
             "FROM stream WHERE file_id=?") (Only fid)
 
         return $ Container d fmt ss
-
-------------------------------------------------------------------------------------------------------------------------
--- Play Time
-------------------------------------------------------------------------------------------------------------------------
-
-data PlayTime = PlayTime
-    { totalTime :: Double
-    , playPos   :: Double
-    , finished  :: Bool
-    } deriving ( Generic, Show )
-
-instance ToJSON PlayTime where
-    toJSON = gtoJson
-
-instance JSONSchema PlayTime where
-    schema = gSchema
-
-getPlayTime :: (MonadMask m, MonadIO m) => Handler (WithFile m)
-getPlayTime = mkIdHandler jsonO handler where
-    handler :: (MonadMask m, MonadIO m) => () -> FileId -> ExceptT Reason_ (WithFile m) PlayTime
-    handler () fid = do
-        muid <- lift . lift $ AUTH.userId
-        case muid of
-            Nothing -> throwError NotAllowed
-            Just uid -> do
-                (Only d) <- ExceptT $ lift $ AUTH.queryOne
-                    "SELECT container_duration FROM container WHERE file_id=?" (Only fid)
-
-                (p, f) <- ExceptT $ lift $ AUTH.queryOne
-                    "SELECT last_play_pos, seen_complete FROM user_video_play WHERE file_id=? AND user_id=?"
-                    (fid, uid)
-
-                return $ PlayTime d p f

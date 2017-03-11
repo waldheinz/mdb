@@ -6,6 +6,7 @@ module Mdb.Serve.Auth (
     SessionKey, request, checkLogin, doLogout
 ) where
 
+import           Control.Applicative ( (<|>) )
 import           Control.Monad.Catch (MonadMask, bracket_)
 import           Control.Monad.Except
 import           Control.Monad.Trans.Reader ( ReaderT, asks, runReaderT )
@@ -101,17 +102,18 @@ request skey req (Authenticated f) =
         Nothing -> fail "no session storage found"
         Just sess@(getUser, _) -> getUser () >>= \muid -> case muid of
                 Just (Just uid) -> withUserViews uid $ runReaderT f (sess, UserAuth uid)
-                _               -> do
+                _               ->
                     let
-                        msid = fmap snd $ find (\(pname, _) -> pname == "Authorization") $ WAI.requestHeaders req
-
-                    case msid of
-                        Nothing -> runReaderT f (sess, NoAuth)
-                        Just sid -> do
+                        a, s :: Maybe ByteString
+                        a = fmap snd $ find (\(pname, _) -> pname == "Authorization") (WAI.requestHeaders req)
+                        s = join $ fmap snd (find (\(pname, _) -> pname == "session_id") $ WAI.queryString req)
+                        verify sid = do
                             xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
                             case xs of
                                 []              -> runReaderT f (sess, NoAuth)
                                 (Only uid : _)  -> withUserViews uid $ runReaderT f (sess, UserAuth uid)
+                    in
+                        maybe (runReaderT f (sess, NoAuth)) verify (a <|> s)
 
 query :: (MonadMask m, MonadIO m, SQL.ToRow q, SQL.FromRow r) => SQL.Query -> q -> Authenticated m [r]
 query q p = Authenticated $ asks snd >>= \mauth -> case mauth of

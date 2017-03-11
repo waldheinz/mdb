@@ -103,7 +103,7 @@ request skey req (Authenticated f) =
                 Just (Just uid) -> withUserViews uid $ runReaderT f (sess, UserAuth uid)
                 _               -> do
                     let
-                        msid = fmap snd $ find (\(pname, _) -> pname == "session_id") $ WAI.queryString req
+                        msid = fmap snd $ find (\(pname, _) -> pname == "Authorization") $ WAI.requestHeaders req
 
                     case msid of
                         Nothing -> runReaderT f (sess, NoAuth)

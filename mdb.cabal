@@ -14,11 +14,6 @@ cabal-version:       >=1.10
 
 data-files:
     files/htdocs/index.html
-    files/htdocs/res/css/*.css
-    files/htdocs/res/css/*.min.css
-    files/htdocs/res/js/*.min.js
-    files/htdocs/res/js/*.all.min.js
-    files/htdocs/res/js/*.js
     files/sql/*.sql
 
 library

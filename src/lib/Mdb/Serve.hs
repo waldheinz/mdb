@@ -60,8 +60,8 @@ doServe = do
 
 mkApp :: (MonadMask m, MonadIO m) => MediaDb -> SessionKey IO -> m Application
 mkApp mdb skey = do
-    res <- mkResources
-    index <- mkIndex
+    static  <- mkStatic
+    index   <- mkIndex
 
     return $ mapUrls $
             mount "api"     (mapUrls $
@@ -70,13 +70,13 @@ mkApp mdb skey = do
             <|> mount "video"   (videoApp mdb skey)
             <|> mountRoot (apiApp mdb skey)
             )
-        <|> mount "res" res
+        <|> mount "static" static
         <|> mountRoot   index
 
-mkResources :: MonadIO m => m Application
-mkResources = liftIO $ do
+mkStatic :: MonadIO m => m Application
+mkStatic = liftIO $ do
     dir <- getDataDir
-    return $ staticApp (defaultWebAppSettings $ fromString $ dir ++ "/files/htdocs/res")
+    return $ staticApp (defaultWebAppSettings $ fromString $ dir ++ "/files/htdocs/static")
 
 mkIndex :: MonadIO m => m Application
 mkIndex = liftIO $ do

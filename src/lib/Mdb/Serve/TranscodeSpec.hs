@@ -23,7 +23,7 @@ data VideoSpecH264 = VideoSpecH264
     } deriving ( Show )
 
 instance FromJSON VideoSpecH264 where
-    parseJSON (Object v)    = VideoSpecH264 <$> v .: "maxRate" <*> v .: "bufSize" <*> v .: "crf" <*> v .: "width"
+    parseJSON (Object v)    = VideoSpecH264 <$> v .: "maxRate" <*> v .: "bufSize" <*> v .: "crf" <*> v .: "lines"
     parseJSON x             = typeMismatch "VideoSpecH264" x
 
 data AudioSpecAAC = AudioSpecAAC

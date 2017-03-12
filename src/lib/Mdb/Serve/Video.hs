@@ -177,8 +177,8 @@ transcoded (fid ::: spec ::: start) = withFileAccess doit fid where
             streamOpts = concatMap go idxStreams where
                 go (i, SPEC.CopyVideo)  = "-c:v:" ++ show i ++ " copy "
                 go (i, SPEC.CopyAudio)  = "-c:a:" ++ show i ++ " copy "
-                go (i, SPEC.TranscodeH264 (SPEC.VideoSpecH264 mr bs crf w)) =
-                    " -vf scale=-2:" ++ show w ++
+                go (i, SPEC.TranscodeH264 (SPEC.VideoSpecH264 mr bs crf l)) =
+                    " -vf scale=-2:" ++ show (l - (l `mod` 2)) ++
                     " -c:v:" ++ show i ++ " libx264" ++
                     " -preset:" ++ show i ++ " superfast" ++
                     " -maxrate:" ++ show i ++ " " ++ show mr ++ "k" ++

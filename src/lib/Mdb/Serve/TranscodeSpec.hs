@@ -16,10 +16,10 @@ import           Data.ByteString.Conversion.From (FromByteString(..))
 ------------------------------------------------------------------------------------------------------------------------
 
 data VideoSpecH264 = VideoSpecH264
-    { maxRate   :: Int
-    , bufSize   :: Int
-    , crf       :: Int
-    , width     :: Int
+    { maxRate   :: ! Int
+    , bufSize   :: ! Int
+    , crf       :: ! Int
+    , lines     :: ! Int
     } deriving ( Show )
 
 instance FromJSON VideoSpecH264 where
@@ -54,8 +54,8 @@ instance FromJSON StreamType where
     parseJSON x = typeMismatch "StreamType" x
 
 data Stream = Stream
-    { streamSource  :: Int
-    , streamType    :: StreamType
+    { streamSource  :: ! Int
+    , streamType    :: ! StreamType
     } deriving ( Show )
 
 instance FromJSON Stream where

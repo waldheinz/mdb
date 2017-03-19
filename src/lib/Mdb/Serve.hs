@@ -10,6 +10,7 @@ import Control.Monad.Catch ( MonadMask )
 import Control.Monad.Reader.Class ( ask )
 import Control.Monad.IO.Class ( MonadIO, liftIO )
 import           Data.String ( fromString )
+import           Data.Text.Encoding ( decodeUtf8 )
 import qualified Data.Vault.Lazy as V
 import           Network.HTTP.Types.Status ( status200 )
 import           Network.Wai ( Application, responseFile )
@@ -37,16 +38,16 @@ doServe = do
         setc = COOK.def { COOK.setCookiePath = Just "/" }
         session sid = (getUser, setUser) where
             getUser () = do
-                xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
+                xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only $ decodeUtf8 sid)
                 case xs of
                     []              -> return Nothing
                     (Only uid : _)  -> return (Just uid)
 
             setUser () (Just uid)   = dbExecute
-                "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, sid)
+                "INSERT INTO user_session(user_id, session_id) VALUES (?, ?)" (uid, decodeUtf8 sid)
 
             setUser () Nothing      = dbExecute
-                "DELETE FROM user_session WHERE session_id = ?" (Only sid)
+                "DELETE FROM user_session WHERE session_id = ?" (Only $ decodeUtf8 sid)
 
         sstore Nothing = do
             newKey <- S.genSessionId

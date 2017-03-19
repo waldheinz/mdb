@@ -15,6 +15,7 @@ import           Data.ByteString ( ByteString )
 import           Data.List ( find )
 import           Data.Monoid ( (<>) )
 import qualified Data.Text as T
+import           Data.Text.Encoding ( decodeUtf8 )
 import qualified Data.Vault.Lazy as V
 import qualified Database.SQLite.Simple as SQL
 import qualified Database.SQLite.Simple.FromField as SQL
@@ -108,7 +109,7 @@ request skey req (Authenticated f) =
                         a = fmap snd $ find (\(pname, _) -> pname == "Authorization") (WAI.requestHeaders req)
                         s = join $ fmap snd (find (\(pname, _) -> pname == "session_id") $ WAI.queryString req)
                         verify sid = do
-                            xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only sid)
+                            xs <- dbQuery "SELECT user_id FROM user_session WHERE session_id=?" (Only $ decodeUtf8 sid)
                             case xs of
                                 []              -> runReaderT f (sess, NoAuth)
                                 (Only uid : _)  -> withUserViews uid $ runReaderT f (sess, UserAuth uid)

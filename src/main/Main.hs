@@ -65,9 +65,12 @@ doAddUser name = do
 doPerson :: (MonadMask m, MonadIO m) => CMD.OptPerson -> DB.MDB m ()
 doPerson (CMD.AddPerson n) = DB.addPerson n >>= \pid ->
     liftIO $ putStrLn $ "added \"" ++ n ++ "\" with ID " ++ show pid
+doPerson CMD.PersonList = do
+  ps <- DB.dbQuery_ "SELECT person_id, person_name FROM person ORDER BY person_name"
+  liftIO $ mapM_ (\(pid, pn) -> putStrLn $ show (pid :: Integer) ++ ": " ++ pn) ps
 doPerson (CMD.SetPersonPortrait pid fid) = DB.dbExecute
     "UPDATE person SET person_portrait = ? WHERE person_id = ?"
     (fid, pid)
 
 doInit :: (LOG.MonadLoggerIO m) => Maybe FilePath -> m ()
-doInit mp = maybe (liftIO $ getCurrentDirectory) return mp >>= DB.initDb
+doInit mp = maybe (liftIO getCurrentDirectory) return mp >>= DB.initDb

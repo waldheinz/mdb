@@ -6,7 +6,7 @@ module Mdb.CmdLine (
     ) where
 
 import qualified Control.Monad.Logger as LOG
-import           Data.List ( find, intersperse )
+import           Data.List ( find, intercalate )
 import           Data.Monoid ( (<>) )
 import           Options.Applicative
 
@@ -68,7 +68,7 @@ levelMap =
 parseLevel :: ReadM LOG.LogLevel
 parseLevel = eitherReader go where
     go s = maybe (Left $ "valid levels: " ++ valid) Right $ fmap snd (find (\(ss, _) -> s == ss) levelMap)
-    valid = concat $ intersperse ", " $ map fst levelMap
+    valid = intercalate ", " $ map fst levelMap
 
 parseCommandLine :: IO MdbOptions
 parseCommandLine = execParser opts
@@ -188,9 +188,18 @@ fileAssign = FileAssign <$> some (p <|> np <|> a <|> na <|> tag) where
 
 data OptPerson
     = AddPerson String
+    | PersonList
     | SetPersonPortrait PersonId FileId
     deriving ( Show )
 
+
+personOptions :: Parser Mode
+personOptions = ModePerson <$> (add <|> list <|> portrait) where
+    add       = AddPerson <$> strOption ( long "add" <> metavar "NAME" <> help "add new person" )
+    list      = flag' PersonList (long "list" <> help "list persons")
+    portrait  = SetPersonPortrait <$> option auto ( metavar "PID" ) <*> argument auto ( metavar "FID" )
+
+{-
 personOptions :: Parser Mode
 personOptions = ModePerson
     <$> subparser
@@ -203,6 +212,7 @@ personOptions = ModePerson
                 ( progDesc "set a person's portrait image by person and file IDs" )
             )
         )
+-}
 
 ------------------------------------------------------------------------------------------------------------------------
 -- Serve
@@ -215,7 +225,7 @@ serveOptions = pure ModeServe
 -- Status
 ------------------------------------------------------------------------------------------------------------------------
 
-data OptStatus = OptStatus
+newtype OptStatus = OptStatus
     { removeMissing :: Bool
     } deriving ( Show )
 
@@ -251,7 +261,7 @@ tvShowOptions = ModeTvShow
 -- User
 ------------------------------------------------------------------------------------------------------------------------
 
-data OptUser
+newtype OptUser
     = AddUser String
     deriving ( Show )
 

@@ -28,6 +28,7 @@ addons:
       - libavcodec-dev
       - libavutil-dev
       - libswscale-dev
+      - libavdevice-dev
 
       # for imagemagick
       - libjpeg-dev

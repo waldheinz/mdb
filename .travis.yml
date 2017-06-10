@@ -1,9 +1,8 @@
 
 env:
   global:
-  - IMAGEMAGICK_VERSION: '7.0.5-10'
+  - IMAGEMAGICK_VERSION: '6.9.8-9'
   - LIBWEBP_VERSION: '0.5.1'
-
 
 # Use new container infrastructure to enable caching
 sudo: false
@@ -58,7 +57,7 @@ before_install:
     ./configure --prefix=$HOME/opt &&
     make -j$CORES &&
     make install -j$CORES &&
-    $HOME/opt/bin/magick -version | grep $IMAGEMAGICK_VERSION &&
+    $HOME/opt/bin/convert -version | grep $IMAGEMAGICK_VERSION &&
     cd $TRAVIS_BUILD_DIR; }
 
   # Update library paths for programs

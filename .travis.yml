@@ -67,6 +67,10 @@ before_install:
   - export CPATH=$CPATH:$HOME/opt/include
   - export PKG_CONFIG_PATH=$HOME/opt/lib/pkgconfig:$PKG_CONFIG_PATH
 
+  - pkg-config --modversion MagickWand
+  - pkg-config --cflags MagickWand
+  - pkg-config --cflags MagickCore
+
   # Download and unpack the stack executable
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH

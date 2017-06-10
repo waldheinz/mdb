@@ -15,6 +15,10 @@ addons:
   apt:
     packages:
       - libgmp-dev
+      - libavformat-dev
+      - libavcodec-dev
+      - libavutil-dev
+      - libswscale-dev
 
 # Download and unpack the stack executable
 before_install:

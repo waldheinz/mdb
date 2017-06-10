@@ -19,6 +19,7 @@ addons:
       - libavcodec-dev
       - libavutil-dev
       - libswscale-dev
+      - libmagickwand-dev
 
 # Download and unpack the stack executable
 before_install:

@@ -1,4 +1,10 @@
 
+env:
+  global:
+  - IMAGEMAGICK_VERSION: '7.0.5-10'
+  - LIBWEBP_VERSION: '0.5.1'
+
+
 # Use new container infrastructure to enable caching
 sudo: false
 
@@ -9,20 +15,58 @@ language: generic
 cache:
   directories:
     - $HOME/.stack
+    - $HOME/opt
 
 # Ensure necessary system libraries are present
 addons:
   apt:
     packages:
+      # for GHC
       - libgmp-dev
+
+      # for ffmpeg-light
       - libavformat-dev
       - libavcodec-dev
       - libavutil-dev
       - libswscale-dev
-      - libmagickwand-dev
 
-# Download and unpack the stack executable
+      # for imagemagick
+      - libjpeg-dev
+      - libpng-dev
+      - libgif-dev
+
 before_install:
+   # Update PATH so that travis can find newer imagemagick
+  - export PATH=$HOME/opt/bin:$PATH
+
+  # Checks if Imagemagick is already sufficient version
+  # If not installs it from the sources
+  - convert -version | grep $IMAGEMAGICK_VERSION || {
+    export CORES=$(nproc) &&
+    echo "Using $CORES cores for compiling..." &&
+    cd /tmp &&
+    curl -O https://storage.googleapis.com/downloads.webmproject.org/releases/webp/libwebp-$LIBWEBP_VERSION.tar.gz &&
+    tar xvzf libwebp-$LIBWEBP_VERSION.tar.gz &&
+    cd libwebp-* &&
+    ./configure --prefix=$HOME/opt &&
+    make -j$CORES &&
+    make install -j$CORES &&
+    cd /tmp &&
+    curl -O https://www.imagemagick.org/download/ImageMagick-$IMAGEMAGICK_VERSION.tar.gz &&
+    tar xvzf ImageMagick-$IMAGEMAGICK_VERSION.tar.gz &&
+    cd ImageMagick-* &&
+    ./configure --prefix=$HOME/opt &&
+    make -j$CORES &&
+    make install -j$CORES &&
+    $HOME/opt/bin/magick -version | grep $IMAGEMAGICK_VERSION &&
+    cd $TRAVIS_BUILD_DIR; }
+
+  # Update library paths for programs
+  - export LD_FLAGS=-L$HOME/opt/lib
+  - export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:$HOME/opt/lib
+  - export CPATH=$CPATH:$HOME/opt/include
+
+  # Download and unpack the stack executable
   - mkdir -p ~/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'

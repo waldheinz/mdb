@@ -65,6 +65,7 @@ before_install:
   - export LD_FLAGS=-L$HOME/opt/lib
   - export LD_LIBRARY_PATH=/lib:/usr/lib:/usr/local/lib:$HOME/opt/lib
   - export CPATH=$CPATH:$HOME/opt/include
+  - export PKG_CONFIG_PATH=$HOME/opt/lib/pkgconfig:$PKG_CONFIG_PATH
 
   # Download and unpack the stack executable
   - mkdir -p ~/.local/bin

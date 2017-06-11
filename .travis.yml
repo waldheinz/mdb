@@ -3,6 +3,7 @@ env:
   global:
   - FFMPEG_VERSION: '3.3.1'
   - IMAGEMAGICK_VERSION: '6.9.8-9'
+  - NJOBS_STACK: '4'
 
 # Use new container infrastructure to enable caching
 sudo: false
@@ -55,8 +56,8 @@ before_install:
 
 # build dependencies
 install:
-  - stack --no-terminal --install-ghc test --only-dependencies
+  - stack -j ${NJOBS_STACK} --no-terminal --install-ghc test --only-dependencies
 
 # build the package, its tests, and its docs and run the tests
 script:
-  - stack --no-terminal test --haddock --no-haddock-deps
+  - stack -j ${NJOBS_STACK} --no-terminal test --haddock --no-haddock-deps

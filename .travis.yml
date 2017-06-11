@@ -2,7 +2,6 @@
 env:
   global:
   - FFMPEG_VERSION: '3.3.1'
-  - LIBWEBP_VERSION: '0.5.1'
   - IMAGEMAGICK_VERSION: '6.9.8-9'
 
 # Use new container infrastructure to enable caching

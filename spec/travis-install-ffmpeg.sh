@@ -14,7 +14,7 @@ else
   curl -L -O "https://github.com/FFmpeg/FFmpeg/archive/n${FFMPEG_VERSION}.tar.gz"
   tar xvf "n${FFMPEG_VERSION}.tar.gz"
   cd "FFmpeg-n${FFMPEG_VERSION}"
-  ./configure --prefix=$HOME/opt
+  ./configure --enable-pic --prefix=$HOME/opt
   make -j$CORES
   make install
   $HOME/opt/bin/ffmpeg -version

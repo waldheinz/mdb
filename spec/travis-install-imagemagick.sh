@@ -1,3 +1,5 @@
+#!/bin/sh
+
 convert -version | grep $IMAGEMAGICK_VERSION || {
   export CORES=$(nproc) &&
   echo "Using $CORES cores for compiling..." &&
@@ -17,4 +19,3 @@ convert -version | grep $IMAGEMAGICK_VERSION || {
   make install -j$CORES &&
   $HOME/opt/bin/convert -version | grep $IMAGEMAGICK_VERSION &&
   cd $TRAVIS_BUILD_DIR; }
-  

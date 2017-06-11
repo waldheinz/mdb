@@ -56,8 +56,8 @@ before_install:
 
 # build dependencies
 install:
-  - stack -j ${NJOBS_STACK} --no-terminal --install-ghc test --only-dependencies
+  - stack -j ${NJOBS_STACK} --no-terminal --install-ghc build --only-dependencies
 
 # build the package, its tests, and its docs and run the tests
 script:
-  - stack -j ${NJOBS_STACK} --no-terminal test --haddock --no-haddock-deps
+  - stack -j ${NJOBS_STACK} --no-terminal test

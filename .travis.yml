@@ -36,6 +36,8 @@ addons:
       - libgif-dev
 
 before_install:
+  - ffmpeg --version
+  
    # Update PATH so that travis can find newer imagemagick
   - export PATH=$HOME/opt/bin:$PATH
 

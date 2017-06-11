@@ -6,5 +6,5 @@ elm-stuff/
 .cabal-sandbox
 cabal.sandbox.config
 files/htdocs/js/mdb.js
-test/
+test-data/
 node_modules/

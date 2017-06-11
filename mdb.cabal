@@ -35,6 +35,7 @@ library
         Mdb.Database.User
         Mdb.File
         Mdb.Image
+        Mdb.Metadata
         Mdb.Serve
         Mdb.Serve.Auth
         Mdb.Serve.Image
@@ -61,6 +62,7 @@ library
         blaze-builder,
         bytestring    >= 0.10,
         bytestring-conversion,
+        cache,
         conduit,
         conduit-extra,
         cookie,
@@ -119,6 +121,14 @@ executable mdb
         mdb,
         monad-logger,
         scrypt
+
+test-suite test-mdb
+    type:           exitcode-stdio-1.0
+    hs-source-dirs: src/test
+    main-is:        Main.hs
+    build-depends:
+        base, mdb,
+        hspec
 
 executable mdb-api-gen
     main-is:            RestApiMain.hs

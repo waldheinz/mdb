@@ -24,6 +24,10 @@ addons:
       # for GHC
       - libgmp-dev
 
+      # for building ffmpeg
+      - nasm
+      - yasm
+
       # for imagemagick
       - libjpeg-dev
       - libpng-dev
